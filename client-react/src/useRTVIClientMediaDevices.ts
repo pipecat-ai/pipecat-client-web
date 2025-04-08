@@ -1,7 +1,7 @@
 import { RTVIEvent } from "@pipecat-ai/client-js";
 import { atom, useAtomValue } from "jotai";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useRTVIClient } from "./useRTVIClient";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
@@ -23,6 +23,31 @@ export const useRTVIClientMediaDevices = () => {
   const selectedCam = useAtomValue(selectedCamAtom);
   const selectedMic = useAtomValue(selectedMicAtom);
   const selectedSpeaker = useAtomValue(selectedSpeakerAtom);
+
+  const initDevices = useAtomCallback(
+    useCallback(
+      async (_get, set) => {
+        if (!client) return;
+
+        const availableCams = await client.getAllCams();
+        const availableMics = await client.getAllMics();
+        const availableSpeakers = await client.getAllSpeakers();
+
+        set(availableCamsAtom, availableCams);
+        set(availableMicsAtom, availableMics);
+        set(availableSpeakersAtom, availableSpeakers);
+
+        set(selectedCamAtom, client.selectedCam);
+        set(selectedMicAtom, client.selectedMic);
+        set(selectedSpeakerAtom, client.selectedSpeaker);
+      },
+      [client]
+    )
+  );
+
+  useEffect(() => {
+    initDevices();
+  }, [initDevices]);
 
   useRTVIClientEvent(
     RTVIEvent.AvailableCamsUpdated,
