@@ -5,6 +5,8 @@
  */
 
 import { RTVIClientAudio } from "./RTVIClientAudio";
+import { RTVIClientCamToggle } from "./RTVIClientCamToggle";
+import { RTVIClientMicToggle } from "./RTVIClientMicToggle";
 import { RTVIClientProvider } from "./RTVIClientProvider";
 import { RTVIClientVideo } from "./RTVIClientVideo";
 import { useRTVIClient } from "./useRTVIClient";
@@ -16,6 +18,8 @@ import { VoiceVisualizer } from "./VoiceVisualizer";
 
 export {
   RTVIClientAudio,
+  RTVIClientCamToggle,
+  RTVIClientMicToggle,
   RTVIClientProvider,
   RTVIClientVideo,
   useRTVIClient,
