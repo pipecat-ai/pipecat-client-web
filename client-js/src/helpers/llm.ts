@@ -18,7 +18,7 @@ import { RTVIClientHelper, RTVIClientHelperOptions } from ".";
 export type LLMFunctionCallData = {
   function_name: string;
   tool_call_id: string;
-  args: unknown;
+  arguments: unknown;
   result?: unknown;
 };
 
@@ -225,7 +225,8 @@ export class LLMHelper extends RTVIClientHelper {
         if (this._functionCallCallback) {
           const fn = {
             functionName: d.function_name,
-            arguments: d.args,
+            // Use the correct property 'arguments' from the received data 'd'
+            arguments: d.arguments,
           };
           if (this._client.state === "ready") {
             this._functionCallCallback(fn).then((result) => {
@@ -233,7 +234,7 @@ export class LLMHelper extends RTVIClientHelper {
                 new RTVIMessage(LLMMessageType.LLM_FUNCTION_CALL_RESULT, {
                   function_name: d.function_name,
                   tool_call_id: d.tool_call_id,
-                  arguments: d.args,
+                  arguments: d.arguments,
                   result,
                 })
               );
