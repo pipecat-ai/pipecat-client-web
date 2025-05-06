@@ -225,7 +225,6 @@ export class LLMHelper extends RTVIClientHelper {
         if (this._functionCallCallback) {
           const fn = {
             functionName: d.function_name,
-            // Use the correct property 'arguments' from the received data 'd'
             arguments: d.arguments,
           };
           if (this._client.state === "ready") {
