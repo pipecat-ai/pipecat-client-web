@@ -15,7 +15,9 @@ interface Props {
   barColor?: string;
   barCount?: number;
   barGap?: number;
+  barLineCap?: "round" | "square";
   barMaxHeight?: number;
+  barOrigin?: "top" | "bottom" | "center";
   barWidth?: number;
   participantType: ParticipantType;
 }
@@ -24,10 +26,12 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
   ({
     backgroundColor = "transparent",
     barColor = "black",
-    barWidth = 30,
-    barGap = 12,
-    barMaxHeight = 120,
     barCount = 5,
+    barGap = 12,
+    barLineCap = "round",
+    barMaxHeight = 120,
+    barOrigin = "center",
+    barWidth = 30,
     participantType,
   }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -55,7 +59,7 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
         canvas.style.width = `${canvasWidth}px`;
         canvas.style.height = `${canvasHeight}px`;
 
-        canvasCtx.lineCap = "round";
+        canvasCtx.lineCap = barLineCap;
         canvasCtx.scale(scaleFactor, scaleFactor);
       };
 
@@ -76,7 +80,7 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
 
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);
 
-      canvasCtx.lineCap = "round";
+      canvasCtx.lineCap = barLineCap;
 
       // Create frequency bands based on barCount
       const bands = Array.from({ length: barCount }, (_, i) => {
@@ -156,19 +160,39 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
 
           const x = startX + i * (barWidth + barGap);
           // Calculate bar height with a maximum cap
-          const barHeight = Math.min(
-            (band.smoothValue / 255) * barMaxHeight,
-            barMaxHeight
+          const minHeight = 0;
+          const barHeight = Math.max(
+            minHeight,
+            Math.min((band.smoothValue / 255) * barMaxHeight, barMaxHeight)
           );
 
-          const yTop = Math.max(
-            canvas.height / scaleFactor / 2 - barHeight / 2,
-            adjustedCircleRadius
-          );
-          const yBottom = Math.min(
-            canvas.height / scaleFactor / 2 + barHeight / 2,
-            canvas.height / scaleFactor - adjustedCircleRadius
-          );
+          let yTop, yBottom;
+          const canvasHeight = canvas.height / scaleFactor;
+
+          switch (barOrigin) {
+            case "top":
+              yTop = adjustedCircleRadius;
+              yBottom = Math.min(
+                adjustedCircleRadius + barHeight,
+                canvasHeight - adjustedCircleRadius
+              );
+              break;
+            case "bottom":
+              yBottom = canvasHeight - adjustedCircleRadius;
+              yTop = Math.max(yBottom - barHeight, adjustedCircleRadius);
+              break;
+            case "center":
+            default:
+              yTop = Math.max(
+                canvasHeight / 2 - barHeight / 2,
+                adjustedCircleRadius
+              );
+              yBottom = Math.min(
+                canvasHeight / 2 + barHeight / 2,
+                canvasHeight - adjustedCircleRadius
+              );
+              break;
+          }
 
           if (band.smoothValue > 0) {
             canvasCtx.beginPath();
@@ -178,17 +202,7 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
             canvasCtx.strokeStyle = barColor;
             canvasCtx.stroke();
           } else {
-            canvasCtx.beginPath();
-            canvasCtx.arc(
-              x + barWidth / 2,
-              canvas.height / scaleFactor / 2,
-              adjustedCircleRadius,
-              0,
-              2 * Math.PI
-            );
-            canvasCtx.fillStyle = barColor;
-            canvasCtx.fill();
-            canvasCtx.closePath();
+            drawInactiveCircle(adjustedCircleRadius, barColor, x, yTop);
           }
         });
 
@@ -199,20 +213,56 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
         requestAnimationFrame(drawSpectrum);
       }
 
+      function drawInactiveCircle(
+        circleRadius: number,
+        color: string,
+        x: number,
+        y: number
+      ) {
+        switch (barLineCap) {
+          case "square":
+            canvasCtx.fillStyle = color;
+            canvasCtx.fillRect(
+              x + barWidth / 2 - circleRadius,
+              y - circleRadius,
+              circleRadius * 2,
+              circleRadius * 2
+            );
+            break;
+          case "round":
+          default:
+            canvasCtx.beginPath();
+            canvasCtx.arc(x + barWidth / 2, y, circleRadius, 0, 2 * Math.PI);
+            canvasCtx.fillStyle = color;
+            canvasCtx.fill();
+            canvasCtx.closePath();
+            break;
+        }
+      }
+
       function drawInactiveCircles(circleRadius: number, color: string) {
         const totalBarsWidth =
           bands.length * barWidth + (bands.length - 1) * barGap;
         const startX = (canvas.width / scaleFactor - totalBarsWidth) / 2;
-        const y = canvas.height / scaleFactor / 2;
+        const canvasHeight = canvas.height / scaleFactor;
+
+        let y;
+        switch (barOrigin) {
+          case "top":
+            y = circleRadius;
+            break;
+          case "bottom":
+            y = canvasHeight - circleRadius;
+            break;
+          case "center":
+          default:
+            y = canvasHeight / 2;
+            break;
+        }
 
         bands.forEach((_, i) => {
           const x = startX + i * (barWidth + barGap);
-
-          canvasCtx.beginPath();
-          canvasCtx.arc(x + barWidth / 2, y, circleRadius, 0, 2 * Math.PI);
-          canvasCtx.fillStyle = color;
-          canvasCtx.fill();
-          canvasCtx.closePath();
+          drawInactiveCircle(circleRadius, color, x, y);
         });
       }
 
@@ -228,10 +278,12 @@ export const VoiceVisualizer: React.FC<Props> = React.memo(
     }, [
       backgroundColor,
       barColor,
-      barGap,
-      barMaxHeight,
-      barWidth,
       barCount,
+      barGap,
+      barLineCap,
+      barMaxHeight,
+      barOrigin,
+      barWidth,
       track,
     ]);
 
