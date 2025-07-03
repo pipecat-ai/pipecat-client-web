@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useRTVIClient } from "./useRTVIClient";
-import { useRTVIClientTransportState } from "./useRTVIClientTransportState";
+import { usePipecatClient } from "./usePipecatClient";
+import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 
 /**
  * Hook to control camera state
  */
-export const useRTVIClientCamControl = () => {
-  const client = useRTVIClient();
+export const usePipecatClientCamControl = () => {
+  const client = usePipecatClient();
 
   const [isCamEnabled, setIsCamEnabled] = useState(
     client?.isCamEnabled ?? false
   );
 
-  const transportState = useRTVIClientTransportState();
+  const transportState = usePipecatClientTransportState();
 
   // Sync component state with client state initially
   useEffect(() => {

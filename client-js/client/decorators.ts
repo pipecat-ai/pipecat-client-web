@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIClient } from ".";
-import { BotNotReadyError } from "./errors";
+import { BotNotReadyError } from "../rtvi";
+import { PipecatClient } from ".";
 
-export function transportReady<T extends RTVIClient>(
+export function transportReady<T extends PipecatClient>(
   _target: T,
   propertyKey: string | symbol,
   descriptor: PropertyDescriptor
@@ -26,7 +26,7 @@ export function transportReady<T extends RTVIClient>(
 
   return descriptor;
 }
-export function transportInState<T extends RTVIClient>(states: string[]) {
+export function transportInState<T extends PipecatClient>(states: string[]) {
   return function (
     _target: T,
     propertyKey: string | symbol,
@@ -48,7 +48,7 @@ export function transportInState<T extends RTVIClient>(states: string[]) {
   };
 }
 
-export function getIfTransportInState<T extends RTVIClient>(
+export function getIfTransportInState<T extends PipecatClient>(
   ...states: string[]
 ) {
   states = ["ready", ...states];

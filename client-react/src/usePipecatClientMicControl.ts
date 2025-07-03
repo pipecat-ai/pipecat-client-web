@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { useRTVIClient } from "./useRTVIClient";
-import { useRTVIClientTransportState } from "./useRTVIClientTransportState";
+import { usePipecatClient } from "./usePipecatClient";
+import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 
 /**
  * Hook to control microphone state
  */
-export const useRTVIClientMicControl = () => {
-  const client = useRTVIClient();
+export const usePipecatClientMicControl = () => {
+  const client = usePipecatClient();
 
   const [isMicEnabled, setIsMicEnabled] = useState(
     client?.isMicEnabled ?? false
   );
 
-  const transportState = useRTVIClientTransportState();
+  const transportState = usePipecatClientTransportState();
 
   // Sync component state with client state initially
   useEffect(() => {

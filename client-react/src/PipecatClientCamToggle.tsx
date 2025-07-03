@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 
-import { useRTVIClientCamControl } from "./useRTVIClientCamControl";
+import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 
-export interface RTVIClientCamToggleProps {
+export interface PipecatClientCamToggleProps {
   /**
    * Callback fired when camera state changes
    */
@@ -28,12 +28,12 @@ export interface RTVIClientCamToggleProps {
 /**
  * Headless component for controlling camera state
  */
-export const RTVIClientCamToggle: React.FC<RTVIClientCamToggleProps> = ({
+export const PipecatClientCamToggle: React.FC<PipecatClientCamToggleProps> = ({
   onCamEnabledChanged,
   disabled = false,
   children,
 }) => {
-  const { isCamEnabled, enableCam } = useRTVIClientCamControl();
+  const { isCamEnabled, enableCam } = usePipecatClientCamControl();
 
   const handleToggleCam = useCallback(() => {
     if (disabled) return;
@@ -54,4 +54,4 @@ export const RTVIClientCamToggle: React.FC<RTVIClientCamToggleProps> = ({
   );
 };
 
-export default RTVIClientCamToggle;
+export default PipecatClientCamToggle;

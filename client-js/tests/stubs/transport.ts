@@ -4,15 +4,8 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import {
-  RTVIClientOptions,
-  RTVIMessage,
-  RTVIMessageType,
-  Tracks,
-  Transport,
-  TransportStartError,
-  TransportState,
-} from "../../src";
+import { PipecatClientOptions, Tracks, Transport } from "../../client";
+import { RTVIMessage, RTVIMessageType, TransportState } from "../../rtvi";
 
 class mockState {
   public isSharingScreen = false;
@@ -26,6 +19,10 @@ export class TransportStub extends Transport {
     this._mockState = new mockState();
   }
 
+  static create(): Transport {
+    return new TransportStub();
+  }
+
   public initDevices(): Promise<void> {
     return new Promise<void>((resolve) => {
       this.state = "initializing";
@@ -37,7 +34,7 @@ export class TransportStub extends Transport {
   }
 
   public initialize(
-    options: RTVIClientOptions,
+    options: PipecatClientOptions,
     messageHandler: (ev: RTVIMessage) => void
   ): void {
     this._onMessage = messageHandler;
@@ -46,14 +43,13 @@ export class TransportStub extends Transport {
     this.state = "disconnected";
   }
 
-  public async connect(authBundle: boolean = true): Promise<void> {
+  public _validateConnectionParams(connectParams?: unknown): unknown {
+    return connectParams;
+  }
+
+  public async _connect(): Promise<void> {
     return new Promise<void>((resolve) => {
       this.state = "connecting";
-
-      if (!authBundle) {
-        this.state = "error";
-        throw new TransportStartError();
-      }
 
       setTimeout(() => {
         this.state = "connected";
@@ -62,7 +58,7 @@ export class TransportStub extends Transport {
     });
   }
 
-  public async disconnect(): Promise<void> {
+  public async _disconnect(): Promise<void> {
     return new Promise<void>((resolve) => {
       this.state = "disconnecting";
       setTimeout(() => {
@@ -83,7 +79,7 @@ export class TransportStub extends Transport {
           label: "rtvi-ai",
           id: "123",
           type: RTVIMessageType.BOT_READY,
-          data: {},
+          data: { version: "1.0.0" },
         } as RTVIMessage);
       })();
     });
@@ -145,39 +141,14 @@ export class TransportStub extends Transport {
     return this._mockState.isSharingScreen;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public sendMessage(message: RTVIMessage) {
-    if (message.type === RTVIMessageType.ACTION) {
-      this._onMessage({
-        type: RTVIMessageType.ACTION_RESPONSE,
-        id: "123",
-        label: "rtvi-ai",
-        data: {
-          result: true,
-        },
-      });
-    } else {
-      // Mock the response from the server
-      console.log("[STUB] message.type:", message.type);
-
-      switch (message.type) {
-        case RTVIMessageType.UPDATE_CONFIG:
-          this._onMessage({
-            ...message,
-            type: RTVIMessageType.CONFIG,
-          });
-          break;
-        case RTVIMessageType.GET_CONFIG:
-          this._onMessage({
-            ...message,
-            data: {},
-            type: RTVIMessageType.CONFIG,
-          });
-          break;
-        default:
-          this._onMessage(message);
-      }
-    }
     return true;
+  }
+
+  // to simulate a message being received
+  public handleMessage(message: RTVIMessage): void {
+    this._onMessage(message);
   }
 
   public get state(): TransportState {
@@ -189,10 +160,6 @@ export class TransportStub extends Transport {
 
     this._state = state;
     this._callbacks.onTransportStateChanged?.(state);
-  }
-
-  get expiry(): number | undefined {
-    return this._expiry;
   }
 
   public tracks(): Tracks {

@@ -13,53 +13,52 @@ npm install @pipecat-ai/client-js @pipecat-ai/client-react
 
 ## Quick Start
 
-Instantiate an `RTVIClient` instance and pass it down to the `RTVIClientProvider`. Render the `<RTVIClientAudio>` component to have audio output setup automatically.
+Instantiate a `PipecatClient` instance and pass it down to the `PipecatClientProvider`. Render the `<PipecatClientAudio>` component to have audio output setup automatically.
 
 ```tsx
-import { RTVIClient } from "@pipecat-ai/client-js";
-import { RTVIClientAudio, RTVIClientProvider } from "@pipecat-ai/client-react";
+import { PipecatClient } from "@pipecat-ai/client-js";
+import { PipecatClientAudio, PipecatClientProvider } from "@pipecat-ai/client-react";
 
-const client = new RTVIClient({
-  baseUrl: "https://rtvi.pipecat.bot",
-  enableMic: true,
+const client = new PipecatClient({
+  transport: myTransportType.create(),
 });
 
 render(
-  <RTVIClientProvider client={client}>
+  <PipecatClientProvider client={client}>
     <MyApp />
-    <RTVIClientAudio />
-  </RTVIClientProvider>
+    <PipecatClientAudio />
+  </PipecatClientProvider>
 );
 ```
 
 We recommend starting the voiceClient from a click of a button, so here's a minimal implementation of `<MyApp>` to get started:
 
 ```tsx
-import { useRTVIClient } from "@pipecat-ai/client-react";
+import { usePipecatClient } from "@pipecat-ai/client-react";
 
 const MyApp = () => {
-  const client = useRTVIClient();
+  const client = usePipecatClient();
   return <button onClick={() => client.start()}>OK Computer</button>;
 };
 ```
 
 ## Components
 
-### RTVIClientProvider
+### PipecatClientProvider
 
-The root component for providing RTVI client context to your application.
+The root component for providing Pipecat client context to your application.
 
 #### Props
 
-- `client` (RTVIClient, required): A singleton instance of RTVIClient.
+- `client` (PipecatClient, required): A singleton instance of PipecatClient.
 
 ```jsx
-<RTVIClientProvider client={rtviClient}>
+<PipecatClientProvider client={pcClient}>
   {/* Child components */}
-</RTVIClientProvider>
+</PipecatClientProvider>
 ```
 
-### RTVIClientAudio
+### PipecatClientAudio
 
 Creates a new `<audio>` element that mounts the bot's audio track.
 
@@ -68,10 +67,10 @@ Creates a new `<audio>` element that mounts the bot's audio track.
 No props
 
 ```jsx
-<RTVIClientAudio />
+<PipecatClientAudio />
 ```
 
-### RTVIClientVideo
+### PipecatClientVideo
 
 Creates a new `<video>` element that renders either the bot or local participant's video track.
 
@@ -83,7 +82,7 @@ Creates a new `<video>` element that renders either the bot or local participant
 - `onResize(dimensions: object)` (function, optional): Triggered whenever the video's rendered width or height changes. Returns the video's native `width`, `height` and `aspectRatio`.
 
 ```jsx
-<RTVIClientVideo
+<PipecatClientVideo
   participant="local"
   fit="cover"
   mirror
@@ -93,7 +92,7 @@ Creates a new `<video>` element that renders either the bot or local participant
 />
 ```
 
-### RTVIClientCamToggle
+### PipecatClientCamToggle
 
 This is a stateful headless component and exposes the user's camEnabled state and an `onClick` handler to toggle the state.
 
@@ -103,16 +102,16 @@ This is a stateful headless component and exposes the user's camEnabled state an
 - `disabled` (boolean, optional): Disables the cam toggle
 
 ```jsx
-<RTVIClientCamToggle>
+<PipecatClientCamToggle>
   {({ disabled, isCamEnabled, onClick }) => (
     <button disabled={disabled} onClick={onClick}>
       {isCamEnabled ? "Turn off" : "Turn on"} camera
     </button>
   )}
-</RTVIClientCamToggle>
+</PipecatClientCamToggle>
 ```
 
-### RTVIClientMicToggle
+### PipecatClientMicToggle
 
 This is a stateful headless component and exposes the user's micEnabled state and an `onClick` handler to toggle the state.
 
@@ -122,13 +121,13 @@ This is a stateful headless component and exposes the user's micEnabled state an
 - `disabled` (boolean, optional): Disables the mic toggle
 
 ```jsx
-<RTVIClientMicToggle>
+<PipecatClientMicToggle>
   {({ disabled, isMicEnabled, onClick }) => (
     <button disabled={disabled} onClick={onClick}>
       {isMicEnabled ? "Mute" : "Unmute"} microphone
     </button>
   )}
-</RTVIClientMicToggle>
+</PipecatClientMicToggle>
 ```
 
 ### VoiceVisualizer
@@ -161,21 +160,21 @@ The visualization consists of vertical bars.
 
 ## Hooks
 
-### useRTVIClient
+### usePipecatClient
 
-Provides access to the `RTVIClient` instance originally passed to [`RTVIClientProvider`](#rtviclientprovider).
+Provides access to the `PipecatClient` instance originally passed to [`PipecatClientProvider`](#rtviclientprovider).
 
 ```jsx
-import { useRTVIClient } from "@pipecat-ai/client-react";
+import { usePipecatClient } from "@pipecat-ai/client-react";
 
 function MyComponent() {
-  const rtviClient = useRTVIClient();
+  const pcClient = usePipecatClient();
 }
 ```
 
 ### useRTVIClientEvent
 
-Allows subscribing to RTVI client events.
+Allows subscribing to RTVI events.
 It is advised to wrap handlers with `useCallback`.
 
 #### Arguments
@@ -198,36 +197,36 @@ function EventListener() {
 }
 ```
 
-### useRTVIClientCamControl
+### usePipecatClientCamControl
 
 Allows to control the user's camera state.
 
 ```jsx
-import { useRTVIClientCamControl } from "@pipecat-ai/client-react";
+import { usePipecatClientCamControl } from "@pipecat-ai/client-react";
 
 function CustomCamToggle() {
-  const { enableCam, isCamEnabled } = useRTVIClientCamControl();
+  const { enableCam, isCamEnabled } = usePipecatClientCamControl();
 }
 ```
 
-### useRTVIClientMicControl
+### usePipecatClientMicControl
 
 Allows to control the user's microphone state.
 
 ```jsx
-import { useRTVIClientMicControl } from "@pipecat-ai/client-react";
+import { usePipecatClientMicControl } from "@pipecat-ai/client-react";
 
 function CustomMicToggle() {
-  const { enableMic, isMicEnabled } = useRTVIClientMicControl();
+  const { enableMic, isMicEnabled } = usePipecatClientMicControl();
 }
 ```
 
-### useRTVIClientMediaDevices
+### usePipecatClientMediaDevices
 
 Manage and list available media devices.
 
 ```jsx
-import { useRTVIClientMediaDevices } from "@pipecat-ai/client-react";
+import { usePipecatClientMediaDevices } from "@pipecat-ai/client-react";
 
 function DeviceSelector() {
   const {
@@ -237,7 +236,7 @@ function DeviceSelector() {
     selectedMic,
     updateCam,
     updateMic,
-  } = useRTVIClientMediaDevices();
+  } = usePipecatClientMediaDevices();
 
   return (
     <>
@@ -268,7 +267,7 @@ function DeviceSelector() {
 }
 ```
 
-### useRTVIClientMediaTrack
+### usePipecatClientMediaTrack
 
 Access audio and video tracks.
 
@@ -278,22 +277,22 @@ Access audio and video tracks.
 - `participantType` ("bot" | "local", required)
 
 ```jsx
-import { useRTVIClientMediaTrack } from "@pipecat-ai/client-react";
+import { usePipecatClientMediaTrack } from "@pipecat-ai/client-react";
 
 function MyTracks() {
-  const localAudioTrack = useRTVIClientMediaTrack("audio", "local");
-  const botAudioTrack = useRTVIClientMediaTrack("audio", "bot");
+  const localAudioTrack = usePipecatClientMediaTrack("audio", "local");
+  const botAudioTrack = usePipecatClientMediaTrack("audio", "bot");
 }
 ```
 
-### useRTVIClientTransportState
+### usePipecatClientTransportState
 
 Returns the current transport state.
 
 ```jsx
-import { useRTVIClientTransportState } from "@pipecat-ai/client-react";
+import { usePipecatClientTransportState } from "@pipecat-ai/client-react";
 
 function ConnectionStatus() {
-  const transportState = useRTVIClientTransportState();
+  const transportState = usePipecatClientTransportState();
 }
 ```

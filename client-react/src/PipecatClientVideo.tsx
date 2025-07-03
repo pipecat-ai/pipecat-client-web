@@ -7,9 +7,9 @@
 import React, { forwardRef, useEffect, useRef } from "react";
 
 import useMergedRef from "./useMergedRef";
-import { useRTVIClientMediaTrack } from "./useRTVIClientMediaTrack";
+import { usePipecatClientMediaTrack } from "./usePipecatClientMediaTrack";
 
-interface RTVIClientVideoInterface {
+interface PipecatClientVideoInterface {
   aspectRatio: number;
   height: number;
   width: number;
@@ -37,10 +37,10 @@ export interface Props
    * Optional callback, which is triggered whenever the video's rendered width or height changes.
    * Returns the video's native width, height and aspectRatio.
    */
-  onResize?(dimensions: RTVIClientVideoInterface): void;
+  onResize?(dimensions: PipecatClientVideoInterface): void;
 }
 
-export const RTVIClientVideo = forwardRef<HTMLVideoElement, Props>(
+export const PipecatClientVideo = forwardRef<HTMLVideoElement, Props>(
   function VoiceClientVideo(
     {
       participant = "local",
@@ -53,7 +53,7 @@ export const RTVIClientVideo = forwardRef<HTMLVideoElement, Props>(
     },
     ref
   ) {
-    const videoTrack: MediaStreamTrack | null = useRTVIClientMediaTrack(
+    const videoTrack: MediaStreamTrack | null = usePipecatClientMediaTrack(
       trackType,
       participant
     );
@@ -193,4 +193,4 @@ export const RTVIClientVideo = forwardRef<HTMLVideoElement, Props>(
     );
   }
 );
-RTVIClientVideo.displayName = "RTVIClientVideo";
+PipecatClientVideo.displayName = "PipecatClientVideo";

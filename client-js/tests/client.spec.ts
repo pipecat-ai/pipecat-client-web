@@ -6,63 +6,17 @@
 
 import { beforeEach, describe, expect, test } from "@jest/globals";
 
-import {
-  ActionEndpointNotSetError,
-  BotNotReadyError,
-  LLMHelper,
-  RTVIClient,
-  type RTVIClientConfigOption,
-  RTVIClientOptions,
-  RTVIEvent,
-} from "../src/";
+import { FunctionCallCallback, PipecatClient } from "./../client";
+import { RTVIEvent, RTVIMessage } from "./../rtvi";
 import { TransportStub } from "./stubs/transport";
 
-const exampleServices = {
-  tts: "tts",
-  llm: "llm",
-  vad: "vad",
-};
-
-const exampleConfig: RTVIClientConfigOption[] = [
-  { service: "vad", options: [{ name: "params", value: { stop_secs: 0.8 } }] },
-  {
-    service: "tts",
-    options: [{ name: "voice", value: "VoiceABC" }],
-  },
-  {
-    service: "llm",
-    options: [
-      { name: "model", value: "ModelABC" },
-      {
-        name: "initial_messages",
-        value: [
-          {
-            role: "system",
-            content:
-              "You are a assistant called ExampleBot. You can ask me anything.",
-          },
-        ],
-      },
-      { name: "run_on_config", value: true },
-    ],
-  },
-];
-
-describe("RTVIClient Methods", () => {
-  let client: RTVIClient;
+describe("PipecatClient Methods", () => {
+  let client: PipecatClient;
 
   beforeEach(() => {
-    const transport = new TransportStub();
-    const args = {
-      params: {
-        baseUrl: "/",
-        services: exampleServices,
-        config: exampleConfig,
-      },
-      transport: transport,
-      customConnectHandler: () => Promise.resolve(),
-    };
-    client = new RTVIClient(args as RTVIClientOptions);
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+    });
   });
 
   test("connect() and disconnect()", async () => {
@@ -87,7 +41,6 @@ describe("RTVIClient Methods", () => {
     expect(stateChanges).toEqual([
       "initializing",
       "initialized",
-      "authenticating",
       "connecting",
       "connected",
       "ready",
@@ -110,74 +63,45 @@ describe("RTVIClient Methods", () => {
     expect(stateChanges).toEqual(["initializing", "initialized"]);
   });
 
-  test("Endpoints should have defaults", () => {
-    const connectUrl = client.constructUrl("connect");
-    const disconnectedActionsUrl = client.constructUrl("action");
-
-    expect(connectUrl).toEqual("/connect");
-    expect(disconnectedActionsUrl).toEqual("/action");
-  });
-
-  test("Base URL and connect endpoint should should be nullable", async () => {
+  test("Connection params should be nullable", async () => {
     const stateChanges: string[] = [];
     const mockStateChangeHandler = (newState: string) => {
       stateChanges.push(newState);
     };
     client.on(RTVIEvent.TransportStateChanged, mockStateChangeHandler);
-    client.params.baseUrl = "";
-    client.params.endpoints = {
-      connect: null,
-    };
     await client.connect();
     expect(client.state === "ready").toBe(true);
     expect(stateChanges).toEqual([
       "initializing",
       "initialized",
-      "authenticating",
       "connecting",
       "connected",
       "ready",
     ]);
   });
 
-  test("Connect endpoint should be nullable with base URL", async () => {
-    client.params.baseUrl = "/test";
-    client.params.endpoints = {
-      connect: null,
+  test("registerFunctionCallHandler should register a new handler with the specified name", async () => {
+    let handled = false;
+    let fooVal = "";
+    const fcHander: FunctionCallCallback = (args) => {
+      fooVal = args.arguments.foo as string;
+      handled = true;
+      return Promise.resolve();
     };
-    await client.connect();
-    const connectUrl = client.constructUrl("connect");
-    expect(connectUrl).toEqual("/test");
-    await client.disconnect();
-  });
-
-  test("Client should throw an error when action endpoint is not set in disconnected state", async () => {
-    await client.disconnect();
-
-    client.params.endpoints = {
-      action: null,
+    client.registerFunctionCallHandler("testHandler", fcHander);
+    const msg: RTVIMessage = {
+      id: "123",
+      label: "rtvi-ai",
+      type: "llm-function-call",
+      data: {
+        function_name: "testHandler",
+        tool_call_id: "call-123",
+        args: { foo: "bar" },
+      },
     };
-
-    await expect(
-      client.action({ service: "llm", action: "test" })
-    ).rejects.toThrow(ActionEndpointNotSetError);
-  });
-
-  test("transportExpiry should throw an error when not in connected state", () => {
-    expect(() => client.transportExpiry).toThrowError(BotNotReadyError);
-  });
-
-  test("transportExpiry should return value when in connected state", async () => {
-    await client.connect();
-    expect(client.transportExpiry).toBeUndefined();
-  });
-
-  test("registerHelper should register a new helper with the specified name", async () => {
-    const llmHelper = new LLMHelper({ callbacks: {} });
-    client.registerHelper("llm", llmHelper);
-    expect(client.getHelper("llm")).not.toBeUndefined();
-    client.unregisterHelper("llm");
-    expect(client.getHelper("llm")).toBeUndefined();
+    (client.transport as TransportStub).handleMessage(msg);
+    expect(handled).toBe(true);
+    expect(fooVal).toBe("bar");
   });
 
   test("enableScreenShare should enable screen share", async () => {

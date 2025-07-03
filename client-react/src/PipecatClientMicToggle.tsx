@@ -1,8 +1,8 @@
 import React, { useCallback } from "react";
 
-import { useRTVIClientMicControl } from "./useRTVIClientMicControl";
+import { usePipecatClientMicControl } from "./usePipecatClientMicControl";
 
-export interface RTVIClientMicToggleProps {
+export interface PipecatClientMicToggleProps {
   /**
    * Callback fired when microphone state changes
    */
@@ -28,12 +28,12 @@ export interface RTVIClientMicToggleProps {
 /**
  * Headless component for controlling microphone state
  */
-export const RTVIClientMicToggle: React.FC<RTVIClientMicToggleProps> = ({
+export const PipecatClientMicToggle: React.FC<PipecatClientMicToggleProps> = ({
   onMicEnabledChanged,
   disabled = false,
   children,
 }) => {
-  const { enableMic, isMicEnabled } = useRTVIClientMicControl();
+  const { enableMic, isMicEnabled } = usePipecatClientMicControl();
 
   const handleToggleMic = useCallback(() => {
     if (disabled) return;
@@ -54,4 +54,4 @@ export const RTVIClientMicToggle: React.FC<RTVIClientMicToggleProps> = ({
   );
 };
 
-export default RTVIClientMicToggle;
+export default PipecatClientMicToggle;

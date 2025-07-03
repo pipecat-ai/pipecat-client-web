@@ -41,12 +41,11 @@ For connected use-cases, you must pass a transport instance to the constructor f
 For example, if you were looking to use WebRTC as a transport layer, you may use a provider like [Daily](https://daily.co). In this scenario, you’d construct a transport instance and pass it to the client accordingly:
 
 ```ts
-import { RTVIClient } from "@pipecat-ai/client-js";
+import { PipecatClient } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
 
-const DailyTransport = new DailyTransport();
-const rtviClient = new RTVIClient({
-  transport: DailyTransport,
+const pcClient = new PipecatClient({
+  transport: new DailyTransport(),
 });
 ```
 
@@ -85,50 +84,13 @@ It’s also recommended for you to stand up your own server-side endpoints to ha
 Creating and starting a session with RTVI Web (using Daily as transport):
 
 ```typescript
-import { RTVIClient, RTVIEvent, RTVIMessage } from "@pipecat-ai/client-js";
+import { PipecatClient, RTVIEvent, RTVIMessage } from "@pipecat-ai/client-js";
 import { DailyTransport } from "@pipecat-ai/daily-transport";
 
-const DailyTransport = new DailyTransport();
-
-const rtviClient = new RTVIClient({
-  transport: DailyTransport,
-  params: {
-    baseUrl: "https://your-server-side-url",
-    services: {
-      llm: "together",
-      tts: "cartesia",
-    },
-    config: [
-      {
-        service: "tts",
-        options: [
-          { name: "voice", value: "79a125e8-cd45-4c13-8a67-188112f4dd22" },
-        ],
-      },
-      {
-        service: "llm",
-        options: [
-          {
-            name: "model",
-            value: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-          },
-          {
-            name: "messages",
-            value: [
-              {
-                role: "system",
-                content:
-                  "You are a assistant called ExampleBot. You can ask me anything. Keep responses brief and legible. Your responses will be converted to audio, so please avoid using any special characters except '!' or '?'.",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
+const pcClient = new PipecatClient({
+  transport: new DailyTransport(),
   enableMic: true,
   enableCam: false,
-  timeout: 15 * 1000,
   callbacks: {
     onConnected: () => {
       console.log("[CALLBACK] User connected");
@@ -152,22 +114,22 @@ const rtviClient = new RTVIClient({
 });
 
 try {
-  await rtviClient.connect();
+  await pcClient.connect({ endpoint: "https://your-server-side-url/connect" });
 } catch (e) {
   console.error(e.message);
 }
 
 // Events
-rtviClient.on(RTVIEvent.TransportStateChanged, (state) => {
+pcClient.on(RTVIEvent.TransportStateChanged, (state) => {
   console.log("[EVENT] Transport state change:", state);
 });
-rtviClient.on(RTVIEvent.BotReady, () => {
+pcClient.on(RTVIEvent.BotReady, () => {
   console.log("[EVENT] Bot is ready");
 });
-rtviClient.on(RTVIEvent.Connected, () => {
+pcClient.on(RTVIEvent.Connected, () => {
   console.log("[EVENT] User connected");
 });
-rtviClient.on(RTVIEvent.Disconnected, () => {
+pcClient.on(RTVIEvent.Disconnected, () => {
   console.log("[EVENT] User disconnected");
 });
 ```
@@ -176,12 +138,10 @@ rtviClient.on(RTVIEvent.Disconnected, () => {
 
 Pipecat Client Web implements a client instance that:
 
-- Facilitates web requests to an endpoint you create.
-- Dispatches single-turn actions to a HTTP bot service when disconnected.
 - Provides methods that handle the connectivity state and realtime interaction with your bot service.
 - Manages media transport (such as audio and video).
-- Provides callbacks and events for handling bot messages and actions.
-- Optionally configures your AI services and pipeline.
+- Provides callbacks and events for handling bot messages.
+- Optionally facilitates server startup and connection via an endpoint you provide.
 
 Docs and API reference can be found at https://docs.pipecat.ai/client/introduction.
 

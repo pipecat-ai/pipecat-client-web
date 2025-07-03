@@ -4,31 +4,47 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIClient, RTVIEvent, RTVIEventHandler } from "@pipecat-ai/client-js";
+import {
+  PipecatClient,
+  RTVIEvent,
+  RTVIEventHandler,
+  setAboutClient,
+} from "@pipecat-ai/client-js";
 import { createStore } from "jotai";
 import { Provider as JotaiProvider } from "jotai/react";
 import React, { createContext, useCallback, useEffect, useRef } from "react";
 
+import {
+  name as packageName,
+  version as packageVersion,
+} from "../package.json";
 import { RTVIEventContext } from "./RTVIEventContext";
 
 export interface Props {
-  client: RTVIClient;
+  client: PipecatClient;
   jotaiStore?: React.ComponentProps<typeof JotaiProvider>["store"];
 }
 
 const defaultStore = createStore();
 
-export const RTVIClientContext = createContext<{ client?: RTVIClient }>({});
+export const PipecatClientContext = createContext<{ client?: PipecatClient }>(
+  {}
+);
 
 type EventHandlersMap = {
   [E in RTVIEvent]?: Set<RTVIEventHandler<E>>;
 };
 
-export const RTVIClientProvider: React.FC<React.PropsWithChildren<Props>> = ({
-  children,
-  client,
-  jotaiStore = defaultStore,
-}) => {
+export const PipecatClientProvider: React.FC<
+  React.PropsWithChildren<Props>
+> = ({ children, client, jotaiStore = defaultStore }) => {
+  useEffect(() => {
+    setAboutClient({
+      library: packageName,
+      library_version: packageVersion,
+    });
+  }, []);
+
   const eventHandlersMap = useRef<EventHandlersMap>({});
 
   useEffect(() => {
@@ -97,12 +113,12 @@ export const RTVIClientProvider: React.FC<React.PropsWithChildren<Props>> = ({
 
   return (
     <JotaiProvider store={jotaiStore}>
-      <RTVIClientContext.Provider value={{ client }}>
+      <PipecatClientContext.Provider value={{ client }}>
         <RTVIEventContext.Provider value={{ on, off }}>
           {children}
         </RTVIEventContext.Provider>
-      </RTVIClientContext.Provider>
+      </PipecatClientContext.Provider>
     </JotaiProvider>
   );
 };
-RTVIClientProvider.displayName = "RTVIClientProvider";
+PipecatClientProvider.displayName = "PipecatClientProvider";

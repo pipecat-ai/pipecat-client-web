@@ -11,7 +11,7 @@ import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
 const transportStateAtom = atom<TransportState>("disconnected");
 
-export const useRTVIClientTransportState = () => {
+export const usePipecatClientTransportState = () => {
   const [transportState, setTransportState] = useAtom(transportStateAtom);
 
   useRTVIClientEvent(RTVIEvent.TransportStateChanged, setTransportState);

@@ -47,15 +47,16 @@ export class BotNotReadyError extends RTVIError {
   }
 }
 
-export class ConfigUpdateError extends RTVIError {
-  override readonly status = 400;
-  constructor(message?: string | undefined) {
-    super(message ?? "Unable to update configuration");
-  }
-}
-
-export class ActionEndpointNotSetError extends RTVIError {
-  constructor(message?: string | undefined) {
-    super(message ?? "Action endpoint is not set");
+export class UnsupportedFeatureError extends RTVIError {
+  readonly feature: string;
+  constructor(feature: string, source?: string, message?: string) {
+    let msg = `${feature} not supported${message ? `: ${message}` : ""}`;
+    if (source) {
+      msg = `${source} does not support ${feature}${
+        message ? `: ${message}` : ""
+      }`;
+    }
+    super(msg);
+    this.feature = feature;
   }
 }

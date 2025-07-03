@@ -4,32 +4,32 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIClientAudio } from "./RTVIClientAudio";
-import { RTVIClientCamToggle } from "./RTVIClientCamToggle";
-import { RTVIClientMicToggle } from "./RTVIClientMicToggle";
-import { RTVIClientProvider } from "./RTVIClientProvider";
-import { RTVIClientVideo } from "./RTVIClientVideo";
-import { useRTVIClient } from "./useRTVIClient";
-import { useRTVIClientCamControl } from "./useRTVIClientCamControl";
+import { PipecatClientAudio } from "./PipecatClientAudio";
+import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
+import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
+import { PipecatClientProvider } from "./PipecatClientProvider";
+import { PipecatClientVideo } from "./PipecatClientVideo";
+import { usePipecatClient } from "./usePipecatClient";
+import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
+import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
+import { usePipecatClientMediaTrack } from "./usePipecatClientMediaTrack";
+import { usePipecatClientMicControl } from "./usePipecatClientMicControl";
+import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
-import { useRTVIClientMediaDevices } from "./useRTVIClientMediaDevices";
-import { useRTVIClientMediaTrack } from "./useRTVIClientMediaTrack";
-import { useRTVIClientMicControl } from "./useRTVIClientMicControl";
-import { useRTVIClientTransportState } from "./useRTVIClientTransportState";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 
 export {
-  RTVIClientAudio,
-  RTVIClientCamToggle,
-  RTVIClientMicToggle,
-  RTVIClientProvider,
-  RTVIClientVideo,
-  useRTVIClient,
-  useRTVIClientCamControl,
+  PipecatClientAudio,
+  PipecatClientCamToggle,
+  PipecatClientMicToggle,
+  PipecatClientProvider,
+  PipecatClientVideo,
+  usePipecatClient,
+  usePipecatClientCamControl,
+  usePipecatClientMediaDevices,
+  usePipecatClientMediaTrack,
+  usePipecatClientMicControl,
+  usePipecatClientTransportState,
   useRTVIClientEvent,
-  useRTVIClientMediaDevices,
-  useRTVIClientMediaTrack,
-  useRTVIClientMicControl,
-  useRTVIClientTransportState,
   VoiceVisualizer,
 };

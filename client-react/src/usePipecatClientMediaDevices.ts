@@ -3,7 +3,7 @@ import { atom, useAtomValue } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 
-import { useRTVIClient } from "./useRTVIClient";
+import { usePipecatClient } from "./usePipecatClient";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
 type OptionalMediaDeviceInfo = MediaDeviceInfo | Record<string, never>;
@@ -15,8 +15,8 @@ const selectedMicAtom = atom<OptionalMediaDeviceInfo>({});
 const selectedCamAtom = atom<OptionalMediaDeviceInfo>({});
 const selectedSpeakerAtom = atom<OptionalMediaDeviceInfo>({});
 
-export const useRTVIClientMediaDevices = () => {
-  const client = useRTVIClient();
+export const usePipecatClientMediaDevices = () => {
+  const client = usePipecatClient();
 
   const availableCams = useAtomValue(availableCamsAtom);
   const availableMics = useAtomValue(availableMicsAtom);

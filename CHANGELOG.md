@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- RTVI 1.0 Protocol Updates:
+  - client-ready/bot-ready messages now both include a version and about section
+  - action-related messages have been removed (deprecated) in lieu of client-server messages and some built-in types
+  - service configuration message have been removed (security concerns. should be replaced with custom client-server messages)
+  - new client-message and server-response messages for custom messaging
+  - new append-to-context message
+  - All RTVI base types have moved to the new `rtvi` folder
+- RTVIClient is now PipecatClient w/ changes to support the above RTVI Protocol updates
+  - The constructor no longer takes `params` with pipeline configuration information or endpoint configuration
+  - `connect()` now takes a set of parameters defined and needed by the transport in use. Or, alternatively, it takes an endpoint configuration to obtain the transport params.
+  - REMOVED:
+    - All actions-related methods and types: `action()`, `describeActions()`, `onActionsAvailable`, etc.
+    - All configuration-related methods and types: `getConfig()`, `updateConfig()`, `describeConfig()`, `onConfig`, `onConfigDescribe`, etc.
+    - All helper-related methods, types and files: `RTVIClientHelper`, `registerHelper`, `LLMHelper`, etc.
+    - `transportExpiry()`
+  - NEW:
+    - built-in function call handling: `registerFunctionCallHandler()`
+    - built-in ability to append to llm context: `appendToContext()`
+    - ability to send a message and wait for a response: `sendClientRequest()`
+    - added rtvi version and an about section to `client-ready` with information about the client platform, browser, etc.
+    - `UnsupportedFeatureError`: A new error transports can throw for features they have not implemented or cannot support.
+  - CHANGED:
+    - sending a client message (send and forget style): `sendMessage()` -> `sendClientMessage()`
+  - Added warning log on `bot-ready` if the server version < 1.0.0, indicating that rtvi communication problems are likely
+
+
 ## [0.4.1] - 2025-06-11
 
 - Fixed state intialization for `useRTVIClientCamControl()` and `useRTVIClientMicControl()`
