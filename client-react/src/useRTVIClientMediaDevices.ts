@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
 import { RTVIEvent } from "@pipecat-ai/client-js";
 import { atom, useAtomValue } from "jotai";
 import { useAtomCallback } from "jotai/utils";

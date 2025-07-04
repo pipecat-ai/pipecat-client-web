@@ -1,41 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
 
-import { useRTVIClient } from "./useRTVIClient";
-import { useRTVIClientTransportState } from "./useRTVIClientTransportState";
+import { useContext } from "react";
+
+import { RTVIMicStateContext } from "./RTVIClientState";
 
 /**
  * Hook to control microphone state
  */
-export const useRTVIClientMicControl = () => {
-  const client = useRTVIClient();
-
-  const [isMicEnabled, setIsMicEnabled] = useState(
-    client?.isMicEnabled ?? false
-  );
-
-  const transportState = useRTVIClientTransportState();
-
-  // Sync component state with client state initially
-  useEffect(() => {
-    if (
-      !client ||
-      transportState !== "initialized" ||
-      typeof client.isMicEnabled !== "boolean"
-    )
-      return;
-    setIsMicEnabled(client.isMicEnabled);
-  }, [client, transportState]);
-
-  const enableMic = useCallback(
-    (enabled: boolean) => {
-      setIsMicEnabled(enabled);
-      client?.enableMic?.(enabled);
-    },
-    [client]
-  );
-
-  return {
-    enableMic,
-    isMicEnabled,
-  };
-};
+export const useRTVIClientMicControl = () => useContext(RTVIMicStateContext);

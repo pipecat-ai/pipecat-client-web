@@ -4,17 +4,9 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIEvent, TransportState } from "@pipecat-ai/client-js";
-import { atom, useAtom } from "jotai";
+import { useContext } from "react";
 
-import { useRTVIClientEvent } from "./useRTVIClientEvent";
+import { RTVITransportStateContext } from "./RTVIClientState";
 
-const transportStateAtom = atom<TransportState>("disconnected");
-
-export const useRTVIClientTransportState = () => {
-  const [transportState, setTransportState] = useAtom(transportStateAtom);
-
-  useRTVIClientEvent(RTVIEvent.TransportStateChanged, setTransportState);
-
-  return transportState;
-};
+export const useRTVIClientTransportState = () =>
+  useContext(RTVITransportStateContext);
