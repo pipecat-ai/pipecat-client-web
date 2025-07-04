@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024, Daily.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
 import { RTVIEvent, RTVIEventHandler } from "@pipecat-ai/client-js";
 import { createContext } from "react";
 

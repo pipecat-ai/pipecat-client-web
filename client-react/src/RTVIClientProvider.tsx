@@ -9,6 +9,7 @@ import { createStore } from "jotai";
 import { Provider as JotaiProvider } from "jotai/react";
 import React, { createContext, useCallback, useEffect, useRef } from "react";
 
+import { RTVIClientStateProvider } from "./RTVIClientState";
 import { RTVIEventContext } from "./RTVIEventContext";
 
 export interface Props {
@@ -99,7 +100,7 @@ export const RTVIClientProvider: React.FC<React.PropsWithChildren<Props>> = ({
     <JotaiProvider store={jotaiStore}>
       <RTVIClientContext.Provider value={{ client }}>
         <RTVIEventContext.Provider value={{ on, off }}>
-          {children}
+          <RTVIClientStateProvider>{children}</RTVIClientStateProvider>
         </RTVIEventContext.Provider>
       </RTVIClientContext.Provider>
     </JotaiProvider>
