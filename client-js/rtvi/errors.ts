@@ -63,9 +63,7 @@ export class UnsupportedFeatureError extends RTVIError {
 
 export type DeviceArray = Array<"cam" | "mic" | "speaker">;
 export type DeviceErrorType =
-  | "cam-in-use"
-  | "mic-in-use"
-  | "cam-mic-in-use"
+  | "in-use"
   | "permissions"
   | "undefined-mediadevices"
   | "not-found"
