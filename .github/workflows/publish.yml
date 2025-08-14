@@ -41,25 +41,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=dev
 
-      - name: Configure Git
-        run: |
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'github-actions@github.com'
-
-      - name: Bump version for selected client
-        id: bump_version
-        run: |
-          cd ${{ github.event.inputs.client }}
-          if [ "${{ github.event.inputs.version_type }}" = "rc" ]; then
-            npm version prerelease --preid=rc
-          else
-            npm version ${{ github.event.inputs.version_type }}
-          fi
-      
       - name: Get version for selected client
         id: package_version
         run: |
           cd ${{ github.event.inputs.client }}
+          if [ "${{ github.event.inputs.version_type }}" = "rc" ]; then
+            # For RC, bump the version first
+            npm version prerelease --preid=rc
+          fi
           echo "current-version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
           echo "package-name=$(node -p "require('./package.json').name")" >> $GITHUB_OUTPUT
 
@@ -79,12 +68,8 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Push changes
-        run: |
-          git push
-          git push --tags
-
       - name: Create GitHub Release
+        if: github.event.inputs.version_type != 'rc'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -92,4 +77,4 @@ jobs:
           tag_name: ${{ steps.package_version.outputs.package-name }}@v${{ steps.package_version.outputs.current-version }}
           release_name: Release ${{ steps.package_version.outputs.package-name }}@v${{ steps.package_version.outputs.current-version }}
           draft: false
-          prerelease: ${{ github.event.inputs.version_type == 'rc' }}
+          prerelease: false
