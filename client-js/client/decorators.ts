@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { BotNotReadyError } from "../rtvi";
+import { BotAlreadyStartedError, BotNotReadyError } from "../rtvi";
 import { PipecatClient } from ".";
 
 export function transportReady<T extends PipecatClient>(
@@ -26,6 +26,29 @@ export function transportReady<T extends PipecatClient>(
 
   return descriptor;
 }
+
+export function transportAlreadyStarted<T extends PipecatClient>(
+  _target: T,
+  propertyKey: string | symbol,
+  descriptor: PropertyDescriptor
+): PropertyDescriptor | void {
+  const originalMethod = descriptor.value;
+
+  const states = ["authenticating", "connecting", "connected", "ready"];
+
+  descriptor.value = function (this: T, ...args: unknown[]) {
+    if (states.includes(this.state)) {
+      throw new BotAlreadyStartedError(
+        `Attempt to call ${propertyKey.toString()} when client already started. Please call disconnect() before starting again.`
+      );
+    } else {
+      return originalMethod.apply(this, args);
+    }
+  };
+
+  return descriptor;
+}
+
 export function transportInState<T extends PipecatClient>(states: string[]) {
   return function (
     _target: T,

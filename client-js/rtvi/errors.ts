@@ -38,11 +38,26 @@ export class TransportStartError extends RTVIError {
   }
 }
 
+export class InvalidTransportParamsError extends RTVIError {
+  constructor(message?: string | undefined) {
+    super(message ?? "Invalid transport connection parameters");
+  }
+}
+
 export class BotNotReadyError extends RTVIError {
   constructor(message?: string | undefined) {
     super(
       message ??
         "Attempt to call action on transport when not in 'ready' state."
+    );
+  }
+}
+
+export class BotAlreadyStartedError extends RTVIError {
+  constructor(message?: string | undefined) {
+    super(
+      message ??
+        "Pipecat client has already been started. Please call disconnect() before starting again."
     );
   }
 }

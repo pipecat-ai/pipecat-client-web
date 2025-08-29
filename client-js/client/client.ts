@@ -30,7 +30,7 @@ import {
   TransportState,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
-import { transportReady } from "./decorators";
+import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
 import {
@@ -361,16 +361,8 @@ export class PipecatClient extends RTVIEventEmitter {
    * @param startBotParams
    * @returns Promise that resolves to TransportConnectionParams or unknown
    */
+  @transportAlreadyStarted
   public async startBot(startBotParams: APIRequest): Promise<unknown> {
-    if (
-      ["authenticating", "connecting", "connected", "ready"].includes(
-        this._transport.state
-      )
-    ) {
-      throw new RTVIErrors.RTVIError(
-        "Voice client has already been started. Please call disconnect() before starting again."
-      );
-    }
     this._transport.state = "authenticating";
     this._abortController = new AbortController();
     let response: unknown;
@@ -407,19 +399,10 @@ export class PipecatClient extends RTVIEventEmitter {
    * `startBotAndConnect()` instead.
    * @returns The `connect` method returns a Promise that resolves to an unknown value.
    */
+  @transportAlreadyStarted
   public async connect(
     connectParams?: TransportConnectionParams | ConnectionEndpoint
   ): Promise<BotReadyData> {
-    if (
-      ["authenticating", "connecting", "connected", "ready"].includes(
-        this._transport.state
-      )
-    ) {
-      throw new RTVIErrors.RTVIError(
-        "Voice client has already been started. Please call disconnect() before starting again."
-      );
-    }
-
     if (connectParams && isAPIRequest(connectParams)) {
       logger.warn(
         "Calling connect with an API endpoint is deprecated. Use startBotAndConnect() instead."
@@ -450,6 +433,7 @@ export class PipecatClient extends RTVIEventEmitter {
     });
   }
 
+  @transportAlreadyStarted
   public async startBotAndConnect(
     startBotParams: APIRequest
   ): Promise<BotReadyData> {
@@ -616,6 +600,14 @@ export class PipecatClient extends RTVIEventEmitter {
     callback: FunctionCallCallback
   ) {
     this._functionCallCallbacks[functionName] = callback;
+  }
+
+  public unregisterFunctionCallHandler(functionName: string) {
+    delete this._functionCallCallbacks[functionName];
+  }
+
+  public unregisterAllFunctionCallHandlers() {
+    this._functionCallCallbacks = {};
   }
 
   @transportReady
