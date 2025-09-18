@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { Participant, TransportState } from "./common_types";
+import { DeviceState, Participant, TransportState } from "./common_types";
 import { DeviceError } from "./errors";
 import {
   BotLLMSearchResponseData,
@@ -22,6 +22,7 @@ export enum RTVIEvent {
   Connected = "connected",
   Disconnected = "disconnected",
   TransportStateChanged = "transportStateChanged",
+  DeviceStateChanged = "deviceStateChanged",
 
   /** remote connection state events */
   BotConnected = "botConnected",
@@ -90,6 +91,7 @@ export type RTVIEvents = Partial<{
   connected: () => void;
   disconnected: () => void;
   transportStateChanged: (state: TransportState) => void;
+  deviceStateChanged: (state: DeviceState) => void;
 
   /** remote connection state events */
   botConnected: (participant: Participant) => void;
