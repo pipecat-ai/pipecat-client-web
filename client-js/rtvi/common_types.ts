@@ -1,7 +1,5 @@
 export type TransportState =
   | "disconnected"
-  | "initializing"
-  | "initialized"
   | "authenticating"
   | "authenticated"
   | "connecting"
@@ -12,8 +10,6 @@ export type TransportState =
 
 export enum TransportStateEnum {
   DISCONNECTED = "disconnected",
-  INITIALIZING = "initializing",
-  INITIALIZED = "initialized",
   AUTHENTICATING = "authenticating",
   AUTHENTICATED = "authenticated",
   CONNECTING = "connecting",
