@@ -4,107 +4,42 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { Participant, RTVIEvent, Tracks } from "@pipecat-ai/client-js";
-import { atom, useAtomValue } from "jotai";
-import { atomFamily, useAtomCallback } from "jotai/utils";
-import { PrimitiveAtom } from "jotai/vanilla";
-import { useCallback, useEffect } from "react";
+import { Tracks } from "@pipecat-ai/client-js";
+import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 
-import { usePipecatClient } from "./usePipecatClient";
-import { useRTVIClientEvent } from "./useRTVIClientEvent";
+import { trackAtom } from "./PipecatClientParticipantManager";
 
-type ParticipantType = keyof Tracks;
+type ParticipantType = keyof Tracks | "remote";
 type TrackType = keyof Tracks["local"];
 
-const localAudioTrackAtom = atom<MediaStreamTrack | null>(null);
-const localVideoTrackAtom = atom<MediaStreamTrack | null>(null);
-const localScreenAudioTrackAtom = atom<MediaStreamTrack | null>(null);
-const localScreenVideoTrackAtom = atom<MediaStreamTrack | null>(null);
-const botAudioTrackAtom = atom<MediaStreamTrack | null>(null);
-const botVideoTrackAtom = atom<MediaStreamTrack | null>(null);
-
-const trackAtom = atomFamily<
-  { local: boolean; trackType: TrackType },
-  PrimitiveAtom<MediaStreamTrack | null>
->(({ local, trackType }) => {
-  if (local) {
-    switch (trackType) {
-      case "audio":
-        return localAudioTrackAtom;
-      case "screenAudio":
-        return localScreenAudioTrackAtom;
-      case "screenVideo":
-        return localScreenVideoTrackAtom;
-      case "video":
-        return localVideoTrackAtom;
-    }
-  }
-  return trackType === "audio" ? botAudioTrackAtom : botVideoTrackAtom;
-});
-
+/**
+ * Hook to get individual participant media track
+ */
 export const usePipecatClientMediaTrack = (
   trackType: TrackType,
-  participantType: ParticipantType
+  participantType: ParticipantType,
+  participantId?: string
 ) => {
-  const client = usePipecatClient();
-  const track = useAtomValue(
-    trackAtom({ local: participantType === "local", trackType })
-  );
+  // Memoize the track key to prevent infinite re-renders
+  const trackKey = useMemo((): `${string}:${TrackType}` => {
+    let actualParticipantId: string;
 
-  const updateTrack = useAtomCallback(
-    useCallback(
-      (
-        get,
-        set,
-        track: MediaStreamTrack,
-        trackType: TrackType,
-        local: boolean
-      ) => {
-        const atom = trackAtom({
-          local,
-          trackType,
-        });
-        const oldTrack = get(atom);
-        if (oldTrack?.id === track.id) return;
-        set(atom, track);
-      },
-      []
-    )
-  );
+    if (participantType === "local") {
+      actualParticipantId = "local";
+    } else if (participantType === "bot") {
+      actualParticipantId = "bot";
+    } else if (participantType === "remote" && participantId) {
+      actualParticipantId = participantId;
+    } else {
+      // Fallback for invalid combinations
+      actualParticipantId = "local";
+    }
 
-  useRTVIClientEvent(
-    RTVIEvent.TrackStarted,
-    useCallback(
-      (track: MediaStreamTrack, participant?: Participant) => {
-        updateTrack(
-          track,
-          track.kind as TrackType,
-          Boolean(participant?.local)
-        );
-      },
-      [updateTrack]
-    )
-  );
+    return `${actualParticipantId}:${trackType}`;
+  }, [trackType, participantType, participantId]);
 
-  useRTVIClientEvent(
-    RTVIEvent.ScreenTrackStarted,
-    useCallback(
-      (track: MediaStreamTrack, participant?: Participant) => {
-        const trackType =
-          track.kind === "audio" ? "screenAudio" : "screenVideo";
-        updateTrack(track, trackType, Boolean(participant?.local));
-      },
-      [updateTrack]
-    )
-  );
-
-  useEffect(() => {
-    if (!client) return;
-    const tracks = client.tracks();
-    const track = tracks?.[participantType]?.[trackType];
-    if (!track) return;
-    updateTrack(track, trackType, participantType === "local");
-  }, [participantType, trackType, updateTrack, client]);
+  const track = useAtomValue(trackAtom(trackKey));
 
   return track;
 };

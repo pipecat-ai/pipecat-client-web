@@ -14,6 +14,8 @@ import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
 import { usePipecatClientMediaTrack } from "./usePipecatClientMediaTrack";
 import { usePipecatClientMicControl } from "./usePipecatClientMicControl";
+import { usePipecatClientParticipant } from "./usePipecatClientParticipant";
+import { usePipecatClientParticipantIds } from "./usePipecatClientParticipantIds";
 import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 import { VoiceVisualizer } from "./VoiceVisualizer";
@@ -29,6 +31,8 @@ export {
   usePipecatClientMediaDevices,
   usePipecatClientMediaTrack,
   usePipecatClientMicControl,
+  usePipecatClientParticipant,
+  usePipecatClientParticipantIds,
   usePipecatClientTransportState,
   useRTVIClientEvent,
   VoiceVisualizer,
