@@ -15,6 +15,7 @@ import {
   BotReadyData,
   BotTTSTextData,
   ClientMessageData,
+  DeviceState,
   ErrorData,
   LLMContextMessage,
   LLMFunctionCallData,
@@ -62,6 +63,7 @@ export type RTVIEventCallbacks = Partial<{
   onDisconnected: () => void;
   onError: (message: RTVIMessage) => void;
   onTransportStateChanged: (state: TransportState) => void;
+  onDeviceStateChanged: (state: DeviceState) => void;
 
   onBotConnected: (participant: Participant) => void;
   onBotReady: (botReadyData: BotReadyData) => void;
@@ -199,6 +201,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onTransportStateChanged: (state: TransportState) => {
         options?.callbacks?.onTransportStateChanged?.(state);
         this.emit(RTVIEvent.TransportStateChanged, state);
+      },
+      onDeviceStateChanged: (state: DeviceState) => {
+        options?.callbacks?.onDeviceStateChanged?.(state);
+        this.emit(RTVIEvent.DeviceStateChanged, state);
       },
       onParticipantJoined: (p) => {
         options?.callbacks?.onParticipantJoined?.(p);
@@ -483,6 +489,10 @@ export class PipecatClient extends RTVIEventEmitter {
 
   public get state(): TransportState {
     return this._transport.state;
+  }
+
+  public get deviceState(): DeviceState {
+    return this._transport.deviceState;
   }
 
   public get version(): string {

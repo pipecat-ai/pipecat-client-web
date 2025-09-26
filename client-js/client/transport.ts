@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIError, RTVIMessage, TransportState } from "../rtvi";
+import { DeviceState, RTVIError, RTVIMessage, TransportState } from "../rtvi";
 import { PipecatClientOptions, RTVIEventCallbacks } from "./client";
 
 export type Tracks = {
@@ -30,6 +30,7 @@ export abstract class Transport {
   protected declare _callbacks: RTVIEventCallbacks;
   protected declare _abortController: AbortController | undefined;
   protected _state: TransportState = "disconnected";
+  protected _deviceState: DeviceState = "not_ready";
 
   constructor() {}
 
@@ -85,6 +86,9 @@ export abstract class Transport {
 
   abstract get state(): TransportState;
   abstract set state(state: TransportState);
+
+  abstract get deviceState(): DeviceState;
+  abstract set deviceState(state: DeviceState);
 
   abstract getAllMics(): Promise<MediaDeviceInfo[]>;
   abstract getAllCams(): Promise<MediaDeviceInfo[]>;
