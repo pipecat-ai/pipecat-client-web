@@ -15,9 +15,12 @@ interface PipecatClientVideoInterface {
   width: number;
 }
 
-export interface Props
-  extends Omit<React.VideoHTMLAttributes<HTMLVideoElement>, "onResize"> {
-  participant: "local" | "bot";
+type BaseProps = Omit<
+  React.VideoHTMLAttributes<HTMLVideoElement>,
+  "onResize"
+> & {
+  participant: "local" | "bot" | "remote";
+  participantId?: string;
 
   /**
    * Defines the video track type to display. Default: 'video'.
@@ -38,12 +41,22 @@ export interface Props
    * Returns the video's native width, height and aspectRatio.
    */
   onResize?(dimensions: PipecatClientVideoInterface): void;
-}
+};
 
+export type Props = BaseProps extends { participant: infer P }
+  ? P extends "remote"
+    ? BaseProps & { participantId: string }
+    : BaseProps
+  : BaseProps;
+
+/**
+ * Component that renders a video track
+ */
 export const PipecatClientVideo = forwardRef<HTMLVideoElement, Props>(
   function VoiceClientVideo(
     {
       participant = "local",
+      participantId,
       fit = "contain",
       mirror,
       onResize,
@@ -55,7 +68,8 @@ export const PipecatClientVideo = forwardRef<HTMLVideoElement, Props>(
   ) {
     const videoTrack: MediaStreamTrack | null = usePipecatClientMediaTrack(
       trackType,
-      participant
+      participant,
+      participantId
     );
 
     const videoEl = useRef<HTMLVideoElement>(null);

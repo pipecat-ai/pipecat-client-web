@@ -5,38 +5,112 @@
  */
 
 import { RTVIEvent } from "@pipecat-ai/client-js";
-import { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 import { usePipecatClientMediaTrack } from "./usePipecatClientMediaTrack";
+import { usePipecatClientParticipantIds } from "./usePipecatClientParticipantIds";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
-export const PipecatClientAudio = () => {
-  const botAudioRef = useRef<HTMLAudioElement>(null);
-  const botAudioTrack = usePipecatClientMediaTrack("audio", "bot");
+interface AudioElementProps
+  extends React.AudioHTMLAttributes<HTMLAudioElement> {
+  participantId: string;
+  track: MediaStreamTrack | null;
+}
+
+const AudioElement = ({
+  participantId,
+  track,
+  ...props
+}: AudioElementProps) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    if (!botAudioRef.current || !botAudioTrack) return;
-    if (botAudioRef.current.srcObject) {
+    if (!audioRef.current || !track) return;
+    if (audioRef.current.srcObject) {
       const oldTrack = (
-        botAudioRef.current.srcObject as MediaStream
+        audioRef.current.srcObject as MediaStream
       ).getAudioTracks()[0];
-      if (oldTrack.id === botAudioTrack.id) return;
+      if (oldTrack.id === track.id) return;
     }
-    botAudioRef.current.srcObject = new MediaStream([botAudioTrack]);
-  }, [botAudioTrack]);
+    audioRef.current.srcObject = new MediaStream([track]);
+  }, [track]);
 
   useRTVIClientEvent(
     RTVIEvent.SpeakerUpdated,
     useCallback((speaker: MediaDeviceInfo) => {
-      if (!botAudioRef.current) return;
-      if (typeof botAudioRef.current.setSinkId !== "function") return;
-      botAudioRef.current.setSinkId(speaker.deviceId);
+      if (!audioRef.current) return;
+      if (typeof audioRef.current.setSinkId !== "function") return;
+      audioRef.current.setSinkId(speaker.deviceId);
     }, [])
   );
 
   return (
+    <audio
+      ref={audioRef}
+      autoPlay
+      data-participant-id={participantId}
+      {...props}
+    />
+  );
+};
+
+/**
+ * Component for individual participant audio
+ */
+const ParticipantAudio = ({ participantId }: { participantId: string }) => {
+  // Determine participant type and get appropriate tracks
+  const isLocal = participantId === "local";
+  const isBot = participantId === "bot";
+  const isRemote = !isLocal && !isBot;
+
+  const audioTrack = usePipecatClientMediaTrack(
+    "audio",
+    isLocal ? "local" : isBot ? "bot" : "remote",
+    isRemote ? participantId : undefined
+  );
+
+  const screenAudioTrack = usePipecatClientMediaTrack(
+    "screenAudio",
+    isLocal ? "local" : "remote",
+    isRemote ? participantId : undefined
+  );
+
+  return (
     <>
-      <audio ref={botAudioRef} autoPlay />
+      <AudioElement
+        data-bot={isBot}
+        data-local={isLocal}
+        data-remote={isRemote}
+        data-track-type="audio"
+        participantId={participantId}
+        track={audioTrack}
+      />
+      {screenAudioTrack && (
+        <AudioElement
+          data-bot={isBot}
+          data-local={isLocal}
+          data-remote={isRemote}
+          data-track-type="screenAudio"
+          participantId={`${participantId}-screen`}
+          track={screenAudioTrack}
+        />
+      )}
+    </>
+  );
+};
+
+/**
+ * Component that renders all participant audio.
+ */
+export const PipecatClientAudio = () => {
+  const { participantIds } = usePipecatClientParticipantIds(false, true);
+
+  return (
+    <>
+      {/* All participant audio */}
+      {participantIds.map((participantId) => (
+        <ParticipantAudio key={participantId} participantId={participantId} />
+      ))}
     </>
   );
 };

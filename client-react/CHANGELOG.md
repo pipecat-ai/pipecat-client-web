@@ -5,6 +5,22 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Multi-participant support**: Full support for handling multiple participants in sessions
+  - New `usePipecatClientParticipant()` hook to access individual participant data
+  - New `usePipecatClientParticipantIds()` hook to get all participant IDs with filtering options
+  - Support for both regular and screen share media tracks per participant
+
+### Changed
+
+- `PipecatClientVideo` component now requires `participantId` prop when `participant` is set to `"remote"`
+- Enhanced `PipecatClientAudio` component now renders audio for all participants automatically
+- Enhanced `PipecatClientVideo` component now supports remote participants
+- `usePipecatClientMediaTrack()` hook signature updated to support remote participants
+
 ## [1.0.1]
 
 - Fixed state synchronization between different instances of `usePipecatClientCamControl()`, `usePipecatClientMicControl()` and `usePipecatClientTransportState()` ([#125](https://github.com/pipecat-ai/pipecat-client-web/pull/125))
