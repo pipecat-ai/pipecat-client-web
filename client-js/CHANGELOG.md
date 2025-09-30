@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added support for an optional `source` field in the `BotTranscript` events, indicating whether the transcript came from the LLM or the TTS.
+- Introduced new `botStarted` callback to allow clients access to the return value from their start bot REST endpoint via a callback. This also opens up the ability to access this value when calling `startBotAndConnect()`.
 - Added new `sendText()` method to support the new RTVI `send-text` event. The method takes a string, along with an optional set of options to control whether the bot should respond immediately and/or whether the bot should respond with audio (vs. text only). Note: This is a replacement for the current `appendToContext()` method and changes the default of `run_immediately` to `True`.
 
 ### Deprecated

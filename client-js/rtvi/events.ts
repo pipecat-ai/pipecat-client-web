@@ -10,6 +10,7 @@ import {
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotReadyData,
+  BotTranscriptData,
   BotTTSTextData,
   LLMFunctionCallData,
   PipecatMetricsData,
@@ -115,9 +116,11 @@ export type RTVIEvents = Partial<{
   userStartedSpeaking: () => void;
   userStoppedSpeaking: () => void;
 
+  // higher-level bot events
+  botTranscript: (data: BotTranscriptData) => void;
+
   // stt events
   userTranscript: (data: TranscriptData) => void;
-  botTranscript: (data: BotLLMTextData) => void;
 
   // llm events
   botLlmText: (data: BotLLMTextData) => void;

@@ -12,6 +12,7 @@ import {
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotReadyData,
+  BotTranscriptData,
   BotTTSTextData,
   ClientMessageData,
   ErrorData,
@@ -101,7 +102,7 @@ export type RTVIEventCallbacks = Partial<{
   onUserStartedSpeaking: () => void;
   onUserStoppedSpeaking: () => void;
   onUserTranscript: (data: TranscriptData) => void;
-  onBotTranscript: (data: BotLLMTextData) => void;
+  onBotTranscript: (data: BotTranscriptData) => void;
 
   onBotLlmText: (data: BotLLMTextData) => void;
   onBotLlmStarted: () => void;
@@ -701,7 +702,9 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       }
       case RTVIMessageType.BOT_TRANSCRIPTION: {
-        this._options.callbacks?.onBotTranscript?.(ev.data as BotLLMTextData);
+        this._options.callbacks?.onBotTranscript?.(
+          ev.data as BotTranscriptData
+        );
         break;
       }
       case RTVIMessageType.BOT_LLM_TEXT:

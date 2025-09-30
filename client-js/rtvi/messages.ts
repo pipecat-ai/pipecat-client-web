@@ -127,6 +127,10 @@ export type BotTTSTextData = {
   text: string;
 };
 
+export type BotTranscriptData = BotLLMTextData & {
+  source?: "llm" | "tts";
+};
+
 export type ServerMessageData = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
