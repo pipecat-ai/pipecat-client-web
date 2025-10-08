@@ -32,6 +32,17 @@ export const PipecatClientMicStateContext = createContext<{
   },
   isMicEnabled: false,
 });
+export const PipecatClientScreenShareStateContext = createContext<{
+  enableScreenShare: (enabled: boolean) => void;
+  isScreenShareEnabled: boolean;
+}>({
+  enableScreenShare: () => {
+    throw new Error(
+      "PipecatClientScreenShareStateContext: enableScreenShare() called outside of provider"
+    );
+  },
+  isScreenShareEnabled: false,
+});
 export const PipecatClientTransportStateContext =
   createContext<TransportState>("disconnected");
 
@@ -41,6 +52,7 @@ export const PipecatClientStateProvider: React.FC<React.PropsWithChildren> = ({
   const client = usePipecatClient();
   const [isCamEnabled, setIsCamEnabled] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(false);
+  const [isScreenShareEnabled, setIsScreenShareEnabled] = useState(false);
   const [transportState, setTransportState] =
     useState<TransportState>("disconnected");
 
@@ -49,6 +61,7 @@ export const PipecatClientStateProvider: React.FC<React.PropsWithChildren> = ({
     if (state === "initialized" && client) {
       setIsCamEnabled(client.isCamEnabled ?? false);
       setIsMicEnabled(client.isMicEnabled ?? false);
+      setIsScreenShareEnabled(client.isSharingScreen ?? false);
     }
   });
 
@@ -68,6 +81,25 @@ export const PipecatClientStateProvider: React.FC<React.PropsWithChildren> = ({
     [client]
   );
 
+  const enableScreenShare = useCallback(
+    (enabled: boolean) => {
+      client?.enableScreenShare?.(enabled);
+    },
+    [client]
+  );
+
+  useRTVIClientEvent(RTVIEvent.ScreenTrackStarted, (_track, participant) => {
+    if (participant?.local) {
+      setIsScreenShareEnabled(true);
+    }
+  });
+
+  useRTVIClientEvent(RTVIEvent.ScreenTrackStopped, (_track, participant) => {
+    if (participant?.local) {
+      setIsScreenShareEnabled(false);
+    }
+  });
+
   return (
     <PipecatClientTransportStateContext.Provider value={transportState}>
       <PipecatClientCamStateContext.Provider
@@ -76,7 +108,11 @@ export const PipecatClientStateProvider: React.FC<React.PropsWithChildren> = ({
         <PipecatClientMicStateContext.Provider
           value={{ enableMic, isMicEnabled }}
         >
-          {children}
+          <PipecatClientScreenShareStateContext.Provider
+            value={{ enableScreenShare, isScreenShareEnabled }}
+          >
+            {children}
+          </PipecatClientScreenShareStateContext.Provider>
         </PipecatClientMicStateContext.Provider>
       </PipecatClientCamStateContext.Provider>
     </PipecatClientTransportStateContext.Provider>
