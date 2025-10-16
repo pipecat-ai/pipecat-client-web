@@ -6,6 +6,7 @@
 
 import { RTVIError, RTVIMessage, TransportState } from "../rtvi";
 import { PipecatClientOptions, RTVIEventCallbacks } from "./client";
+import { APIRequest } from "./rest_helpers.ts";
 
 export type Tracks = {
   local: {
@@ -30,6 +31,7 @@ export abstract class Transport {
   protected declare _callbacks: RTVIEventCallbacks;
   protected declare _abortController: AbortController | undefined;
   protected _state: TransportState = "disconnected";
+  protected _startBotParams: APIRequest | undefined;
 
   constructor() {}
 
@@ -65,6 +67,21 @@ export abstract class Transport {
       );
     }
     return this._connect(validatedParams);
+  }
+
+  /**
+   * Allow the transports to determine how the bot was started.
+   */
+  get startBotParams(): APIRequest | undefined {
+    return this._startBotParams;
+  }
+
+  /**
+   * Set the parameters used to start the bot.
+   * @param startBotParams
+   */
+  set startBotParams(startBotParams: APIRequest) {
+    this._startBotParams = startBotParams;
   }
 
   abstract _validateConnectionParams(connectParams?: unknown): unknown;
