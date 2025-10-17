@@ -369,6 +369,7 @@ export class PipecatClient extends RTVIEventEmitter {
   @transportAlreadyStarted
   public async startBot(startBotParams: APIRequest): Promise<unknown> {
     this._transport.state = "authenticating";
+    this._transport.startBotParams = startBotParams
     this._abortController = new AbortController();
     let response: unknown;
     try {
