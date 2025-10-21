@@ -11,6 +11,7 @@ import packageJson from "../package.json";
 import {
   BotLLMSearchResponseData,
   BotLLMTextData,
+  BotOutputData,
   BotReadyData,
   BotTTSTextData,
   ClientMessageData,
@@ -101,6 +102,7 @@ export type RTVIEventCallbacks = Partial<{
   onUserStartedSpeaking: () => void;
   onUserStoppedSpeaking: () => void;
   onUserTranscript: (data: TranscriptData) => void;
+  onBotOutput: (data: BotOutputData) => void;
   onBotTranscript: (data: BotLLMTextData) => void;
 
   onBotLlmText: (data: BotLLMTextData) => void;
@@ -157,6 +159,8 @@ export class PipecatClient extends RTVIEventEmitter {
   protected declare _messageDispatcher: MessageDispatcher;
   protected _functionCallCallbacks: Record<string, FunctionCallCallback> = {};
   protected _abortController: AbortController | undefined;
+
+  private _botTranscriptionWarned = false;
 
   constructor(options: PipecatClientOptions) {
     super();
@@ -300,7 +304,17 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onUserTranscript?.(data);
         this.emit(RTVIEvent.UserTranscript, data);
       },
+      onBotOutput: (data) => {
+        options?.callbacks?.onBotOutput?.(data);
+        this.emit(RTVIEvent.BotOutput, data);
+      },
       onBotTranscript: (text) => {
+        if (!this._botTranscriptionWarned) {
+          logger.warn(
+            "[Pipecat Client] Bot transcription is deprecated. Please use the onBotOutput instead."
+          );
+          this._botTranscriptionWarned = true;
+        }
         options?.callbacks?.onBotTranscript?.(text);
         this.emit(RTVIEvent.BotTranscript, text);
       },
@@ -369,7 +383,7 @@ export class PipecatClient extends RTVIEventEmitter {
   @transportAlreadyStarted
   public async startBot(startBotParams: APIRequest): Promise<unknown> {
     this._transport.state = "authenticating";
-    this._transport.startBotParams = startBotParams
+    this._transport.startBotParams = startBotParams;
     this._abortController = new AbortController();
     let response: unknown;
     try {
@@ -699,6 +713,10 @@ export class PipecatClient extends RTVIEventEmitter {
       case RTVIMessageType.USER_TRANSCRIPTION: {
         const TranscriptData = ev.data as TranscriptData;
         this._options.callbacks?.onUserTranscript?.(TranscriptData);
+        break;
+      }
+      case RTVIMessageType.BOT_OUTPUT: {
+        this._options.callbacks?.onBotOutput?.(ev.data as BotOutputData);
         break;
       }
       case RTVIMessageType.BOT_TRANSCRIPTION: {
