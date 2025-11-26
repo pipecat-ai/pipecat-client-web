@@ -25,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated the `botTranscript` event and associated `onBotTranscript` callbacks in lieu of
   the more thorough and accurate `botOutput` event.
 
+### Fixed
+
+- Bumped vulnerable dependencies
+
 ## [1.4.1]
 
 ### Added
