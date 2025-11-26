@@ -9,6 +9,7 @@ import { DeviceError } from "./errors";
 import {
   BotLLMSearchResponseData,
   BotLLMTextData,
+  BotOutputData,
   BotReadyData,
   BotTTSTextData,
   LLMFunctionCallData,
@@ -46,6 +47,8 @@ export enum RTVIEvent {
 
   // stt events
   UserTranscript = "userTranscript",
+  BotOutput = "botOutput",
+  // DEPRECATED
   BotTranscript = "botTranscript",
 
   // llm events
@@ -117,6 +120,7 @@ export type RTVIEvents = Partial<{
 
   // stt events
   userTranscript: (data: TranscriptData) => void;
+  botOutput: (data: BotOutputData) => void;
   botTranscript: (data: BotLLMTextData) => void;
 
   // llm events
