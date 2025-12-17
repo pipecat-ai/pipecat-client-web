@@ -11,7 +11,7 @@ import {
   version as packageVersion,
 } from "../package.json";
 
-export const RTVI_PROTOCOL_VERSION = "1.0.0";
+export const RTVI_PROTOCOL_VERSION = "1.1.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
