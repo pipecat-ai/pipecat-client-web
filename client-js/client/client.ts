@@ -23,6 +23,7 @@ import {
   PipecatMetricsData,
   RTVIEvent,
   RTVIEvents,
+  RTVIFile,
   RTVIMessage,
   RTVIMessageType,
   SendTextOptions,
@@ -182,9 +183,17 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onError?.(message);
         try {
           this.emit(RTVIEvent.Error, message);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
-          logger.debug("Could not emit error", message);
+          if (e instanceof Error && e.message.includes("Unhandled error")) {
+            if (!options?.callbacks?.onError) {
+              logger.debug(
+                "No onError callback registered to handle error",
+                message
+              );
+            }
+          } else {
+            logger.debug("Could not emit error", message, e);
+          }
         }
         const data = message.data as ErrorData;
         if (data?.fatal) {
@@ -489,8 +498,28 @@ export class PipecatClient extends RTVIEventEmitter {
 
     // Create a new message dispatch queue for async message handling
     this._messageDispatcher = new MessageDispatcher(
-      this._transport.sendMessage.bind(this._transport)
+      this._sendMessage.bind(this)
     );
+  }
+
+  /**
+   * Internal wrapper around the transport's sendMessage method
+   */
+  private _sendMessage(message: RTVIMessage): void {
+    try {
+      this._transport.sendMessage(message);
+    } catch (error) {
+      if (error instanceof Error) {
+        this._options.callbacks?.onError?.(
+          RTVIMessage.error(error.message, false)
+        );
+      } else {
+        this._options.callbacks?.onError?.(
+          RTVIMessage.error("Unknown error sending message", false)
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -588,7 +617,7 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   @transportReady
   public sendClientMessage(msgType: string, data?: unknown): void {
-    this._transport.sendMessage(
+    this._sendMessage(
       new RTVIMessage(RTVIMessageType.CLIENT_MESSAGE, {
         t: msgType,
         d: data,
@@ -637,7 +666,7 @@ export class PipecatClient extends RTVIEventEmitter {
   @transportReady
   public async appendToContext(context: LLMContextMessage) {
     logger.warn("appendToContext() is deprecated. Use sendText() instead.");
-    await this._transport.sendMessage(
+    await this._sendMessage(
       new RTVIMessage(RTVIMessageType.APPEND_TO_CONTEXT, {
         role: context.role,
         content: context.content,
@@ -649,8 +678,23 @@ export class PipecatClient extends RTVIEventEmitter {
 
   @transportReady
   public async sendText(content: string, options: SendTextOptions = {}) {
-    await this._transport.sendMessage(
+    await this._sendMessage(
       new RTVIMessage(RTVIMessageType.SEND_TEXT, {
+        content,
+        options,
+      })
+    );
+  }
+
+  @transportReady
+  public async sendFile(
+    file: RTVIFile,
+    content: string,
+    options: SendTextOptions = {}
+  ) {
+    await this._sendMessage(
+      new RTVIMessage(RTVIMessageType.SEND_FILE, {
+        file,
         content,
         options,
       })
@@ -662,9 +706,7 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   @transportReady
   public disconnectBot(): void {
-    this._transport.sendMessage(
-      new RTVIMessage(RTVIMessageType.DISCONNECT_BOT, {})
-    );
+    this._sendMessage(new RTVIMessage(RTVIMessageType.DISCONNECT_BOT, {}));
   }
 
   protected handleMessage(ev: RTVIMessage): void {
@@ -772,7 +814,7 @@ export class PipecatClient extends RTVIEventEmitter {
             if (result == undefined) {
               return;
             }
-            this._transport.sendMessage(
+            this._sendMessage(
               new RTVIMessage(RTVIMessageType.LLM_FUNCTION_CALL_RESULT, {
                 function_name: data.function_name,
                 tool_call_id: data.tool_call_id,
