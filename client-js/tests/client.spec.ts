@@ -121,8 +121,8 @@ describe("messageSizeWithinLimit utility function", () => {
   });
 
   test("should return false for messages exceeding size limit", () => {
-    // Create a large message that exceeds the limit
-    const largeData = "x".repeat(100000); // 100KB of data
+    // Create a large message that exceeds the limit (100,000 characters)
+    const largeData = "x".repeat(100000);
     const largeMessage = { type: "test", data: largeData };
     const maxSize = 1000; // 1000 bytes - much smaller than the message
     expect(messageSizeWithinLimit(largeMessage, maxSize)).toBe(false);
@@ -163,6 +163,9 @@ describe("messageSizeWithinLimit utility function", () => {
 describe("Message size validation", () => {
   let client: PipecatClient;
 
+  // Helper to create a message that exceeds the default 64KB limit
+  const createOversizedData = () => "x".repeat(70000); // 70,000 characters
+
   beforeEach(() => {
     client = new PipecatClient({
       transport: TransportStub.create(),
@@ -181,8 +184,7 @@ describe("Message size validation", () => {
   test("should throw MessageTooLargeError for oversized messages", async () => {
     await client.connect();
 
-    // Create a message that exceeds the default 64KB limit
-    const largeData = "x".repeat(70000); // 70KB of data
+    const largeData = createOversizedData();
 
     expect(() => {
       client.sendClientMessage("test", { data: largeData });
@@ -204,8 +206,7 @@ describe("Message size validation", () => {
 
     await client.connect();
 
-    // Create a message that exceeds the default 64KB limit
-    const largeData = "x".repeat(70000); // 70KB of data
+    const largeData = createOversizedData();
 
     try {
       client.sendClientMessage("test", { data: largeData });
@@ -233,8 +234,7 @@ describe("Message size validation", () => {
 
     await client.connect();
 
-    // Create a message that exceeds the limit
-    const largeData = "x".repeat(70000);
+    const largeData = createOversizedData();
 
     try {
       client.sendClientMessage("test", { data: largeData });
