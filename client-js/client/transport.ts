@@ -32,6 +32,7 @@ export abstract class Transport {
   protected declare _abortController: AbortController | undefined;
   protected _state: TransportState = "disconnected";
   protected _startBotParams: APIRequest | undefined;
+  protected _maxMessageSize = 64 * 1024; // 64 KB
 
   constructor() {}
 
@@ -123,6 +124,9 @@ export abstract class Transport {
   abstract get isSharingScreen(): boolean;
 
   abstract sendMessage(message: RTVIMessage): void;
+  get maxMessageSize(): number {
+    return this._maxMessageSize;
+  }
 
   abstract tracks(): Tracks;
 }

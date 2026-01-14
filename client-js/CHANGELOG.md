@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `_maxMessageSize` introduced to `Transports` along with a `MessageTooLargeError` for
+  proper handling of attempts to send a message larger than what the transport can handle
+
 ### Changed
 
 - Updated RTVI Version to 1.1.0 to indicate recent changes:
