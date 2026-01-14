@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, test } from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { RTVIEvent, RTVIMessage } from "./../rtvi";
+import { messageSizeWithinLimit } from "./../client/utils";
+import { MessageTooLargeError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
 describe("PipecatClient Methods", () => {
@@ -108,5 +110,159 @@ describe("PipecatClient Methods", () => {
     await client.connect();
     client.enableScreenShare(true);
     expect(client.isSharingScreen).toBe(true);
+  });
+});
+
+describe("messageSizeWithinLimit utility function", () => {
+  test("should return true for messages within size limit", () => {
+    const smallMessage = { type: "test", data: "small payload" };
+    const maxSize = 1024 * 1024; // 1 MB
+    expect(messageSizeWithinLimit(smallMessage, maxSize)).toBe(true);
+  });
+
+  test("should return false for messages exceeding size limit", () => {
+    // Create a large message that exceeds the limit
+    const largeData = "x".repeat(100000); // 100KB of data
+    const largeMessage = { type: "test", data: largeData };
+    const maxSize = 1000; // 1000 bytes - much smaller than the message
+    expect(messageSizeWithinLimit(largeMessage, maxSize)).toBe(false);
+  });
+
+  test("should correctly calculate size for complex nested objects", () => {
+    const complexMessage = {
+      type: "test",
+      nested: {
+        level1: {
+          level2: {
+            data: "some data",
+            array: [1, 2, 3, 4, 5],
+          },
+        },
+      },
+    };
+    const maxSize = 1024;
+    expect(messageSizeWithinLimit(complexMessage, maxSize)).toBe(true);
+  });
+
+  test("should return true for message exactly at size limit", () => {
+    // Create a message that's exactly at the limit
+    const message = { data: "x".repeat(50) };
+    const encoder = new TextEncoder();
+    const actualSize = encoder.encode(JSON.stringify(message)).length;
+    expect(messageSizeWithinLimit(message, actualSize)).toBe(true);
+  });
+
+  test("should return false for message one byte over limit", () => {
+    const message = { data: "x".repeat(50) };
+    const encoder = new TextEncoder();
+    const actualSize = encoder.encode(JSON.stringify(message)).length;
+    expect(messageSizeWithinLimit(message, actualSize - 1)).toBe(false);
+  });
+});
+
+describe("Message size validation", () => {
+  let client: PipecatClient;
+
+  beforeEach(() => {
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+    });
+  });
+
+  test("should successfully send messages within size limit", async () => {
+    await client.connect();
+
+    // Small message should send without error
+    expect(() => {
+      client.sendClientMessage("test", { data: "small payload" });
+    }).not.toThrow();
+  });
+
+  test("should throw MessageTooLargeError for oversized messages", async () => {
+    await client.connect();
+
+    // Create a message that exceeds the default 64KB limit
+    const largeData = "x".repeat(70000); // 70KB of data
+
+    expect(() => {
+      client.sendClientMessage("test", { data: largeData });
+    }).toThrow(MessageTooLargeError);
+  });
+
+  test("should call onError callback when message size exceeds limit", async () => {
+    const errors: RTVIMessage[] = [];
+    const errorCallback = (error: RTVIMessage) => {
+      errors.push(error);
+    };
+
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onError: errorCallback,
+      },
+    });
+
+    await client.connect();
+
+    // Create a message that exceeds the default 64KB limit
+    const largeData = "x".repeat(70000); // 70KB of data
+
+    try {
+      client.sendClientMessage("test", { data: largeData });
+    } catch (e) {
+      // Expected to throw
+    }
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].type).toBe("error");
+    expect(errors[0].data.message).toContain("Message data too large");
+  });
+
+  test("should include max size in error message", async () => {
+    const errors: RTVIMessage[] = [];
+    const errorCallback = (error: RTVIMessage) => {
+      errors.push(error);
+    };
+
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onError: errorCallback,
+      },
+    });
+
+    await client.connect();
+
+    // Create a message that exceeds the limit
+    const largeData = "x".repeat(70000);
+
+    try {
+      client.sendClientMessage("test", { data: largeData });
+    } catch (e) {
+      // Expected to throw
+    }
+
+    expect(errors.length).toBe(1);
+    expect(errors[0].data.message).toContain("65536"); // 64KB in bytes
+  });
+
+  test("should not call onError callback for messages within limit", async () => {
+    const errors: RTVIMessage[] = [];
+    const errorCallback = (error: RTVIMessage) => {
+      errors.push(error);
+    };
+
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onError: errorCallback,
+      },
+    });
+
+    await client.connect();
+
+    client.sendClientMessage("test", { data: "small payload" });
+
+    expect(errors.length).toBe(0);
   });
 });
