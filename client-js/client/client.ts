@@ -34,6 +34,7 @@ import {
   RTVI_PROTOCOL_VERSION,
   RTVIEvent,
   RTVIEvents,
+  RTVIFile,
   RTVIMessage,
   RTVIMessageType,
   SendTextOptions,
@@ -1149,6 +1150,22 @@ export class PipecatClient extends RTVIEventEmitter {
   public async sendText(content: string, options: SendTextOptions = {}) {
     await this._sendMessage(
       new RTVIMessage(RTVIMessageType.SEND_TEXT, {
+        content,
+        options,
+      })
+    );
+  }
+
+  @transportReady
+  public async sendFile(
+    file: RTVIFile,
+    content: string,
+    options: SendTextOptions = {}
+  ) {
+    file.format = file.format.toLowerCase() as RTVIFile["format"];
+    await this._sendMessage(
+      new RTVIMessage(RTVIMessageType.SEND_FILE, {
+        file,
         content,
         options,
       })

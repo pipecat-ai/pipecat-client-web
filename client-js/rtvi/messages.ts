@@ -27,6 +27,7 @@ export enum RTVIMessageType {
   // Client-to-server messages
   CLIENT_MESSAGE = "client-message",
   SEND_TEXT = "send-text",
+  SEND_FILE = "send-file",
   DTMF = "dtmf",
   // UI Worker Protocol (client-to-server)
   UI_EVENT = "ui-event",
@@ -260,6 +261,72 @@ export type LLMFunctionCallStoppedData = {
 export type SendTextOptions = {
   run_immediately?: boolean;
   audio_response?: boolean;
+};
+
+type Serializable =
+  | string
+  | number
+  | boolean
+  | null
+  | Serializable[]
+  | { [key: number | string]: Serializable };
+
+export type RTVIImageFormat =
+  | "png"
+  | "jpg"
+  | "jpeg"
+  | "webp"
+  | "gif"
+  | "heic"
+  | "hief";
+export type RTVIDocFormat =
+  | "pdf"
+  | "csv"
+  | "txt"
+  | "md"
+  | "doc"
+  | "docx"
+  | "xls"
+  | "xlsx"
+  | "json"
+  | "html"
+  | "css"
+  | "javascript";
+export type RTVIMediaFormat =
+  | "mp3"
+  | "wav"
+  | "ogg"
+  | "aac"
+  | "mp4"
+  | "webm"
+  | "ogg"
+  | "avi";
+export type RTVIFileFormat = RTVIImageFormat | RTVIDocFormat | RTVIMediaFormat;
+
+export type FileSourceType = "bytes" | "url";
+
+export type FileBytes = {
+  type: Extract<FileSourceType, "bytes">;
+  bytes: string;
+  width?: number;
+  height?: number;
+};
+export type FileUrl = {
+  type: Extract<FileSourceType, "url">;
+  url: string | URL;
+};
+
+export type RTVIFile = {
+  name?: string;
+  format: RTVIFileFormat;
+  source: FileBytes | FileUrl;
+  customOpts: { [key: number | string]: Serializable }; // for things like 'detail' in openAI or 'citations' in Bedrock
+};
+
+export type FileSupport = {
+  formats: RTVIFileFormat[];
+  sources: FileSourceType[];
+  maxSize: number; // bytes
 };
 
 /** Valid DTMF keypad keys. */
