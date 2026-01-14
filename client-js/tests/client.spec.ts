@@ -7,8 +7,8 @@
 import { beforeEach, describe, expect, test } from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
-import { RTVIEvent, RTVIMessage } from "./../rtvi";
 import { messageSizeWithinLimit } from "./../client/utils";
+import { RTVIEvent, RTVIMessage } from "./../rtvi";
 import { MessageTooLargeError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
@@ -221,13 +221,16 @@ describe("Message size validation", () => {
 
     try {
       client.sendClientMessage("test", { data: largeData });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // Expected to throw
     }
 
     expect(errors.length).toBe(1);
     expect(errors[0].type).toBe("error");
-    expect(errors[0].data.message).toContain("Message data too large");
+    expect((errors[0].data as { message: string }).message).toContain(
+      "Message data too large"
+    );
   });
 
   test("should include max size in error message", async () => {
@@ -240,12 +243,13 @@ describe("Message size validation", () => {
 
     try {
       client.sendClientMessage("test", { data: largeData });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       // Expected to throw
     }
 
     expect(errors.length).toBe(1);
-    expect(errors[0].data.message).toContain(
+    expect((errors[0].data as { message: string }).message).toContain(
       DEFAULT_MAX_MESSAGE_SIZE.toString()
     );
   });
