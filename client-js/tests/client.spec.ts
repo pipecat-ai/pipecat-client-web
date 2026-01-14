@@ -168,7 +168,7 @@ describe("Message size validation", () => {
 
   // Default max message size in the Transport class
   const DEFAULT_MAX_MESSAGE_SIZE = 64 * 1024; // 64 KB
-  // Create a message that exceeds the limit (70,000 characters ensures > 64KB after JSON serialization)
+  // Create a message that exceeds the limit by 10%
   const OVERSIZED_CHARS = Math.floor(DEFAULT_MAX_MESSAGE_SIZE * 1.1);
 
   // Helper to create a message that exceeds the default 64KB limit
@@ -245,7 +245,9 @@ describe("Message size validation", () => {
     }
 
     expect(errors.length).toBe(1);
-    expect(errors[0].data.message).toContain("65536"); // 64KB in bytes
+    expect(errors[0].data.message).toContain(
+      DEFAULT_MAX_MESSAGE_SIZE.toString()
+    );
   });
 
   test("should not call onError callback for messages within limit", async () => {
