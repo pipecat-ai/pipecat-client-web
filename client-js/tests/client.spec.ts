@@ -145,7 +145,7 @@ describe("messageSizeWithinLimit utility function", () => {
   });
 
   test("should return true for message exactly at size limit", () => {
-    // Create a message that's exactly at the limit
+    // Create a message and calculate its exact size
     const message = { data: "x".repeat(50) };
     const encoder = new TextEncoder();
     const actualSize = encoder.encode(JSON.stringify(message)).length;
@@ -153,10 +153,11 @@ describe("messageSizeWithinLimit utility function", () => {
   });
 
   test("should return false for message one byte over limit", () => {
-    // Reuse the same message from the previous test
+    // Reuse the same message structure to ensure consistency
     const message = { data: "x".repeat(50) };
     const encoder = new TextEncoder();
     const actualSize = encoder.encode(JSON.stringify(message)).length;
+    // Message should be rejected when limit is 1 byte less than actual size
     expect(messageSizeWithinLimit(message, actualSize - 1)).toBe(false);
   });
 });
@@ -165,7 +166,8 @@ describe("Message size validation", () => {
   let client: PipecatClient;
 
   // Helper to create a message that exceeds the default 64KB limit
-  const createOversizedData = () => "x".repeat(70000); // 70,000 characters
+  // 70,000 characters ensures the message exceeds 65,536 bytes after JSON serialization
+  const createOversizedData = () => "x".repeat(70000);
 
   // Helper to create a client with error callback
   const createClientWithErrorCallback = (
