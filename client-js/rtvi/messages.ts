@@ -13,7 +13,7 @@ import {
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
-export const RTVI_PROTOCOL_VERSION = "2.1.0";
+export const RTVI_PROTOCOL_VERSION = "2.2.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -27,6 +27,7 @@ export enum RTVIMessageType {
   // Client-to-server messages
   CLIENT_MESSAGE = "client-message",
   SEND_TEXT = "send-text",
+  SEND_FILE = "send-file",
   DTMF = "dtmf",
   // UI Worker Protocol (client-to-server)
   UI_EVENT = "ui-event",
@@ -260,6 +261,116 @@ export type LLMFunctionCallStoppedData = {
 export type SendTextOptions = {
   run_immediately?: boolean;
   audio_response?: boolean;
+};
+
+type Serializable =
+  | string
+  | number
+  | boolean
+  | null
+  | Serializable[]
+  | { [key: number | string]: Serializable };
+
+export type RTVIImageFormat =
+  | "png"
+  | "jpg"
+  | "jpeg"
+  | "webp"
+  | "gif"
+  | "heic"
+  | "hief";
+export type RTVIDocFormat =
+  | "pdf"
+  | "csv"
+  | "txt"
+  | "md"
+  | "doc"
+  | "docx"
+  | "xls"
+  | "xlsx"
+  | "json"
+  | "html"
+  | "css"
+  | "javascript";
+export type RTVIMediaFormat =
+  | "mp3"
+  | "wav"
+  | "ogg"
+  | "aac"
+  | "mp4"
+  | "webm"
+  | "ogg"
+  | "avi";
+export type RTVIFileFormat = RTVIImageFormat | RTVIDocFormat | RTVIMediaFormat;
+
+export const MimeTypeMapping: Record<RTVIFileFormat, string> = {
+  // Images
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  heic: "image/heic",
+  hief: "image/heif",
+  // Documents
+  pdf: "application/pdf",
+  csv: "text/csv",
+  txt: "text/plain",
+  md: "text/markdown",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  json: "application/json",
+  html: "text/html",
+  css: "text/css",
+  javascript: "application/javascript",
+  // Media
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  aac: "audio/aac",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  avi: "video/x-msvideo",
+};
+
+export type FileSourceType = "bytes" | "url" | "id";
+
+export type FileBytes = {
+  type: Extract<FileSourceType, "bytes">;
+  bytes: string;
+  width?: number;
+  height?: number;
+};
+export type FileUrl = {
+  type: Extract<FileSourceType, "url">;
+  url: string | URL;
+};
+export type FileId = {
+  type: Extract<FileSourceType, "id">;
+  id: string;
+};
+
+export type RTVIFile = {
+  name?: string;
+  // RTVI definition takes the Mime type here, but in client-js, we support
+  // clients providing shorthands defined above and we map them to Mime types
+  format: string;
+  source: FileBytes | FileUrl | FileId;
+};
+
+export type SendFileOptions = {
+  run_immediately?: boolean;
+  audio_response?: boolean;
+  // for things like 'detail' in openAI or 'citations' in Bedrock
+  custom_options?: { [key: number | string]: Serializable };
+};
+
+export type FileSupport = {
+  formats: string[];
+  sources: FileSourceType[];
+  maxSize: number; // bytes
 };
 
 /** Valid DTMF keypad keys. */
