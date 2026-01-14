@@ -121,8 +121,9 @@ describe("messageSizeWithinLimit utility function", () => {
   });
 
   test("should return false for messages exceeding size limit", () => {
-    // Create a large message that exceeds the limit (100,000 characters)
-    const largeData = "x".repeat(100000);
+    // Create a large message (100,000 characters creates ~100KB payload)
+    const LARGE_MESSAGE_CHARS = 100000;
+    const largeData = "x".repeat(LARGE_MESSAGE_CHARS);
     const largeMessage = { type: "test", data: largeData };
     const maxSize = 1000; // 1000 bytes - much smaller than the message
     expect(messageSizeWithinLimit(largeMessage, maxSize)).toBe(false);
@@ -165,9 +166,13 @@ describe("messageSizeWithinLimit utility function", () => {
 describe("Message size validation", () => {
   let client: PipecatClient;
 
+  // Default max message size in the Transport class
+  const DEFAULT_MAX_MESSAGE_SIZE = 64 * 1024; // 64 KB
+  // Create a message that exceeds the limit (70,000 characters ensures > 64KB after JSON serialization)
+  const OVERSIZED_CHARS = Math.floor(DEFAULT_MAX_MESSAGE_SIZE * 1.1);
+
   // Helper to create a message that exceeds the default 64KB limit
-  // 70,000 characters ensures the message exceeds 65,536 bytes after JSON serialization
-  const createOversizedData = () => "x".repeat(70000);
+  const createOversizedData = () => "x".repeat(OVERSIZED_CHARS);
 
   // Helper to create a client with error callback
   const createClientWithErrorCallback = (
