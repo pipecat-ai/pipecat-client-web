@@ -506,8 +506,7 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   private _sendMessage(message: RTVIMessage): void {
     if (!messageSizeWithinLimit(message, this._transport.maxMessageSize)) {
-      const msg =
-        "Message data too large. Max size is " + this._transport.maxMessageSize;
+      const msg = `Message data too large. Max size is ${this._transport.maxMessageSize}`;
       this._options.callbacks?.onError?.(RTVIMessage.error(msg, false));
       throw new RTVIErrors.MessageTooLargeError(msg);
     }
