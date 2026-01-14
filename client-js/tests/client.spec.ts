@@ -153,6 +153,7 @@ describe("messageSizeWithinLimit utility function", () => {
   });
 
   test("should return false for message one byte over limit", () => {
+    // Reuse the same message from the previous test
     const message = { data: "x".repeat(50) };
     const encoder = new TextEncoder();
     const actualSize = encoder.encode(JSON.stringify(message)).length;
@@ -165,6 +166,18 @@ describe("Message size validation", () => {
 
   // Helper to create a message that exceeds the default 64KB limit
   const createOversizedData = () => "x".repeat(70000); // 70,000 characters
+
+  // Helper to create a client with error callback
+  const createClientWithErrorCallback = (
+    errorCallback: (error: RTVIMessage) => void
+  ): PipecatClient => {
+    return new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onError: errorCallback,
+      },
+    });
+  };
 
   beforeEach(() => {
     client = new PipecatClient({
@@ -193,16 +206,7 @@ describe("Message size validation", () => {
 
   test("should call onError callback when message size exceeds limit", async () => {
     const errors: RTVIMessage[] = [];
-    const errorCallback = (error: RTVIMessage) => {
-      errors.push(error);
-    };
-
-    client = new PipecatClient({
-      transport: TransportStub.create(),
-      callbacks: {
-        onError: errorCallback,
-      },
-    });
+    client = createClientWithErrorCallback((error) => errors.push(error));
 
     await client.connect();
 
@@ -221,16 +225,7 @@ describe("Message size validation", () => {
 
   test("should include max size in error message", async () => {
     const errors: RTVIMessage[] = [];
-    const errorCallback = (error: RTVIMessage) => {
-      errors.push(error);
-    };
-
-    client = new PipecatClient({
-      transport: TransportStub.create(),
-      callbacks: {
-        onError: errorCallback,
-      },
-    });
+    client = createClientWithErrorCallback((error) => errors.push(error));
 
     await client.connect();
 
@@ -248,16 +243,7 @@ describe("Message size validation", () => {
 
   test("should not call onError callback for messages within limit", async () => {
     const errors: RTVIMessage[] = [];
-    const errorCallback = (error: RTVIMessage) => {
-      errors.push(error);
-    };
-
-    client = new PipecatClient({
-      transport: TransportStub.create(),
-      callbacks: {
-        onError: errorCallback,
-      },
-    });
+    client = createClientWithErrorCallback((error) => errors.push(error));
 
     await client.connect();
 
