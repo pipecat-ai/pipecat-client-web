@@ -23,7 +23,10 @@
   },
   "jest": {
     "preset": "ts-jest",
-    "testEnvironment": "jsdom"
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/jest.setup.ts"
+    ]
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",

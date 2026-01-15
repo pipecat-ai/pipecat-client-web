@@ -65,3 +65,17 @@ export function learnAboutClient() {
   }
   return about;
 }
+
+export function messageSizeWithinLimit(
+  message: unknown,
+  maxSize: number
+): boolean {
+  const getSizeInBytes = (obj: unknown) => {
+    const jsonString = JSON.stringify(obj);
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(jsonString);
+    return bytes.length;
+  };
+  const size = getSizeInBytes(message);
+  return size <= maxSize;
+}

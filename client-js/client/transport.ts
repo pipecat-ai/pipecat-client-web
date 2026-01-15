@@ -32,6 +32,19 @@ export abstract class Transport {
   protected declare _abortController: AbortController | undefined;
   protected _state: TransportState = "disconnected";
   protected _startBotParams: APIRequest | undefined;
+  /**
+   * Maximum allowed size in bytes for a single signaling/message payload.
+   *
+   * The default is 64 KiB (`64 * 1024`), which is chosen to stay well within
+   * typical WebSocket, proxy, and intermediary limits and to discourage
+   * transports from sending very large payloads in a single message.
+   *
+   * Transport implementations may override this value in subclasses or
+   * constructors if their underlying transport has stricter or more relaxed
+   * limits, as long as they continue to honor this field when enforcing
+   * message size constraints.
+   */
+  protected _maxMessageSize = 64 * 1024; // 64 KiB
 
   constructor() {}
 
@@ -123,6 +136,14 @@ export abstract class Transport {
   abstract get isSharingScreen(): boolean;
 
   abstract sendMessage(message: RTVIMessage): void;
+  /**
+   * Maximum size, in bytes, of a single message that this transport will attempt
+   * to send. Callers should ensure that any outbound {@link RTVIMessage} payloads
+   * do not exceed this limit to avoid transport or server errors.
+   */
+  get maxMessageSize(): number {
+    return this._maxMessageSize;
+  }
 
   abstract tracks(): Tracks;
 }

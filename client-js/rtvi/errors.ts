@@ -76,6 +76,14 @@ export class UnsupportedFeatureError extends RTVIError {
   }
 }
 
+export class MessageTooLargeError extends RTVIError {
+  constructor(message?: string | undefined) {
+    super(
+      message ?? "Message size exceeds the maximum allowed limit for transport."
+    );
+  }
+}
+
 export type DeviceArray = Array<"cam" | "mic" | "speaker">;
 export type DeviceErrorType =
   | "in-use"

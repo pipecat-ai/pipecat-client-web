@@ -31,4 +31,15 @@ export default [
       ...tsRecommended.configs.recommended.rules,
     },
   },
+  {
+    files: ["jest.setup.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
