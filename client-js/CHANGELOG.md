@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New Message Support: `send-text` and `bot-output`
   - Deprecated Messages: `append-to-context` and `bot-transcription`
 
+### Fixed
+
+- Fixed issues preventing clients from successfully providing a `Request` type as the endpoint to an `APIRequest`
+
 ## [1.5.0]
 
 ### Added

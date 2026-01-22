@@ -94,6 +94,13 @@ export abstract class Transport {
    * @param startBotParams
    */
   set startBotParams(startBotParams: APIRequest) {
+    if (startBotParams.endpoint instanceof Request) {
+      this._startBotParams = {
+        ...startBotParams,
+        endpoint: startBotParams.endpoint.clone(),
+      };
+      return;
+    }
     this._startBotParams = startBotParams;
   }
 
