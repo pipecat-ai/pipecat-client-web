@@ -81,7 +81,7 @@ export async function makeRequest(
             ...Object.fromEntries((cxnOpts.headers ?? new Headers()).entries()),
           }),
           body: JSON.stringify(cxnOpts.requestData),
-          signal: abortController?.signal,
+          signal: abortController.signal,
         });
       }
       logger.debug(`[Pipecat Client] Fetching from ${request.url}`);
@@ -92,9 +92,13 @@ export async function makeRequest(
             res
           );
           if (!res.ok) {
-            throw new Error(`Got ${res.status} response (${res.statusText})`);
+            reject(res);
+            return;
           }
-          res.json().then((data) => resolve(data));
+          return res.json();
+        })
+        .then((data) => {
+          resolve(data);
         })
         .catch((err) => {
           logger.error(`[Pipecat Client] Error fetching: ${err}`);
