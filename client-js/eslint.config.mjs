@@ -32,6 +32,15 @@ export default [
     },
   },
   {
+    files: ["tests/**/*.{js,ts}"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
+  },
+  {
     files: ["jest.setup.js"],
     languageOptions: {
       globals: {
