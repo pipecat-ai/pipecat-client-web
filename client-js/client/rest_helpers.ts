@@ -54,26 +54,51 @@ export async function makeRequest(
         }, cxnOpts.timeout);
       }
 
-      logger.debug(`[Pipecat Client] Fetching from ${cxnOpts.endpoint}`);
-      fetch(cxnOpts.endpoint, {
-        method: "POST",
-        mode: "cors",
-        headers: new Headers({
-          "Content-Type": "application/json",
-          ...Object.fromEntries((cxnOpts.headers ?? new Headers()).entries()),
-        }),
-        body: JSON.stringify(cxnOpts.requestData),
-        signal: abortController?.signal,
-      })
+      let request: globalThis.Request;
+      if (
+        typeof Request !== "undefined" &&
+        cxnOpts.endpoint instanceof Request
+      ) {
+        request = new Request(cxnOpts.endpoint, {
+          signal: abortController.signal,
+        });
+        if (cxnOpts.requestData) {
+          logger.warn(
+            "[Pipecat Client] requestData in APIRequest is ignored when endpoint is a Request object"
+          );
+        }
+        if (cxnOpts.headers) {
+          logger.warn(
+            "[Pipecat Client] headers in APIRequest is ignored when endpoint is a Request object"
+          );
+        }
+      } else {
+        request = new Request(cxnOpts.endpoint, {
+          method: "POST",
+          mode: "cors",
+          headers: new Headers({
+            "Content-Type": "application/json",
+            ...Object.fromEntries((cxnOpts.headers ?? new Headers()).entries()),
+          }),
+          body: JSON.stringify(cxnOpts.requestData),
+          signal: abortController.signal,
+        });
+      }
+      logger.debug(`[Pipecat Client] Fetching from ${request.url}`);
+      fetch(request)
         .then((res) => {
           logger.debug(
-            `[Pipecat Client] Received response from ${cxnOpts.endpoint}`,
+            `[Pipecat Client] Received response from ${request.url}`,
             res
           );
           if (!res.ok) {
             reject(res);
+            return;
           }
-          res.json().then((data) => resolve(data));
+          return res.json();
+        })
+        .then((data) => {
+          resolve(data);
         })
         .catch((err) => {
           logger.error(`[Pipecat Client] Error fetching: ${err}`);

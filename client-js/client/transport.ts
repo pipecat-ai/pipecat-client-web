@@ -94,6 +94,18 @@ export abstract class Transport {
    * @param startBotParams
    */
   set startBotParams(startBotParams: APIRequest) {
+    if (
+      typeof Request !== "undefined" &&
+      startBotParams.endpoint instanceof Request
+    ) {
+      // If the endpoint is a Request object, we have to clone it.
+      // Otherwise, we might run into issues with body being already used.
+      this._startBotParams = {
+        ...startBotParams,
+        endpoint: startBotParams.endpoint.clone(),
+      };
+      return;
+    }
     this._startBotParams = startBotParams;
   }
 
