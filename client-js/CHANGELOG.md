@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed issues preventing clients from successfully providing a `Request` type as the endpoint to an `APIRequest`
+- Fixed a bug where the transport would not initialize devices when starting a bot if the transport was already disconnected.
 
 ## [1.5.0]
 
