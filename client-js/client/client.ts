@@ -390,8 +390,6 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   @transportAlreadyStarted
   public async startBot(startBotParams: APIRequest): Promise<unknown> {
-    // since startBot() will change the transport state, we need
-    // to do device initialization here.
     if (this._transport.state === "disconnected") {
       await this._transport.initDevices();
     }
