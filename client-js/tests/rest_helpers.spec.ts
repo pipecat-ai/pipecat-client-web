@@ -172,9 +172,10 @@ describe("Request object handling in makeRequest", () => {
 
     // Mock fetch to never resolve (simulates a hanging request)
     (global.fetch as jest.Mock).mockImplementation(
-      () => new Promise(() => {
-        // Promise never resolves to simulate hanging request for timeout test
-      })
+      () =>
+        new Promise(() => {
+          // Promise never resolves to simulate hanging request for timeout test
+        })
     );
 
     const promise = makeRequest({

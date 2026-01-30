@@ -26,10 +26,10 @@ export type Tracks = {
 export type TransportConnectionParams = unknown;
 
 export abstract class Transport {
-  protected declare _options: PipecatClientOptions;
-  protected declare _onMessage: (ev: RTVIMessage) => void;
-  protected declare _callbacks: RTVIEventCallbacks;
-  protected declare _abortController: AbortController | undefined;
+  declare protected _options: PipecatClientOptions;
+  declare protected _onMessage: (ev: RTVIMessage) => void;
+  declare protected _callbacks: RTVIEventCallbacks;
+  declare protected _abortController: AbortController | undefined;
   protected _state: TransportState = "disconnected";
   protected _startBotParams: APIRequest | undefined;
   /**
