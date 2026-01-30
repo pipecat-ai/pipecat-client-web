@@ -156,7 +156,7 @@ export class PipecatClient extends RTVIEventEmitter {
   private _connectResolve: ((value: BotReadyData) => void) | undefined;
   protected _transport: Transport;
   protected _transportWrapper: TransportWrapper;
-  protected declare _messageDispatcher: MessageDispatcher;
+  declare protected _messageDispatcher: MessageDispatcher;
   protected _functionCallCallbacks: Record<string, FunctionCallCallback> = {};
   protected _abortController: AbortController | undefined;
 

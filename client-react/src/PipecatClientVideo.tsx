@@ -15,8 +15,10 @@ interface PipecatClientVideoInterface {
   width: number;
 }
 
-export interface Props
-  extends Omit<React.VideoHTMLAttributes<HTMLVideoElement>, "onResize"> {
+export interface Props extends Omit<
+  React.VideoHTMLAttributes<HTMLVideoElement>,
+  "onResize"
+> {
   participant: "local" | "bot";
 
   /**
