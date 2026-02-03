@@ -228,6 +228,38 @@ export type RTVIMediaFormat =
   | "avi";
 export type RTVIFileFormat = RTVIImageFormat | RTVIDocFormat | RTVIMediaFormat;
 
+export const MimeTypeMapping: Record<RTVIFileFormat, string> = {
+  // Images
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+  heic: "image/heic",
+  hief: "image/heif",
+  // Documents
+  pdf: "application/pdf",
+  csv: "text/csv",
+  txt: "text/plain",
+  md: "text/markdown",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  json: "application/json",
+  html: "text/html",
+  css: "text/css",
+  javascript: "application/javascript",
+  // Media
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  aac: "audio/aac",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  avi: "video/x-msvideo",
+};
+
 export type FileSourceType = "bytes" | "url";
 
 export type FileBytes = {
@@ -243,13 +275,16 @@ export type FileUrl = {
 
 export type RTVIFile = {
   name?: string;
-  format: RTVIFileFormat;
+  // RTVI definition takes the Mime type here, but in client-js, we support
+  // clients providing shorthands defined above and we map them to Mime types
+  format: string;
   source: FileBytes | FileUrl;
-  customOpts: { [key: number | string]: Serializable }; // for things like 'detail' in openAI or 'citations' in Bedrock
+  // for things like 'detail' in openAI or 'citations' in Bedrock
+  customOpts?: { [key: number | string]: Serializable };
 };
 
 export type FileSupport = {
-  formats: RTVIFileFormat[];
+  formats: string[];
   sources: FileSourceType[];
   maxSize: number; // bytes
 };

@@ -19,11 +19,13 @@ import {
   LLMContextMessage,
   LLMFunctionCallData,
   LLMFunctionCallResult,
+  MimeTypeMapping,
   Participant,
   PipecatMetricsData,
   RTVIEvent,
   RTVIEvents,
   RTVIFile,
+  RTVIFileFormat,
   RTVIMessage,
   RTVIMessageType,
   SendTextOptions,
@@ -691,18 +693,54 @@ export class PipecatClient extends RTVIEventEmitter {
 
   @transportReady
   public async sendFile(
-    file: RTVIFile,
+    file: RTVIFile | File,
     content: string,
     options: SendTextOptions = {}
   ) {
-    file.format = file.format.toLowerCase() as RTVIFile["format"];
-    await this._sendMessage(
-      new RTVIMessage(RTVIMessageType.SEND_FILE, {
-        file,
-        content,
-        options,
-      })
-    );
+    let rtvi_file = file instanceof File ? ({} as RTVIFile) : file;
+    if (file instanceof File) {
+      return new Promise<void>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          if (!e.target?.result) {
+            throw new RTVIErrors.RTVIError("Could not read file data");
+          }
+          const fileContent = e.target.result as string;
+
+          rtvi_file = {
+            format: file.type,
+            source: {
+              type: "bytes",
+              bytes: fileContent,
+            },
+          };
+          await this._sendMessage(
+            new RTVIMessage(RTVIMessageType.SEND_FILE, {
+              file: rtvi_file,
+              content,
+              options,
+            })
+          );
+          resolve();
+        };
+
+        reader.readAsDataURL(file);
+      });
+    } else {
+      let format: string = rtvi_file.format.toLowerCase();
+      if (format in MimeTypeMapping) {
+        format = MimeTypeMapping[format as RTVIFileFormat];
+      }
+      rtvi_file.format = format;
+
+      await this._sendMessage(
+        new RTVIMessage(RTVIMessageType.SEND_FILE, {
+          file: rtvi_file,
+          content,
+          options,
+        })
+      );
+    }
   }
 
   /**
