@@ -279,9 +279,15 @@ export type RTVIFile = {
   // clients providing shorthands defined above and we map them to Mime types
   format: string;
   source: FileBytes | FileUrl;
-  // for things like 'detail' in openAI or 'citations' in Bedrock
-  customOpts?: { [key: number | string]: Serializable };
 };
+
+export type SendFileOptions = {
+  run_immediately?: boolean;
+  audio_response?: boolean;
+  // for things like 'detail' in openAI or 'citations' in Bedrock
+  custom_options?: { [key: number | string]: Serializable };
+};
+
 
 export type FileSupport = {
   formats: string[];
