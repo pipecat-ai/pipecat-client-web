@@ -57,12 +57,6 @@ export type FunctionCallParams = {
   arguments: Record<string, unknown>;
 };
 
-export interface UploadFileResponse {
-  filename: string;
-  path: string;
-  format: string;
-}
-
 export type FunctionCallCallback = (
   fn: FunctionCallParams
 ) => Promise<LLMFunctionCallResult | void>;
@@ -705,11 +699,11 @@ export class PipecatClient extends RTVIEventEmitter {
     options: SendFileOptions = {}
   ) {
     let rtvi_file = file instanceof File ? ({} as RTVIFile) : file;
-    let format: string = file instanceof File ? file.type : rtvi_file.format.toLowerCase();
-    if (format in MimeTypeMapping) {
-      format = MimeTypeMapping[format as RTVIFileFormat];
+    let mimeType: string = file instanceof File ? file.type : rtvi_file.format.toLowerCase();
+    if (mimeType in MimeTypeMapping) {
+      mimeType = MimeTypeMapping[mimeType as RTVIFileFormat];
     }
-    rtvi_file.format = format;
+    rtvi_file.format = mimeType;
 
     const sendFileMessage  = async () => {
       await this._sendMessage(
@@ -760,7 +754,6 @@ export class PipecatClient extends RTVIEventEmitter {
         const byteString = atob(
           rtvi_file.source.bytes.split(",")[1] || rtvi_file.source.bytes
         );
-        const mimeType = format;
         const ab = new ArrayBuffer(byteString.length);
         const ia = new Uint8Array(ab);
         for (let i = 0; i < byteString.length; i++) {
@@ -777,15 +770,7 @@ export class PipecatClient extends RTVIEventEmitter {
 
     if (uploadFile) {
       // File is too large for transport, upload it first
-      const uploadResponse = await this.uploadFile(uploadFile);
-      rtvi_file = {
-        name: uploadResponse.filename,
-        format: uploadResponse.format,
-        source: {
-          type: "url",
-          url: uploadResponse.path,
-        },
-      };
+      rtvi_file = await this.uploadFile(uploadFile);
     }
 
     await sendFileMessage();
@@ -796,12 +781,12 @@ export class PipecatClient extends RTVIEventEmitter {
    * @param file - The File to upload
    * @param uploadFileParams - Optional APIRequest. If not provided, constructs
    *   endpoint from startBotParams.endpoint by replacing the path with /files
-   * @returns Promise resolving to UploadFileResponse with filename, path, and format
+   * @returns Promise resolving to RTVIFile with name, format, and FileUrl source
    */
   public async uploadFile(
     file: File,
     uploadFileParams?: APIRequest
-  ): Promise<UploadFileResponse> {
+  ): Promise<RTVIFile> {
     let uploadUrl: string;
     let headers: Headers | undefined;
     let timeout: number | undefined;
@@ -876,7 +861,7 @@ export class PipecatClient extends RTVIEventEmitter {
       { endpoint: request, timeout },
       this._abortController
     );
-    return response as UploadFileResponse;
+    return response as RTVIFile;
   }
 
   /**
