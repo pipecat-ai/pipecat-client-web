@@ -19,12 +19,16 @@ import {
   LLMContextMessage,
   LLMFunctionCallData,
   LLMFunctionCallResult,
+  MimeTypeMapping,
   Participant,
   PipecatMetricsData,
   RTVIEvent,
   RTVIEvents,
+  RTVIFile,
+  RTVIFileFormat,
   RTVIMessage,
   RTVIMessageType,
+  SendFileOptions,
   SendTextOptions,
   setAboutClient,
   TranscriptData,
@@ -686,6 +690,178 @@ export class PipecatClient extends RTVIEventEmitter {
         options,
       })
     );
+  }
+
+  @transportReady
+  public async sendFile(
+    file: RTVIFile | File,
+    content: string,
+    options: SendFileOptions = {}
+  ) {
+    let rtvi_file = file instanceof File ? ({} as RTVIFile) : file;
+    let mimeType: string = file instanceof File ? file.type : rtvi_file.format.toLowerCase();
+    if (mimeType in MimeTypeMapping) {
+      mimeType = MimeTypeMapping[mimeType as RTVIFileFormat];
+    }
+    rtvi_file.format = mimeType;
+
+    const sendFileMessage  = async () => {
+      await this._sendMessage(
+        new RTVIMessage(RTVIMessageType.SEND_FILE, {
+          file: rtvi_file,
+          content,
+          options,
+        })
+      );
+    };
+
+    let uploadFile: File | undefined;
+    if (file instanceof File) {
+      // Estimate the message size with base64 encoding overhead (~33% larger)
+      // Add buffer for message wrapper overhead. This saves us from having to
+      // unnecessarily read the file into memory and encode it to base64.
+      const estimatedEncodedSize = Math.ceil(file.size * 1.37) + 1000;
+
+      if (estimatedEncodedSize > this._transport.maxMessageSize) {
+        uploadFile = file;
+      } else {
+        return new Promise<void>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            if (!e.target?.result) {
+              throw new RTVIErrors.RTVIError("Could not read file data");
+            }
+            const fileContent = e.target.result as string;
+
+            rtvi_file = {
+              format: file.type,
+              source: {
+                type: "bytes",
+                bytes: fileContent,
+              },
+            };
+            await sendFileMessage();
+            resolve();
+          };
+
+          reader.readAsDataURL(file);
+        });
+      }
+    } else if (rtvi_file.source.type === "bytes") {
+      const estimatedSize = rtvi_file.source.bytes.length + 1000;
+      if (estimatedSize > this._transport.maxMessageSize) {
+        // Convert bytes to File and upload
+        const byteString = atob(
+          rtvi_file.source.bytes.split(",")[1] || rtvi_file.source.bytes
+        );
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([ab], { type: mimeType });
+        uploadFile = new File(
+          [blob],
+          rtvi_file.name || "uploaded_file",
+          { type: mimeType }
+        );
+      }
+    }
+
+    if (uploadFile) {
+      // File is too large for transport, upload it first
+      rtvi_file = await this.uploadFile(uploadFile);
+    }
+
+    await sendFileMessage();
+  }
+
+  /**
+   * Upload a file to a specified endpoint or the default files endpoint.
+   * @param file - The File to upload
+   * @param uploadFileParams - Optional APIRequest. If not provided, constructs
+   *   endpoint from startBotParams.endpoint by replacing the path with /files
+   * @returns Promise resolving to RTVIFile with name, format, and FileUrl source
+   */
+  public async uploadFile(
+    file: File,
+    uploadFileParams?: APIRequest
+  ): Promise<RTVIFile> {
+    let uploadUrl: string;
+    let headers: Headers | undefined;
+    let timeout: number | undefined;
+
+    if (uploadFileParams) {
+      const { endpoint } = uploadFileParams;
+      headers = uploadFileParams.headers;
+      timeout = uploadFileParams.timeout;
+
+      if (endpoint instanceof URL) {
+        uploadUrl = endpoint.toString();
+      } else if (typeof endpoint === "string") {
+        uploadUrl = endpoint;
+      } else if (
+        typeof Request !== "undefined" &&
+        endpoint instanceof Request
+      ) {
+        uploadUrl = endpoint.url;
+      } else {
+        throw new RTVIErrors.RTVIError(
+          "Unable to determine URL from uploadFileParams.endpoint"
+        );
+      }
+    } else {
+      // Construct from startBotParams
+      const startBotParams = this._transport.startBotParams;
+      if (!startBotParams?.endpoint) {
+        throw new RTVIErrors.RTVIError(
+          "No uploadFileParams provided and no startBotParams.endpoint available"
+        );
+      }
+
+      timeout = startBotParams.timeout;
+
+      let baseUrl: URL;
+      if (startBotParams.endpoint instanceof URL) {
+        baseUrl = startBotParams.endpoint;
+        headers = startBotParams.headers;
+      } else if (typeof startBotParams.endpoint === "string") {
+        baseUrl = new URL(startBotParams.endpoint);
+        headers = startBotParams.headers;
+      } else if (
+        typeof Request !== "undefined" &&
+        startBotParams.endpoint instanceof Request
+      ) {
+        baseUrl = new URL(startBotParams.endpoint.url);
+        headers = new Headers(startBotParams.endpoint.headers);
+      } else {
+        throw new RTVIErrors.RTVIError(
+          "Unable to determine base URL from startBotParams.endpoint"
+        );
+      }
+
+      // Change the path to /files
+      uploadUrl = `${baseUrl.origin}/files`;
+    }
+
+    // Create FormData with the file
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Create the Request object
+    // Note: Don't set Content-Type header - browser sets it automatically with boundary
+    const request = new Request(uploadUrl, {
+      method: "POST",
+      mode: "cors",
+      body: formData,
+      headers: headers ? Object.fromEntries(headers.entries()) : undefined,
+    });
+
+    const response = await makeRequest(
+      { endpoint: request, timeout },
+      this._abortController
+    );
+    return response as RTVIFile;
   }
 
   /**
