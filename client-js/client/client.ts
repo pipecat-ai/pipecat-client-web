@@ -18,7 +18,10 @@ import {
   ErrorData,
   LLMContextMessage,
   LLMFunctionCallData,
+  LLMFunctionCallInProgressData,
   LLMFunctionCallResult,
+  LLMFunctionCallStartedData,
+  LLMFunctionCallStoppedData,
   Participant,
   PipecatMetricsData,
   RTVIEvent,
@@ -103,6 +106,7 @@ export type RTVIEventCallbacks = Partial<{
   onUserStoppedSpeaking: () => void;
   onUserTranscript: (data: TranscriptData) => void;
   onBotOutput: (data: BotOutputData) => void;
+  /** @deprecated Use onBotOutput instead */
   onBotTranscript: (data: BotLLMTextData) => void;
 
   onBotLlmText: (data: BotLLMTextData) => void;
@@ -112,8 +116,12 @@ export type RTVIEventCallbacks = Partial<{
   onBotTtsStarted: () => void;
   onBotTtsStopped: () => void;
 
-  onLLMFunctionCall: (data: LLMFunctionCallData) => void;
+  onLLMFunctionCallStarted: (data: LLMFunctionCallStartedData) => void;
+  onLLMFunctionCallInProgress: (data: LLMFunctionCallInProgressData) => void;
+  onLLMFunctionCallStopped: (data: LLMFunctionCallStoppedData) => void;
   onBotLlmSearchResponse: (data: BotLLMSearchResponseData) => void;
+  /** @deprecated Use onLLMFunctionCallInProgress instead */
+  onLLMFunctionCall: (data: LLMFunctionCallData) => void;
 }>;
 
 export interface PipecatClientOptions {
@@ -161,6 +169,7 @@ export class PipecatClient extends RTVIEventEmitter {
   protected _abortController: AbortController | undefined;
 
   private _botTranscriptionWarned = false;
+  private _llmFunctionCallWarned = false;
 
   constructor(options: PipecatClientOptions) {
     super();
@@ -779,43 +788,36 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.ServerMessage, ev.data);
         break;
       }
+      case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {
+        const data = ev.data as LLMFunctionCallStartedData;
+        this._options.callbacks?.onLLMFunctionCallStarted?.(data);
+        this.emit(RTVIEvent.LLMFunctionCallStarted, data);
+        break;
+      }
+      case RTVIMessageType.LLM_FUNCTION_CALL_IN_PROGRESS: {
+        const data = ev.data as LLMFunctionCallInProgressData;
+        this._maybeTriggerFunctionCallCallback(data);
+        this._options.callbacks?.onLLMFunctionCallInProgress?.(data);
+        this.emit(RTVIEvent.LLMFunctionCallInProgress, data);
+        break;
+      }
+      case RTVIMessageType.LLM_FUNCTION_CALL_STOPPED: {
+        const data = ev.data as LLMFunctionCallStoppedData;
+        this._options.callbacks?.onLLMFunctionCallStopped?.(data);
+        this.emit(RTVIEvent.LLMFunctionCallStopped, data);
+        break;
+      }
       case RTVIMessageType.LLM_FUNCTION_CALL: {
-        const data = ev.data as LLMFunctionCallData;
-        // First check if there's a registered function call handler
-        // and trigger it if so.
-        const fc = this._functionCallCallbacks[data.function_name];
-        if (fc) {
-          const params = {
-            functionName: data.function_name,
-            arguments: data.args,
-          };
-          /*
-           * registered function call handlers have the ability to
-           * asynchronously return a result that is sent back to the server
-           * as an automatically crafted LLM_FUNCTION_CALL_RESULT message.
-           * Note: If the callback returns null or undefined, no result message
-           * is sent.
-           */
-          fc(params).then((result) => {
-            // == intentional to check for null or undefined
-            if (result == undefined) {
-              return;
-            }
-            this._sendMessage(
-              new RTVIMessage(RTVIMessageType.LLM_FUNCTION_CALL_RESULT, {
-                function_name: data.function_name,
-                tool_call_id: data.tool_call_id,
-                arguments: data.args,
-                result,
-              })
+        const data = ev.data as LLMFunctionCallInProgressData;
+        this._maybeTriggerFunctionCallCallback(data);
+        if (this._options.callbacks?.onLLMFunctionCall) {
+          if (!this._llmFunctionCallWarned) {
+            logger.warn(
+              "[Pipecat Client] onLLMFunctionCall is deprecated. Please use onLLMFunctionCallInProgress instead."
             );
-          });
+            this._llmFunctionCallWarned = true;
+          }
         }
-        /*
-         * Now emit the event for any generic LLMFunctionCall listeners/callbacks
-         * Note: When using these, the onus is on the client to generate and
-         *       send the LLM_FUNCTION_CALL_RESULT message if needed.
-         */
         this._options.callbacks?.onLLMFunctionCall?.(data);
         this.emit(RTVIEvent.LLMFunctionCall, data);
         break;
@@ -830,6 +832,35 @@ export class PipecatClient extends RTVIEventEmitter {
         logger.debug("[Pipecat Client] Unrecognized message type", ev.type);
         break;
       }
+    }
+  }
+
+  private _maybeTriggerFunctionCallCallback(data: LLMFunctionCallInProgressData) {
+    // Function call callbacks are meant only for function calls that need information
+    // from the client to complete and generate a result. This process requires that
+    // the event includes the function name. For client-side logic meant simply to
+    // react to the fact that a function call is happening, you should use the
+    // traditional onLLMFunctionCallStarted/InProgress/Stopped events instead.
+    if (!data.function_name) return;
+    const fc = this._functionCallCallbacks[data.function_name];
+    if (fc) {
+      const params = {
+        functionName: data.function_name ?? '',
+        arguments: data.args ?? {},
+      };
+      fc(params).then((result) => {
+        if (result == undefined) {
+          return;
+        }
+        this._sendMessage(
+          new RTVIMessage(RTVIMessageType.LLM_FUNCTION_CALL_RESULT, {
+            function_name: data.function_name,
+            tool_call_id: data.tool_call_id,
+            arguments: data.args ?? {},
+            result,
+          })
+        );
+      });
     }
   }
 

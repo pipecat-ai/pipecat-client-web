@@ -13,6 +13,9 @@ import {
   BotReadyData,
   BotTTSTextData,
   LLMFunctionCallData,
+  LLMFunctionCallInProgressData,
+  LLMFunctionCallStartedData,
+  LLMFunctionCallStoppedData,
   PipecatMetricsData,
   RTVIMessage,
   TranscriptData,
@@ -56,7 +59,11 @@ export enum RTVIEvent {
   BotLlmStarted = "botLlmStarted",
   BotLlmStopped = "botLlmStopped",
 
+  // DEPRECATED
   LLMFunctionCall = "llmFunctionCall",
+  LLMFunctionCallStarted = "llmFunctionCallStarted",
+  LLMFunctionCallInProgress = "llmFunctionCallInProgress",
+  LLMFunctionCallStopped = "llmFunctionCallStopped",
 
   BotLlmSearchResponse = "botLlmSearchResponse",
 
@@ -128,7 +135,11 @@ export type RTVIEvents = Partial<{
   botLlmStarted: () => void;
   botLlmStopped: () => void;
 
+  /** @deprecated Use LLMFunctionCallInProgress instead */
   llmFunctionCall: (func: LLMFunctionCallData) => void;
+  llmFunctionCallStarted: (data: LLMFunctionCallStartedData) => void;
+  llmFunctionCallInProgress: (data: LLMFunctionCallInProgressData) => void;
+  llmFunctionCallStopped: (data: LLMFunctionCallStoppedData) => void;
 
   botLlmSearchResponse: (data: BotLLMSearchResponseData) => void;
 
