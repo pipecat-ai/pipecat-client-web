@@ -11,7 +11,7 @@ import {
   version as packageVersion,
 } from "../package.json";
 
-export const RTVI_PROTOCOL_VERSION = "1.1.0";
+export const RTVI_PROTOCOL_VERSION = "1.2.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -58,7 +58,11 @@ export enum RTVIMessageType {
   BOT_LLM_STOPPED = "bot-llm-stopped", // Bot LLM inference stops
 
   // Function calling
+  // DECPRECATED
   LLM_FUNCTION_CALL = "llm-function-call", // Inbound function call from LLM
+  LLM_FUNCTION_CALL_STARTED = "llm-function-call-started", // Inbound function call started
+  LLM_FUNCTION_CALL_IN_PROGRESS = "llm-function-call-in-progress", // Inbound function call in progress
+  LLM_FUNCTION_CALL_STOPPED = "llm-function-call-stopped", // Inbound function call stopped
   LLM_FUNCTION_CALL_RESULT = "llm-function-call-result", // Outbound result of function call
 
   BOT_LLM_SEARCH_RESPONSE = "bot-llm-search-response", // Bot LLM search response
@@ -167,19 +171,33 @@ export type LLMSearchOrigin = {
   results: LLMSearchResult[];
 };
 
-export type LLMFunctionCallData = {
-  function_name: string;
-  tool_call_id: string;
-  args: Record<string, unknown>;
+export type LLMFunctionCallStartedData = {
+  function_name?: string;
 };
+
+export type LLMFunctionCallInProgressData = {
+  function_name?: string;
+  tool_call_id: string;
+  args?: Record<string, unknown>;
+}
+
+/** @deprecated Use LLMFunctionCallInProgressData instead */
+export type LLMFunctionCallData = LLMFunctionCallInProgressData;
 
 export type LLMFunctionCallResult = Record<string, unknown> | string;
 
 export type LLMFunctionCallResultResponse = {
   function_name: string;
   tool_call_id: string;
-  args: Record<string, unknown>;
+  args?: Record<string, unknown>;
   result: LLMFunctionCallResult;
+};
+
+export type LLMFunctionCallStoppedData = {
+  function_name?: string;
+  tool_call_id: string;
+  cancelled: boolean;
+  result?: unknown;
 };
 
 export type SendTextOptions = {
