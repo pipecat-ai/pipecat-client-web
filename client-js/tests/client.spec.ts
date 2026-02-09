@@ -106,6 +106,179 @@ describe("PipecatClient Methods", () => {
     expect(fooVal).toBe("bar");
   });
 
+  test("llm-function-call-started should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+    let callbackData: any = null;
+    let eventData: any = null;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onLLMFunctionCallStarted: (data) => {
+          callbackTriggered = true;
+          callbackData = data;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.LLMFunctionCallStarted, (data) => {
+      eventTriggered = true;
+      eventData = data;
+    });
+
+    const msg: RTVIMessage = {
+      id: "123",
+      label: "rtvi-ai",
+      type: "llm-function-call-started",
+      data: {
+        function_name: "testFunction",
+      },
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+    expect(callbackData.function_name).toBe("testFunction");
+    expect(eventData.function_name).toBe("testFunction");
+  });
+
+  test("llm-function-call-in-progress should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+    let callbackData: any = null;
+    let eventData: any = null;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onLLMFunctionCallInProgress: (data) => {
+          callbackTriggered = true;
+          callbackData = data;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.LLMFunctionCallInProgress, (data) => {
+      eventTriggered = true;
+      eventData = data;
+    });
+
+    const msg: RTVIMessage = {
+      id: "456",
+      label: "rtvi-ai",
+      type: "llm-function-call-in-progress",
+      data: {
+        function_name: "testFunction",
+        tool_call_id: "call-456",
+        args: { param1: "value1" },
+      },
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+    expect(callbackData.function_name).toBe("testFunction");
+    expect(callbackData.tool_call_id).toBe("call-456");
+    expect(callbackData.args.param1).toBe("value1");
+    expect(eventData.function_name).toBe("testFunction");
+    expect(eventData.tool_call_id).toBe("call-456");
+    expect(eventData.args.param1).toBe("value1");
+  });
+
+  test("llm-function-call-stopped should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+    let callbackData: any = null;
+    let eventData: any = null;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onLLMFunctionCallStopped: (data) => {
+          callbackTriggered = true;
+          callbackData = data;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.LLMFunctionCallStopped, (data) => {
+      eventTriggered = true;
+      eventData = data;
+    });
+
+    const msg: RTVIMessage = {
+      id: "789",
+      label: "rtvi-ai",
+      type: "llm-function-call-stopped",
+      data: {
+        function_name: "testFunction",
+        tool_call_id: "call-789",
+        cancelled: false,
+        result: { success: true },
+      },
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+    expect(callbackData.function_name).toBe("testFunction");
+    expect(callbackData.tool_call_id).toBe("call-789");
+    expect(callbackData.cancelled).toBe(false);
+    expect(callbackData.result.success).toBe(true);
+    expect(eventData.function_name).toBe("testFunction");
+    expect(eventData.tool_call_id).toBe("call-789");
+    expect(eventData.cancelled).toBe(false);
+    expect(eventData.result.success).toBe(true);
+  });
+
+  test("deprecated llm-function-call should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+    let callbackData: any = null;
+    let eventData: any = null;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onLLMFunctionCall: (data) => {
+          callbackTriggered = true;
+          callbackData = data;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.LLMFunctionCall, (data) => {
+      eventTriggered = true;
+      eventData = data;
+    });
+
+    const msg: RTVIMessage = {
+      id: "999",
+      label: "rtvi-ai",
+      type: "llm-function-call",
+      data: {
+        function_name: "deprecatedFunction",
+        tool_call_id: "call-999",
+        args: { deprecated: true },
+      },
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+    expect(callbackData.function_name).toBe("deprecatedFunction");
+    expect(callbackData.tool_call_id).toBe("call-999");
+    expect(callbackData.args.deprecated).toBe(true);
+    expect(eventData.function_name).toBe("deprecatedFunction");
+    expect(eventData.tool_call_id).toBe("call-999");
+    expect(eventData.args.deprecated).toBe(true);
+  });
+
   test("enableScreenShare should enable screen share", async () => {
     await client.connect();
     client.enableScreenShare(true);
