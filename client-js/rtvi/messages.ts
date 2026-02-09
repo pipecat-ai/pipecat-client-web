@@ -178,18 +178,22 @@ export type LLMFunctionCallStartedData = {
 export type LLMFunctionCallInProgressData = {
   function_name?: string;
   tool_call_id: string;
-  args?: Record<string, unknown>;
-}
+  arguments?: Record<string, unknown>;
+};
 
 /** @deprecated Use LLMFunctionCallInProgressData instead */
-export type LLMFunctionCallData = LLMFunctionCallInProgressData;
+export type LLMFunctionCallData = {
+  function_name?: string;
+  tool_call_id: string;
+  args: Record<string, unknown>;
+};
 
 export type LLMFunctionCallResult = Record<string, unknown> | string;
 
 export type LLMFunctionCallResultResponse = {
   function_name: string;
   tool_call_id: string;
-  args?: Record<string, unknown>;
+  arguments: Record<string, unknown>;
   result: LLMFunctionCallResult;
 };
 

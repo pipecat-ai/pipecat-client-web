@@ -20,6 +20,7 @@ import {
   LLMFunctionCallData,
   LLMFunctionCallInProgressData,
   LLMFunctionCallResult,
+  LLMFunctionCallResultResponse,
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
   Participant,
@@ -808,8 +809,13 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL: {
-        const data = ev.data as LLMFunctionCallInProgressData;
-        this._maybeTriggerFunctionCallCallback(data);
+        const data = ev.data as LLMFunctionCallData;
+        const inProgressData: LLMFunctionCallInProgressData = {
+          function_name: data.function_name,
+          tool_call_id: data.tool_call_id,
+          arguments: data.args,
+        };
+        this._maybeTriggerFunctionCallCallback(inProgressData);
         if (this._options.callbacks?.onLLMFunctionCall) {
           if (!this._llmFunctionCallWarned) {
             logger.warn(
@@ -835,7 +841,9 @@ export class PipecatClient extends RTVIEventEmitter {
     }
   }
 
-  private _maybeTriggerFunctionCallCallback(data: LLMFunctionCallInProgressData) {
+  private _maybeTriggerFunctionCallCallback(
+    data: LLMFunctionCallInProgressData
+  ) {
     // Function call callbacks are meant only for function calls that need information
     // from the client to complete and generate a result. This process requires that
     // the event includes the function name. For client-side logic meant simply to
@@ -845,22 +853,26 @@ export class PipecatClient extends RTVIEventEmitter {
     const fc = this._functionCallCallbacks[data.function_name];
     if (fc) {
       const params = {
-        functionName: data.function_name ?? '',
-        arguments: data.args ?? {},
+        functionName: data.function_name ?? "",
+        arguments: data.arguments ?? {},
       };
-      fc(params).then((result) => {
-        if (result == undefined) {
-          return;
-        }
-        this._sendMessage(
-          new RTVIMessage(RTVIMessageType.LLM_FUNCTION_CALL_RESULT, {
-            function_name: data.function_name,
-            tool_call_id: data.tool_call_id,
-            arguments: data.args ?? {},
-            result,
-          })
-        );
-      });
+      fc(params)
+        .then((result) => {
+          if (result == undefined) {
+            return;
+          }
+          this._sendMessage(
+            new RTVIMessage(RTVIMessageType.LLM_FUNCTION_CALL_RESULT, {
+              function_name: data.function_name,
+              tool_call_id: data.tool_call_id,
+              arguments: data.arguments ?? {},
+              result,
+            } as LLMFunctionCallResultResponse)
+          );
+        })
+        .catch((error) => {
+          logger.error("Error in function call callback", error);
+        });
     }
   }
 
