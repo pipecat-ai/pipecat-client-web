@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `_maxMessageSize` introduced to `Transports` along with a `MessageTooLargeError` for
   proper handling of attempts to send a message larger than what the transport can handle
+- Added support for new `llm-function-call-started`, `llm-function-call-in-progress`, and `llm-function-call-stopped` RTVI events with corresponding `onLLMFunctionCallStarted`, `onLLMFunctionCallInProgress`, and `onLLMFunctionCallStopped` callbacks. These events optionally include metadata about the function call that triggered them, as dictated by the server. See below: `onLLMFunctionCallInProgress` should be used in lieu of the now deprecated `onLLMFunctionCall` callback.
 
 ### Changed
 
@@ -23,17 +24,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed issues preventing clients from successfully providing a `Request` type as the endpoint to an `APIRequest`
 - Fixed a bug where the transport would not initialize devices when starting a bot if the transport was already disconnected.
 
+### Deprecated
+
+- Per the introduction of the more thorough set of function call events, `onLLMFunctionCall` has been deprecated and replaced by `onLLMFunctionCallInProgress`. The existence of the `function_name` and `args` in the data provided is determined by the server as a security measure. Note that the `FunctionCallHandler`s are still valid and are now triggered from `llm-function-call-in-progress` events that include a `function_name`. These callbacks are specifically meant for returning data to the server that is needed to resolve the function call (ex. getting the location of the client to resolve a get_weather function call).
+
 ## [1.5.0]
 
 ### Added
 
 - Implemented support for the new `botOutput` RTVI message. This message is now the preferred
-  way of communicating a holistic view of what the bot "says". It includes a `spoken` field, indicating whether the text has been spoken along with a field, `aggregated_by`, to indicate what 
+  way of communicating a holistic view of what the bot "says". It includes a `spoken` field, indicating whether the text has been spoken along with a field, `aggregated_by`, to indicate what
   the text represents. By default, with TTS services that support word-by-word output, you can
   expect two `agggregated_by` values for `botOutput` events: `"sentence"` and `"word"`. All
   sentence events are guaranteed to be in order, while word events come in at the time of being
   spoken. This allows for building karaoke-like UIs where the sentence is displayed and each word
-  is highlighted as it's spoken.  This event also provides continuity across bot output even when
+  is highlighted as it's spoken. This event also provides continuity across bot output even when
   the TTS is skipped or does not exist. And if your pipeline takes advantage of customizing how
   the LLM text is aggregated, you can handle custom `aggregated_by` fields, like `"code"` or
   `"address"` or `"url"`, allowing the server to do the parsing.
@@ -83,7 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved flexibility and clarity around `connect()`:
   - Renamed `ConnectionEndpoint` to `APIRequest` for clarity.
-  - Deprecated use of `connect()` with a `ConnectionEndpoint` params type in favor of separating out the authorization step from the connection step. Uses of `connect()` with a `ConnectionEndpoint` should be updated to call `startBotAndConnect()` instead. See below.  `connect()` now performs only the portion of the logic for connecting the transport. If called with a `ConnectionEndpoint`, it will call `startBotAndConnect()` under the hood.
+  - Deprecated use of `connect()` with a `ConnectionEndpoint` params type in favor of separating out the authorization step from the connection step. Uses of `connect()` with a `ConnectionEndpoint` should be updated to call `startBotAndConnect()` instead. See below. `connect()` now performs only the portion of the logic for connecting the transport. If called with a `ConnectionEndpoint`, it will call `startBotAndConnect()` under the hood.
   - Introduced `startBot()` for performing just the endpoint POST for kicking off a bot process and optionally returning connection parameters required by the transport.
   - Introduced `startBotAndConnect()` which takes an `APIRequest` and calls both `startBot()` and `connect()`, passing any data returned from the `startBot()` endpoint to `connect()` as transport parameters.
 
