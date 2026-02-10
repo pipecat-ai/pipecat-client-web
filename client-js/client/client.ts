@@ -101,10 +101,12 @@ export type RTVIEventCallbacks = Partial<{
   onLocalAudioLevel: (level: number) => void;
   onRemoteAudioLevel: (level: number, participant: Participant) => void;
 
-  onBotStartedSpeaking: () => void;
-  onBotStoppedSpeaking: () => void;
   onUserStartedSpeaking: () => void;
   onUserStoppedSpeaking: () => void;
+  onBotStartedSpeaking: () => void;
+  onBotStoppedSpeaking: () => void;
+  onUserMuteStarted: () => void;
+  onUserMuteStopped: () => void;
   onUserTranscript: (data: TranscriptData) => void;
   onBotOutput: (data: BotOutputData) => void;
   /** @deprecated Use onBotOutput instead */
@@ -294,6 +296,14 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onBotDisconnected?.(p);
         this.emit(RTVIEvent.BotDisconnected, p);
       },
+      onUserStartedSpeaking: () => {
+        options?.callbacks?.onUserStartedSpeaking?.();
+        this.emit(RTVIEvent.UserStartedSpeaking);
+      },
+      onUserStoppedSpeaking: () => {
+        options?.callbacks?.onUserStoppedSpeaking?.();
+        this.emit(RTVIEvent.UserStoppedSpeaking);
+      },
       onBotStartedSpeaking: () => {
         options?.callbacks?.onBotStartedSpeaking?.();
         this.emit(RTVIEvent.BotStartedSpeaking);
@@ -306,17 +316,17 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onRemoteAudioLevel?.(level, p);
         this.emit(RTVIEvent.RemoteAudioLevel, level, p);
       },
-      onUserStartedSpeaking: () => {
-        options?.callbacks?.onUserStartedSpeaking?.();
-        this.emit(RTVIEvent.UserStartedSpeaking);
-      },
-      onUserStoppedSpeaking: () => {
-        options?.callbacks?.onUserStoppedSpeaking?.();
-        this.emit(RTVIEvent.UserStoppedSpeaking);
-      },
       onLocalAudioLevel: (level) => {
         options?.callbacks?.onLocalAudioLevel?.(level);
         this.emit(RTVIEvent.LocalAudioLevel, level);
+      },
+      onUserMuteStarted: () => {
+        options?.callbacks?.onUserMuteStarted?.();
+        this.emit(RTVIEvent.UserMuteStarted);
+      },
+      onUserMuteStopped: () => {
+        options?.callbacks?.onUserMuteStopped?.();
+        this.emit(RTVIEvent.UserMuteStopped);
       },
       onUserTranscript: (data) => {
         options?.callbacks?.onUserTranscript?.(data);
@@ -748,6 +758,12 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.BOT_STOPPED_SPEAKING:
         this._options.callbacks?.onBotStoppedSpeaking?.();
+        break;
+      case RTVIMessageType.USER_MUTE_STARTED:
+        this._options.callbacks?.onUserMuteStarted?.();
+        break;
+      case RTVIMessageType.USER_MUTE_STOPPED:
+        this._options.callbacks?.onUserMuteStopped?.();
         break;
       case RTVIMessageType.USER_TRANSCRIPTION: {
         const TranscriptData = ev.data as TranscriptData;

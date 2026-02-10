@@ -48,6 +48,10 @@ export enum RTVIEvent {
   UserStartedSpeaking = "userStartedSpeaking",
   UserStoppedSpeaking = "userStoppedSpeaking",
 
+  // user mute strategy events
+  UserMuteStarted = "userMuteStarted",
+  UserMuteStopped = "userMuteStopped",
+
   // stt events
   UserTranscript = "userTranscript",
   BotOutput = "botOutput",
@@ -124,6 +128,10 @@ export type RTVIEvents = Partial<{
   botStoppedSpeaking: () => void;
   userStartedSpeaking: () => void;
   userStoppedSpeaking: () => void;
+
+  // user mute strategy events
+  userMuteStarted: () => void;
+  userMuteStopped: () => void;
 
   // stt events
   userTranscript: (data: TranscriptData) => void;

@@ -41,15 +41,20 @@ export enum RTVIMessageType {
   ERROR_RESPONSE = "error-response", // Error message in response to an outbound message
   APPEND_TO_CONTEXT_RESULT = "append-to-context-result", // Result of appending to context
 
-  /** Transcription Messages */
-  USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
-  BOT_OUTPUT = "bot-output", // A best effort aggregation of all bot output along with metadata like if it's spoken
-  // DEPRECATED
-  BOT_TRANSCRIPTION = "bot-transcription", // Bot full text transcription (sentence aggregated)
+  /** Speaking and Transcription Messages */
   USER_STARTED_SPEAKING = "user-started-speaking", // User started speaking
   USER_STOPPED_SPEAKING = "user-stopped-speaking", // User stopped speaking
   BOT_STARTED_SPEAKING = "bot-started-speaking", // Bot started speaking
   BOT_STOPPED_SPEAKING = "bot-stopped-speaking", // Bot stopped speaking
+  // User muted events. These events notify when the server is ignoring audio from the client.
+  // The client should continue sending audio normally but may want to show some indication to the user.
+  USER_MUTE_STARTED = "user-mute-started", // User muted server-side.
+  USER_MUTE_STOPPED = "user-mute-stopped", // User unmuted server-side.
+
+  USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
+  BOT_OUTPUT = "bot-output", // A best effort aggregation of all bot output along with metadata like if it's spoken
+  // DEPRECATED
+  BOT_TRANSCRIPTION = "bot-transcription", // Bot full text transcription (sentence aggregated)
 
   /** LLM Messages */
   USER_LLM_TEXT = "user-llm-text", // Aggregated user input text which is sent to LLM
