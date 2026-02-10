@@ -350,7 +350,7 @@ export type FileUrl = {
 export type FileId = {
   type: Extract<FileSourceType, "id">;
   id: string;
-}
+};
 
 export type RTVIFile = {
   name?: string;
@@ -366,7 +366,6 @@ export type SendFileOptions = {
   // for things like 'detail' in openAI or 'citations' in Bedrock
   custom_options?: { [key: number | string]: Serializable };
 };
-
 
 export type FileSupport = {
   formats: string[];

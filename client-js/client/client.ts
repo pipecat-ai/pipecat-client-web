@@ -232,6 +232,8 @@ export class PipecatClient extends RTVIEventEmitter {
   private _uiSnapshotStreamer: A11ySnapshotStreamer | undefined;
   private _pendingUISnapshot: A11ySnapshot | undefined;
 
+  private _botVersion: number[] = [0, 0, 0];
+
   private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
 
@@ -1167,6 +1169,14 @@ export class PipecatClient extends RTVIEventEmitter {
     content: string,
     options: SendFileOptions = {}
   ) {
+    if (
+      this._botVersion[0] < 1 ||
+      (this._botVersion[0] === 1 && this._botVersion[1] < 3)
+    ) {
+      throw new RTVIErrors.RTVIError(
+        "sendFile() is not supported for bot versions less than 1.3.0"
+      );
+    }
     let rtvi_file = file instanceof File ? ({} as RTVIFile) : file;
     let mimeType: string =
       file instanceof File ? file.type : rtvi_file.format.toLowerCase();
@@ -1346,12 +1356,12 @@ export class PipecatClient extends RTVIEventEmitter {
     switch (ev.type) {
       case RTVIMessageType.BOT_READY: {
         const data = ev.data as BotReadyData;
-        const botVersion = data.version
-          ? data.version.split(".").map(Number)
+        this._botVersion = data.version
+          ? (data.version.split(".").map(Number) as number[])
           : [0, 0, 0];
         this._botVersion = botVersion;
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
-        if (botVersion[0] < 2) {
+        if (this._botVersion[0] < 2) {
           logger.warn(
             `[Pipecat Client] Bot protocol version ${data.version} is older than this client (${RTVI_PROTOCOL_VERSION}). Compatibility issues may occur.`
           );
