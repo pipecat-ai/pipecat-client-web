@@ -279,6 +279,66 @@ describe("PipecatClient Methods", () => {
     expect(eventData.args.deprecated).toBe(true);
   });
 
+  test("user-mute-started should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onUserMuteStarted: () => {
+          callbackTriggered = true;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.UserMuteStarted, () => {
+      eventTriggered = true;
+    });
+
+    const msg: RTVIMessage = {
+      id: "user-mute-1",
+      label: "rtvi-ai",
+      type: "user-mute-started",
+      data: {},
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+  });
+
+  test("user-mute-stopped should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onUserMuteStopped: () => {
+          callbackTriggered = true;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.UserMuteStopped, () => {
+      eventTriggered = true;
+    });
+
+    const msg: RTVIMessage = {
+      id: "user-mute-2",
+      label: "rtvi-ai",
+      type: "user-mute-stopped",
+      data: {},
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+  });
+
   test("enableScreenShare should enable screen share", async () => {
     await client.connect();
     client.enableScreenShare(true);

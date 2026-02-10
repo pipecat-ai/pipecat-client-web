@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `_maxMessageSize` introduced to `Transports` along with a `MessageTooLargeError` for
   proper handling of attempts to send a message larger than what the transport can handle
 - Added support for new `llm-function-call-started`, `llm-function-call-in-progress`, and `llm-function-call-stopped` RTVI events with corresponding `onLLMFunctionCallStarted`, `onLLMFunctionCallInProgress`, and `onLLMFunctionCallStopped` callbacks. These events optionally include metadata about the function call that triggered them, as dictated by the server. See below: `onLLMFunctionCallInProgress` should be used in lieu of the now deprecated `onLLMFunctionCall` callback.
+- Added support for new `user-mute-started` and `user-mute-stopped` RTVI events with corresponding `onUserMuteStarted` and `onUserMuteStopped` callbacks. These events notify when the server is ignoring audio from the client (server-side muting). The client should continue sending audio normally but may want to show some indication to the user.
 
 ### Changed
 
