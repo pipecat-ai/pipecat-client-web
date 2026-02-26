@@ -29,8 +29,18 @@ import type {
  */
 interface Props {
   /**
-   * Optional callback invoked whenever a new message is added or finalized.
-   * This callback will be called with the latest message object.
+   * Called once when a brand-new message first enters the conversation.
+   * The message may or may not be complete at this point — check `message.final`.
+   */
+  onMessageCreated?: (message: ConversationMessage) => void;
+  /**
+   * Called whenever an existing message's content changes
+   * (e.g. streaming text appended, function call status changed, message finalized).
+   * Check `message.final` to detect finalization.
+   */
+  onMessageUpdated?: (message: ConversationMessage) => void;
+  /**
+   * @deprecated Use `onMessageCreated` instead. Will be removed in a future release.
    */
   onMessageAdded?: (message: ConversationMessage) => void;
   /**
@@ -46,11 +56,11 @@ interface Props {
  * This hook provides:
  * - The current list of conversation messages, ordered and merged for display.
  * - An `injectMessage` function to programmatically add a message to the conversation.
- * - The ability to register a callback (`onMessageAdded`) that is called whenever a new message is added or finalized.
+ * - Lifecycle callbacks: `onMessageCreated`, `onMessageUpdated`.
  *
  * Internally, this hook:
  * - Subscribes to conversation state updates and merges/filters messages for UI consumption.
- * - Ensures the provided callback is registered and unregistered as the component mounts/unmounts or the callback changes.
+ * - Ensures the provided callbacks are registered and unregistered as the component mounts/unmounts or the callbacks change.
  *
  * @param {Props} [options] - Optional configuration for the hook.
  * @returns {{
@@ -59,6 +69,8 @@ interface Props {
  * }}
  */
 export const usePipecatConversation = ({
+  onMessageCreated,
+  onMessageUpdated,
   onMessageAdded,
   aggregationMetadata,
 }: Props = {}) => {
@@ -67,13 +79,19 @@ export const usePipecatConversation = ({
   // Generate a unique ID for this hook instance
   const callbackId = useId();
 
-  // Register and unregister the callback
+  // Resolve deprecated onMessageAdded → onMessageCreated
+  const resolvedCreated = onMessageCreated ?? onMessageAdded;
+
+  // Register and unregister the callbacks
   const doRegister = useAtomCallback(
     useCallback(
       (get, set) => {
-        registerMessageCallback(get, set, callbackId, onMessageAdded);
+        registerMessageCallback(get, set, callbackId, {
+          onMessageCreated: resolvedCreated,
+          onMessageUpdated,
+        });
       },
-      [callbackId, onMessageAdded]
+      [callbackId, resolvedCreated, onMessageUpdated]
     )
   );
 

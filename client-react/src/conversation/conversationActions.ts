@@ -8,6 +8,7 @@ import type { Getter, Setter } from "jotai";
 import type { ReactNode } from "react";
 
 import { applySpokenBotOutputProgress } from "./botOutput";
+import type { MessageCallbacks } from "./conversationAtoms";
 import {
   botOutputMessageStateAtom,
   messageCallbacksAtom,
@@ -170,15 +171,16 @@ const normalizeMessagesForUI = (
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-const callAllMessageCallbacks = (
-  callbacks: Map<string, (message: ConversationMessage) => void>,
+const callCallbacks = (
+  callbacksMap: Map<string, MessageCallbacks>,
+  type: keyof MessageCallbacks,
   message: ConversationMessage
 ) => {
-  callbacks.forEach((callback) => {
+  callbacksMap.forEach((callbacks) => {
     try {
-      callback(message);
+      callbacks[type]?.(message);
     } catch (error) {
-      console.error("Error in message callback:", error);
+      console.error(`Error in ${type} callback:`, error);
     }
   });
 };
@@ -191,11 +193,11 @@ export function registerMessageCallback(
   get: Getter,
   set: Setter,
   id: string,
-  callback?: (message: ConversationMessage) => void
+  callbacks: MessageCallbacks
 ) {
-  const callbacks = new Map(get(messageCallbacksAtom));
-  callbacks.set(id, callback || (() => {}));
-  set(messageCallbacksAtom, callbacks);
+  const map = new Map(get(messageCallbacksAtom));
+  map.set(id, callbacks);
+  set(messageCallbacksAtom, map);
 }
 
 export function unregisterMessageCallback(
@@ -203,9 +205,9 @@ export function unregisterMessageCallback(
   set: Setter,
   id: string
 ) {
-  const callbacks = new Map(get(messageCallbacksAtom));
-  callbacks.delete(id);
-  set(messageCallbacksAtom, callbacks);
+  const map = new Map(get(messageCallbacksAtom));
+  map.delete(id);
+  set(messageCallbacksAtom, map);
 }
 
 export function clearMessages(_get: Getter, set: Setter) {
@@ -229,7 +231,7 @@ export function addMessage(
   const updatedMessages = [...current, message];
   const processedMessages = normalizeMessagesForUI(updatedMessages);
 
-  callAllMessageCallbacks(get(messageCallbacksAtom), message);
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
   set(messagesAtom, processedMessages);
 }
 
@@ -244,8 +246,9 @@ export function updateLastMessage(
 
   if (lastMessageIndex === -1) return;
 
+  const existing = messages[lastMessageIndex];
   const updatedMessage = {
-    ...messages[lastMessageIndex],
+    ...existing,
     ...updates,
     updatedAt: new Date().toISOString(),
   } as ConversationMessage;
@@ -253,7 +256,7 @@ export function updateLastMessage(
   messages[lastMessageIndex] = updatedMessage;
   const processedMessages = normalizeMessagesForUI(messages);
 
-  callAllMessageCallbacks(get(messageCallbacksAtom), updatedMessage);
+  callCallbacks(get(messageCallbacksAtom), "onMessageUpdated", updatedMessage);
   set(messagesAtom, processedMessages);
 }
 
@@ -288,8 +291,9 @@ export function finalizeLastMessage(
       final: true,
       updatedAt: new Date().toISOString(),
     };
-    callAllMessageCallbacks(
+    callCallbacks(
       get(messageCallbacksAtom),
+      "onMessageUpdated",
       messages[lastMessageIndex]
     );
   }
@@ -338,7 +342,7 @@ export function injectMessage(
   const updatedMessages = [...current, message];
   const processedMessages = normalizeMessagesForUI(updatedMessages);
 
-  callAllMessageCallbacks(get(messageCallbacksAtom), message);
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
   set(messagesAtom, processedMessages);
 }
 
@@ -385,7 +389,7 @@ export function upsertUserTranscript(
 
     const processedMessages = normalizeMessagesForUI(messages);
 
-    callAllMessageCallbacks(get(messageCallbacksAtom), updatedMessage);
+    callCallbacks(get(messageCallbacksAtom), "onMessageUpdated", updatedMessage);
     set(messagesAtom, processedMessages);
     return;
   }
@@ -407,7 +411,7 @@ export function upsertUserTranscript(
 
   const updatedMessages = [...messages, newMessage];
   const processedMessages = normalizeMessagesForUI(updatedMessages);
-  callAllMessageCallbacks(get(messageCallbacksAtom), newMessage);
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", newMessage);
   set(messagesAtom, processedMessages);
 }
 
@@ -428,9 +432,11 @@ export function updateAssistantBotOutput(
   );
 
   let messageId: string;
+  let isNewMessage = false;
 
   if (lastAssistantIndex === -1) {
     // Create new assistant message
+    isNewMessage = true;
     messageId = now.toISOString();
     const newMessage: ConversationMessage = {
       role: "assistant",
@@ -562,6 +568,17 @@ export function updateAssistantBotOutput(
   // mid-stream assistant messages are still empty/partial and should not be pruned.
   const processedMessages = mergeMessages([...messages].sort(sortByCreatedAt));
 
+  const cbs = get(messageCallbacksAtom);
+  const updatedMsg =
+    messages[
+      lastAssistantIndex === -1 ? messages.length - 1 : lastAssistantIndex
+    ];
+  if (isNewMessage) {
+    callCallbacks(cbs, "onMessageCreated", updatedMsg);
+  } else {
+    callCallbacks(cbs, "onMessageUpdated", updatedMsg);
+  }
+
   set(messagesAtom, processedMessages);
   set(botOutputMessageStateAtom, botOutputMessageState);
 }
@@ -604,7 +621,7 @@ export function addFunctionCall(
 
   const updatedMessages = [...messages, message];
   const processedMessages = normalizeMessagesForUI(updatedMessages);
-  callAllMessageCallbacks(get(messageCallbacksAtom), message);
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
   set(messagesAtom, processedMessages);
 }
 
@@ -640,7 +657,7 @@ export function updateFunctionCall(
   messages[index] = updated;
 
   const processedMessages = normalizeMessagesForUI(messages);
-  callAllMessageCallbacks(get(messageCallbacksAtom), updated);
+  callCallbacks(get(messageCallbacksAtom), "onMessageUpdated", updated);
   set(messagesAtom, processedMessages);
   return true;
 }
@@ -677,7 +694,7 @@ export function updateLastStartedFunctionCall(
   messages[index] = updated;
 
   const processedMessages = normalizeMessagesForUI(messages);
-  callAllMessageCallbacks(get(messageCallbacksAtom), updated);
+  callCallbacks(get(messageCallbacksAtom), "onMessageUpdated", updated);
   set(messagesAtom, processedMessages);
   return true;
 }
