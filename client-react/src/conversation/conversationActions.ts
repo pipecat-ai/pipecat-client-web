@@ -33,7 +33,7 @@ export const sortByCreatedAt = (
   a: ConversationMessage,
   b: ConversationMessage
 ): number => {
-  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
 };
 
 export const isMessageEmpty = (message: ConversationMessage): boolean => {
@@ -108,7 +108,7 @@ export const mergeMessages = (
         final: currentMessage.final !== false,
       };
     } else {
-      mergedMessages.push({ ...currentMessage });
+      mergedMessages.push(currentMessage);
     }
   }
 
@@ -380,7 +380,6 @@ export function upsertUserTranscript(
 
     const updatedMessage: ConversationMessage = {
       ...target,
-      final: final ? true : target.final,
       parts,
       updatedAt: now.toISOString(),
     };
@@ -397,7 +396,7 @@ export function upsertUserTranscript(
   // Create a new user message initialized with this transcript
   const newMessage: ConversationMessage = {
     role: "user",
-    final,
+    final: false,
     parts: [
       {
         text,
@@ -564,9 +563,7 @@ export function updateAssistantBotOutput(
     }
   }
 
-  // Intentionally skip filterEmptyMessages and deduplicateFunctionCalls here:
-  // mid-stream assistant messages are still empty/partial and should not be pruned.
-  const processedMessages = mergeMessages([...messages].sort(sortByCreatedAt));
+  const processedMessages = normalizeMessagesForUI(messages);
 
   const cbs = get(messageCallbacksAtom);
   const updatedMsg =

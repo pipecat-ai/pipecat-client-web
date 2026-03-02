@@ -46,17 +46,12 @@ describe("user transcript assembly", () => {
       // First final transcript
       harness.emitUserTranscript("First sentence.", true);
 
-      // Second transcript -- since the message is now final, this creates a new message
+      // Message stays non-final, so second transcript adds a new part
       harness.emitUserTranscript("Second sentence.", false);
 
       const messages = harness.getMessages();
-      // The store creates a new user message after the first is finalized
-      expect(messages.length).toBeGreaterThanOrEqual(1);
-      // The last user message should contain the second transcript
-      const lastUser = [...messages]
-        .reverse()
-        .find((m) => m.role === "user");
-      expect(lastUser).toBeDefined();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].parts).toHaveLength(2);
     });
   });
 
@@ -98,6 +93,93 @@ describe("user transcript assembly", () => {
 
       const userText = getUserText(messages[1]);
       expect(userText).toContain("Hi back!");
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // VAD gaps within same turn
+  // -----------------------------------------------------------------------
+  describe("VAD gaps within same turn", () => {
+    it("keeps user message open across VAD stop/start without bot activity", () => {
+      // Simulate: user speaks, VAD fires stop/start (breathing pause), user continues
+      playScenario(harness, {
+        steps: [
+          { type: "userStartedSpeaking" },
+          {
+            type: "userTranscript",
+            text: "Can you help me",
+            final: false,
+          },
+          {
+            type: "userTranscript",
+            text: "Can you help me find",
+            final: true,
+          },
+          { type: "userStoppedSpeaking" },
+          // VAD gap — user pauses briefly, VAD fires stop then start
+          { type: "userStartedSpeaking" },
+          {
+            type: "userTranscript",
+            text: "the name for a shape",
+            final: false,
+          },
+          {
+            type: "userTranscript",
+            text: "the name for a shape that",
+            final: true,
+          },
+          { type: "userStoppedSpeaking" },
+        ],
+      });
+      jest.advanceTimersByTime(5000);
+
+      const messages = harness.getMessages();
+      // All transcripts should be in a single user message
+      const userMessages = messages.filter((m) => m.role === "user");
+      expect(userMessages).toHaveLength(1);
+      expect(userMessages[0].parts.length).toBeGreaterThanOrEqual(2);
+      expect(getUserText(userMessages[0])).toContain("Can you help me find");
+      expect(getUserText(userMessages[0])).toContain(
+        "the name for a shape that"
+      );
+    });
+
+    it("splits user messages when bot responds between VAD gaps", () => {
+      // Simulate: user speaks, bot responds, then user speaks again
+      playScenario(harness, {
+        steps: [
+          { type: "userStartedSpeaking" },
+          { type: "userTranscript", text: "Hello", final: true },
+          { type: "userStoppedSpeaking" },
+          // Bot responds
+          { type: "botStartedSpeaking" },
+          {
+            type: "botOutput",
+            text: "Hi",
+            spoken: false,
+            aggregatedBy: "word",
+          },
+          {
+            type: "botOutput",
+            text: "Hi",
+            spoken: true,
+            aggregatedBy: "word",
+          },
+          { type: "botStoppedSpeaking" },
+          { type: "wait", ms: 2500 },
+          // User speaks again — this should be a new message
+          { type: "userStartedSpeaking" },
+          { type: "userTranscript", text: "How are you", final: true },
+          { type: "userStoppedSpeaking" },
+        ],
+      });
+      jest.advanceTimersByTime(5000);
+
+      const messages = harness.getMessages();
+      const userMessages = messages.filter((m) => m.role === "user");
+      expect(userMessages).toHaveLength(2);
+      expect(getUserText(userMessages[0])).toContain("Hello");
+      expect(getUserText(userMessages[1])).toContain("How are you");
     });
   });
 

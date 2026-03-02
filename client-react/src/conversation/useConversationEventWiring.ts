@@ -265,11 +265,34 @@ export function useConversationEventWiring() {
 
   useRTVIClientEvent(
     RTVIEvent.UserStartedSpeaking,
-    useCallback(() => {
-      // User started a new turn; bot's turn is done. Fast-forward: finalize immediately.
-      finalizeLastAssistantMessageIfPending();
-      clearTimeout(userStoppedTimeout.current);
-    }, [finalizeLastAssistantMessageIfPending])
+    useAtomCallback(
+      useCallback(
+        (get, set) => {
+          // User started a new turn; bot's turn is done. Fast-forward: finalize immediately.
+          finalizeLastAssistantMessageIfPending();
+          clearTimeout(userStoppedTimeout.current);
+
+          // Only finalize the previous user message if the bot has responded since
+          // the user last spoke. This prevents finalizing during VAD gaps (brief
+          // breathing pauses within the same user turn where UserStoppedSpeaking/
+          // UserStartedSpeaking fire without an actual turn change).
+          const messages = get(messagesAtom);
+          const lastUserIdx = findLastIndex(
+            messages,
+            (m: ConversationMessage) => m.role === "user"
+          );
+          if (lastUserIdx !== -1 && !messages[lastUserIdx].final) {
+            const hasBotActivityAfterUser = messages
+              .slice(lastUserIdx + 1)
+              .some((m: ConversationMessage) => m.role === "assistant");
+            if (hasBotActivityAfterUser) {
+              finalizeLastMessage(get, set, "user");
+            }
+          }
+        },
+        [finalizeLastAssistantMessageIfPending]
+      )
+    )
   );
 
   useRTVIClientEvent(

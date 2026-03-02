@@ -141,6 +141,20 @@ export function createStoreHarness() {
     }
   }
 
+  /**
+   * Finalize the last user message if it's pending (not yet final).
+   * Called on UserStartedSpeaking to close the previous user turn.
+   */
+  function finalizeUserIfPending() {
+    const messages = store.get(messagesAtom);
+    const lastUser = [...messages]
+      .reverse()
+      .find((m: ConversationMessage) => m.role === "user");
+    if (lastUser && !lastUser.final) {
+      finalizeUser();
+    }
+  }
+
   function removeEmptyLastUserMessage() {
     actions.removeEmptyLastMessage(store.get, store.set, "user");
   }
@@ -263,7 +277,10 @@ export function createStoreHarness() {
     id: string,
     callback: (msg: ConversationMessage) => void
   ) {
-    actions.registerMessageCallback(store.get, store.set, id, callback);
+    actions.registerMessageCallback(store.get, store.set, id, {
+      onMessageCreated: callback,
+      onMessageUpdated: callback,
+    });
   }
 
   function unregisterMessageCallback(id: string) {
@@ -278,6 +295,7 @@ export function createStoreHarness() {
     finalizeAssistant,
     finalizeUser,
     finalizeAssistantIfPending,
+    finalizeUserIfPending,
     removeEmptyLastUserMessage,
     getMessages,
     getBotOutputState,

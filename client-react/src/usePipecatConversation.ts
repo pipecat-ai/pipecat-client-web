@@ -10,7 +10,6 @@ import { useCallback, useEffect, useId, useMemo } from "react";
 
 import {
   registerMessageCallback,
-  sortByCreatedAt,
   unregisterMessageCallback,
 } from "./conversation/conversationActions";
 import {
@@ -203,9 +202,8 @@ export const usePipecatConversation = ({
       return message;
     });
 
-    // Messages are already normalized (filtered, deduped, merged) on write.
-    // Only sort is needed here for stable display ordering.
-    return [...processedMessages].sort(sortByCreatedAt);
+    // Messages are already normalized (sorted, filtered, deduped, merged) on write.
+    return processedMessages;
   }, [messages, botOutputMessageState, aggregationMetadata]);
 
   return {
