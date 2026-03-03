@@ -19,6 +19,15 @@ import { usePipecatClientScreenShareControl } from "./usePipecatClientScreenShar
 import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 import { VoiceVisualizer } from "./VoiceVisualizer";
+import {
+  deduplicateFunctionCalls,
+  filterEmptyMessages,
+  isMessageEmpty,
+  mergeMessages,
+  sortByCreatedAt,
+} from "./conversation/conversationActions";
+import { useConversationContext } from "./conversation/PipecatConversationProvider";
+import { usePipecatConversation } from "./usePipecatConversation";
 
 export {
   PipecatClientAudio,
@@ -36,4 +45,22 @@ export {
   usePipecatClientTransportState,
   useRTVIClientEvent,
   VoiceVisualizer,
+  // Conversation
+  useConversationContext,
+  usePipecatConversation,
+  deduplicateFunctionCalls,
+  filterEmptyMessages,
+  isMessageEmpty,
+  mergeMessages,
+  sortByCreatedAt,
 };
+
+// Conversation types
+export type {
+  AggregationMetadata,
+  BotOutputText,
+  ConversationMessage,
+  ConversationMessagePart,
+  FunctionCallData,
+  FunctionCallRenderer,
+} from "./conversation/types";
