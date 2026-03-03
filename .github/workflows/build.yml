@@ -28,7 +28,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '24'
         cache: 'npm'
         registry-url: 'https://registry.npmjs.org'
         
@@ -38,7 +38,7 @@ jobs:
         git config --global user.email 'github-actions@github.com'
         
     - name: Install dependencies
-      run: npm ci --include=dev
+      run: npm install
       
     - name: Build specific client
       if: github.event.inputs.client != ''

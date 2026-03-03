@@ -6,14 +6,23 @@
     "client-react"
   ],
   "scripts": {
-    "build": "npm run build --workspaces"
+    "build": "npm run build --workspaces",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "client-js/**/*.{ts,tsx}": "eslint --config client-js/eslint.config.mjs",
+    "client-react/src/**/*.{ts,tsx}": "eslint --config client-react/eslint.config.mjs"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.0.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@parcel/packager-ts": "^2.16.4",
     "@parcel/transformer-typescript-tsc": "^2.16.4",
     "@parcel/transformer-typescript-types": "^2.16.4",
     "@parcel/validator-typescript": "^2.16.4",
     "@swc/helpers": "^0.5.13",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.0.0",
     "parcel": "^2.16.4",
     "typescript": "^5.8.3"
   }
