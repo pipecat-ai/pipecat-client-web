@@ -10,6 +10,13 @@
     "type": "git",
     "url": "git+https://github.com/pipecat-ai/pipecat-client-web.git"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.module.js",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
     "dist",
     "package.json",
