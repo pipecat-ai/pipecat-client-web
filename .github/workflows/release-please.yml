@@ -1,0 +1,66 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      js_release_created: ${{ steps.release.outputs['client-js--release_created'] }}
+      react_release_created: ${{ steps.release.outputs['client-react--release_created'] }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish-js:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.js_release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install
+      - run: npm run test -w client-js
+      - run: npm run build -w client-js
+      - run: npm publish --provenance
+        working-directory: client-js
+
+  publish-react:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.react_release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install
+      - run: npm run test -w client-js
+      - run: npm run test -w client-react
+      - run: npm run build -w client-js
+      - run: npm run build -w client-react
+      - run: npm publish --provenance
+        working-directory: client-react

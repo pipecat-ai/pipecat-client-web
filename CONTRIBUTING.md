@@ -14,11 +14,39 @@ We welcome contributions of all kinds! Your help is appreciated. Follow these st
    ```
 4. **Make your changes**: Edit or add files as necessary.
 5. **Test your changes**: Ensure that your changes look correct and follow the style set in the codebase.
-6. **Commit your changes**: Once you're satisfied with your changes, commit them with a meaningful message.
+6. **Commit your changes**: This project uses [Conventional Commits](https://www.conventionalcommits.org/). Each commit message must have a **type**, an optional **scope**, and a short description:
 
-```bash
-git commit -m "Description of your changes"
-```
+   ```
+   <type>(<scope>): <description>
+   ```
+
+   Common types:
+
+   | Type       | When to use                                           |
+   | ---------- | ----------------------------------------------------- |
+   | `feat`     | A new feature                                         |
+   | `fix`      | A bug fix                                             |
+   | `docs`     | Documentation-only changes                            |
+   | `refactor` | Code changes that neither fix a bug nor add a feature |
+   | `test`     | Adding or updating tests                              |
+   | `chore`    | Maintenance tasks (deps, CI, tooling)                 |
+   | `ci`       | CI/CD configuration changes                           |
+
+   Use a scope to indicate which package is affected:
+
+   ```bash
+   # Feature scoped to client-react
+   git commit -m "feat(client-react): add useMediaDevices hook"
+
+   # Bug fix scoped to client-js
+   git commit -m "fix(client-js): prevent duplicate connect events"
+
+   # Cross-cutting change (no scope needed)
+   git commit -m "docs: add commit message examples to CONTRIBUTING"
+
+   # Breaking change — add a ! after the type/scope
+   git commit -m "feat(client-js)!: rename RTVIClient to PipecatClient"
+   ```
 
 7. **Push your changes**: Push your branch to your forked repository.
 
