@@ -5,6 +5,14 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.0...client-js-v1.6.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* add exports map for proper ESM/CJS resolution ([a66617b](https://github.com/pipecat-ai/pipecat-client-web/commit/a66617b9f8f0b9198a2a25d6540e789baf5e2b03))
+* add exports map for proper ESM/CJS resolution ([e6b6ef2](https://github.com/pipecat-ai/pipecat-client-web/commit/e6b6ef2b15103a9f9762f94d0d221b83a407bc0c)), closes [#114](https://github.com/pipecat-ai/pipecat-client-web/issues/114)
+
 ## [Unreleased]
 
 ### Fixed
