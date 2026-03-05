@@ -5,6 +5,22 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.1.0...client-react-v1.2.0) (2026-03-05)
+
+
+### Features
+
+* **client-react:** built-in conversation state management ([401cb0f](https://github.com/pipecat-ai/pipecat-client-web/commit/401cb0fb94c7a8c2aee07743af9b07c27de17400))
+* **client-react:** built-in conversation state management ([b05c13d](https://github.com/pipecat-ai/pipecat-client-web/commit/b05c13d92ff41873db467423a7e946bf0461c48f))
+* **client-react:** improve turn detection and rendering performance ([4db5611](https://github.com/pipecat-ai/pipecat-client-web/commit/4db5611cc31eb9c963895d4bfb42e55895e95991))
+* **client-react:** replace onMessageAdded with typed lifecycle callbacks ([729036a](https://github.com/pipecat-ai/pipecat-client-web/commit/729036a288c797b7097d5847f54073797b83353f))
+
+
+### Bug Fixes
+
+* add exports map for proper ESM/CJS resolution ([a66617b](https://github.com/pipecat-ai/pipecat-client-web/commit/a66617b9f8f0b9198a2a25d6540e789baf5e2b03))
+* add exports map for proper ESM/CJS resolution ([e6b6ef2](https://github.com/pipecat-ai/pipecat-client-web/commit/e6b6ef2b15103a9f9762f94d0d221b83a407bc0c)), closes [#114](https://github.com/pipecat-ai/pipecat-client-web/issues/114)
+
 ## [Unreleased]
 
 ### Fixed
