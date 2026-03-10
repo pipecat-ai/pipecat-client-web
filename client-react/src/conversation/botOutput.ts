@@ -17,7 +17,7 @@ export type BotOutputMessageCursor = {
 };
 
 const normalizeForMatching = (text: string): string => {
-  return text.toLowerCase().replace(/[^\w\s]/g, "");
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "");
 };
 
 const skipWhitespace = (text: string, start: number): number => {
@@ -96,7 +96,7 @@ const findSpokenPositionInUnspoken = (
   if (matchedWords < spokenWords.length) return actualStart;
 
   // Convert word matches back into a character position in the original unspoken string.
-  const isWordChar = (char: string): boolean => /[a-zA-Z0-9]/.test(char);
+  const isWordChar = (char: string): boolean => /[\p{L}\p{N}]/u.test(char);
   let wordCount = 0;
   let i = actualStart;
   let inWord = false;

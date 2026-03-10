@@ -270,6 +270,53 @@ describe("applySpokenBotOutputProgress", () => {
       expect(result).toBe(true);
     });
 
+    it("handles non-latin characters (CJK, accented, Cyrillic)", () => {
+      const parts = [textPart("こんにちは世界 today")];
+      const c = cursor(1);
+
+      const result = applySpokenBotOutputProgress(c, parts, "こんにちは世界");
+
+      expect(result).toBe(true);
+      expect(c.currentCharIndex).toBeGreaterThan(0);
+    });
+
+    it("handles accented characters", () => {
+      const parts = [textPart("café résumé")];
+      const c = cursor(1);
+
+      const result = applySpokenBotOutputProgress(c, parts, "café");
+
+      expect(result).toBe(true);
+      expect(c.currentCharIndex).toBeGreaterThan(0);
+    });
+
+    it("handles quoted text without appending extra content", () => {
+      const parts = [textPart('She said "hello" to everyone')];
+      const c = cursor(1);
+
+      applySpokenBotOutputProgress(c, parts, "She said");
+      const result = applySpokenBotOutputProgress(c, parts, "hello");
+
+      expect(result).toBe(true);
+      // Cursor should not exceed the original text length
+      expect(c.currentCharIndex).toBeLessThanOrEqual(
+        'She said "hello" '.length
+      );
+    });
+
+    it("handles curly quotes", () => {
+      const parts = [textPart("She said \u201Chello\u201D to everyone")];
+      const c = cursor(1);
+
+      applySpokenBotOutputProgress(c, parts, "She said");
+      const result = applySpokenBotOutputProgress(c, parts, "hello");
+
+      expect(result).toBe(true);
+      expect(c.currentCharIndex).toBeLessThanOrEqual(
+        "She said \u201Chello\u201D ".length
+      );
+    });
+
     it("returns false for non-string part text", () => {
       // Part with non-string text (e.g. ReactNode)
       const parts: ConversationMessagePart[] = [
