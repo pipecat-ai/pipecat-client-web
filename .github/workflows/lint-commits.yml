@@ -1,0 +1,48 @@
+name: Lint Commits
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install commitlint
+        run: |
+          mkdir -p /tmp/commitlint
+          cp .commitlintrc* commitlint.config* /tmp/commitlint/ 2>/dev/null || true
+          cd /tmp/commitlint
+          npm init -y > /dev/null
+          npm install @commitlint/cli @commitlint/config-conventional
+
+      - name: Check that at least one commit is conventional
+        run: |
+          base=${{ github.event.pull_request.base.sha }}
+          head=${{ github.event.pull_request.head.sha }}
+          commits=$(git log --format=%H "$base".."$head")
+          found=false
+          for sha in $commits; do
+            subject=$(git log -1 --format=%s "$sha")
+            if printf '%s\n' "$subject" | /tmp/commitlint/node_modules/.bin/commitlint --cwd /tmp/commitlint 2>/dev/null; then
+              echo "✅ Valid: $subject"
+              found=true
+              break
+            else
+              echo "⏭️  Skipped: $subject"
+            fi
+          done
+          if [ "$found" = false ]; then
+            echo "❌ No commits in this PR follow conventional commit format."
+            echo "At least one commit must match: <type>(<optional scope>): <description>"
+            exit 1
+          fi
