@@ -219,7 +219,7 @@ export class PipecatClient extends RTVIEventEmitter {
         const data = message.data as ErrorData;
         if (data?.fatal) {
           logger.error("Fatal error reported. Disconnecting...");
-          this.disconnect();
+          void this.disconnect();
         }
       },
       onConnected: () => {
@@ -307,7 +307,7 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.BotDisconnected, p);
         if (this._disconnectOnBotDisconnect) {
           logger.info("Bot disconnected. Disconnecting client...");
-          this.disconnect();
+          void this.disconnect();
         }
       },
       onUserStartedSpeaking: () => {
@@ -494,7 +494,7 @@ export class PipecatClient extends RTVIEventEmitter {
           );
           await this._transport.sendReadyMessage();
         } catch (e) {
-          this.disconnect();
+          void this.disconnect();
           reject(e);
           return;
         }
