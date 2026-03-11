@@ -70,7 +70,7 @@ export type RTVIEventCallbacks = Partial<{
   onBotStarted: (botResponse: unknown) => void;
   onBotConnected: (participant: Participant) => void;
   onBotReady: (botReadyData: BotReadyData) => void;
-  onBotDisconnected: (participant: Participant) => void;
+  onBotDisconnected: (participant?: Participant) => void;
   onMetrics: (data: PipecatMetricsData) => void;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,6 +158,13 @@ export interface PipecatClientOptions {
    * Default to false
    */
   enableScreenShare?: boolean;
+
+  /**
+   * Disconnect when the bot disconnects.
+   *
+   * Default to true
+   */
+  disconnectOnBotDisconnect?: boolean;
 }
 
 abstract class RTVIEventEmitter extends (EventEmitter as unknown as new () => TypedEmitter<RTVIEvents>) {}
@@ -167,6 +174,7 @@ export class PipecatClient extends RTVIEventEmitter {
   private _connectResolve: ((value: BotReadyData) => void) | undefined;
   protected _transport: Transport;
   protected _transportWrapper: TransportWrapper;
+  protected _disconnectOnBotDisconnect: boolean;
   declare protected _messageDispatcher: MessageDispatcher;
   protected _functionCallCallbacks: Record<string, FunctionCallCallback> = {};
   protected _abortController: AbortController | undefined;
@@ -181,6 +189,8 @@ export class PipecatClient extends RTVIEventEmitter {
 
     this._transport = options.transport;
     this._transportWrapper = new TransportWrapper(this._transport);
+
+    this._disconnectOnBotDisconnect = options.disconnectOnBotDisconnect ?? true;
 
     // Wrap transport callbacks with event triggers
     // This allows for either functional callbacks or .on / .off event listeners
@@ -295,6 +305,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotDisconnected: (p) => {
         options?.callbacks?.onBotDisconnected?.(p);
         this.emit(RTVIEvent.BotDisconnected, p);
+        if (this._disconnectOnBotDisconnect) {
+          logger.info("Bot disconnected. Disconnecting client...");
+          this.disconnect();
+        }
       },
       onUserStartedSpeaking: () => {
         options?.callbacks?.onUserStartedSpeaking?.();
