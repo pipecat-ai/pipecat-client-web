@@ -3,6 +3,9 @@
   "rules": {
     "scope-enum": [2, "always", ["js", "react", ""]],
     "body-max-line-length": [0],
-    "footer-max-line-length": [0]
+    "footer-max-line-length": [0],
+    "header-case": [0],
+    "body-case": [0],
+    "subject-case": [0]
   }
 }
