@@ -25,6 +25,32 @@ import { findLast, findLastIndex } from "./utils";
 /** Max time gap (ms) between consecutive same-role messages for merging. */
 const MERGE_WINDOW_MS = 30_000;
 
+/**
+ * Unicode characters used by `FilterIncompleteTurns` on the server to mark
+ * turn completion status. The LLM emits one of these as the very first
+ * character of every response:
+ *
+ *   ✓ (U+2713) — complete turn
+ *   ○ (U+25CB) — incomplete short
+ *   ◐ (U+25D0) — incomplete long
+ *
+ * They must be stripped before the text reaches conversation state.
+ */
+const TURN_COMPLETION_MARKERS = new Set(["\u2713", "\u25CB", "\u25D0"]);
+
+/**
+ * Strip a leading turn-completion marker (and any trailing space) from `text`.
+ * Returns the cleaned string, which may be empty.
+ */
+export function stripTurnCompletionMarker(text: string): string {
+  if (text.length === 0) return text;
+  if (TURN_COMPLETION_MARKERS.has(text[0])) {
+    // Remove marker and optional single trailing space
+    return text[1] === " " ? text.slice(2) : text.slice(1);
+  }
+  return text;
+}
+
 // ---------------------------------------------------------------------------
 // Public utility functions (exported for consumers)
 // ---------------------------------------------------------------------------
@@ -422,6 +448,11 @@ export function updateAssistantBotOutput(
   spoken: boolean,
   aggregatedBy?: string
 ) {
+  // Strip turn-completion markers emitted by FilterIncompleteTurns before
+  // the text enters conversation state.
+  text = stripTurnCompletionMarker(text);
+  if (text.length === 0) return;
+
   const now = new Date();
   const messages = [...get(messagesAtom)];
   const botOutputMessageState = new Map(get(botOutputMessageStateAtom));
