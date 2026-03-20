@@ -110,7 +110,7 @@ export type RTVIEvents = Partial<{
   botStarted: (botResponse: unknown) => void;
   botConnected: (participant: Participant) => void;
   botReady: (botData: BotReadyData) => void;
-  botDisconnected: (participant?: Participant) => void;
+  botDisconnected: (participant: Participant) => void;
   error: (message: RTVIMessage) => void;
 
   /** server messaging */
