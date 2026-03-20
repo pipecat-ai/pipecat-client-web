@@ -3,6 +3,7 @@ import {
   filterEmptyMessages,
   isMessageEmpty,
   mergeMessages,
+  stripTurnCompletionMarker,
 } from "@/conversation/conversationActions";
 import type { ConversationMessage } from "@/conversation/types";
 
@@ -405,6 +406,85 @@ describe("conversationStore", () => {
       const merged = mergeMessages(messages);
 
       expect(merged).toHaveLength(2);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // stripTurnCompletionMarker
+  // -----------------------------------------------------------------------
+  describe("stripTurnCompletionMarker", () => {
+    it("strips ✓ marker with trailing space", () => {
+      expect(stripTurnCompletionMarker("✓ Hello")).toBe("Hello");
+    });
+
+    it("strips ○ marker (incomplete short)", () => {
+      expect(stripTurnCompletionMarker("○")).toBe("");
+    });
+
+    it("strips ◐ marker (incomplete long)", () => {
+      expect(stripTurnCompletionMarker("◐")).toBe("");
+    });
+
+    it("strips marker without trailing space", () => {
+      expect(stripTurnCompletionMarker("✓Hello")).toBe("Hello");
+    });
+
+    it("does not strip markers that are not at the start", () => {
+      expect(stripTurnCompletionMarker("Hello ✓")).toBe("Hello ✓");
+    });
+
+    it("returns empty string unchanged", () => {
+      expect(stripTurnCompletionMarker("")).toBe("");
+    });
+
+    it("does not strip regular text", () => {
+      expect(stripTurnCompletionMarker("Hello world")).toBe("Hello world");
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // updateAssistantBotOutput -- turn completion marker filtering
+  // -----------------------------------------------------------------------
+  describe("updateAssistantBotOutput (turn completion markers)", () => {
+    it("strips ✓ marker from first unspoken chunk", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [],
+      });
+
+      harness.updateAssistantBotOutput("✓ Japan", false, false, "word");
+
+      const parts = harness.getMessages()[0].parts;
+      expect(parts).toHaveLength(1);
+      expect(parts[0].text).toBe("Japan");
+    });
+
+    it("drops chunk entirely when it is only a marker", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [],
+      });
+
+      harness.updateAssistantBotOutput("○", false, false, "word");
+
+      const parts = harness.getMessages()[0].parts;
+      expect(parts).toHaveLength(0);
+    });
+
+    it("strips marker from spoken chunks too", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [],
+      });
+
+      harness.updateAssistantBotOutput("✓ Hello", false, true, "word");
+
+      const parts = harness.getMessages()[0].parts;
+      expect(parts).toHaveLength(1);
+      expect(parts[0].text).toBe("Hello");
     });
   });
 
