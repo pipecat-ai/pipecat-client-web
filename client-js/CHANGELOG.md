@@ -5,17 +5,15 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.1...client-js-v1.7.0) (2026-03-24)
+
+### Features
+
+* Introduced a new `PipecatClientOption`: `disconnectOnBotDisconnect` (defaults to True). When set to `True`, the client will disconnect whenever the bot disconnects. This also fixed a behavioral regression, where the client was no longer disconnecting automatically. ([2f6fbdb](https://github.com/pipecat-ai/pipecat-client-web/commit/2f6fbdbdd44e01faa80f11d70c93e73b41cf3ad7))
+
 ## [1.6.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.0...client-js-v1.6.1) (2026-03-05)
 
-
 ### Bug Fixes
-
-* add exports map for proper ESM/CJS resolution ([a66617b](https://github.com/pipecat-ai/pipecat-client-web/commit/a66617b9f8f0b9198a2a25d6540e789baf5e2b03))
-* add exports map for proper ESM/CJS resolution ([e6b6ef2](https://github.com/pipecat-ai/pipecat-client-web/commit/e6b6ef2b15103a9f9762f94d0d221b83a407bc0c)), closes [#114](https://github.com/pipecat-ai/pipecat-client-web/issues/114)
-
-## [Unreleased]
-
-### Fixed
 
 - Added conditional `exports` map for proper ESM/CJS resolution, fixing SSR errors in Vite where named exports from CJS modules could not be imported ([#114](https://github.com/pipecat-ai/pipecat-client-web/issues/114))
 
