@@ -109,7 +109,9 @@ describe("PipecatClient Methods", () => {
   test("llm-function-call-started should trigger callback and emit event", async () => {
     let callbackTriggered = false;
     let eventTriggered = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let callbackData: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let eventData: any = null;
 
     const clientWithCallbacks = new PipecatClient({
@@ -147,7 +149,9 @@ describe("PipecatClient Methods", () => {
   test("llm-function-call-in-progress should trigger callback and emit event", async () => {
     let callbackTriggered = false;
     let eventTriggered = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let callbackData: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let eventData: any = null;
 
     const clientWithCallbacks = new PipecatClient({
@@ -191,7 +195,9 @@ describe("PipecatClient Methods", () => {
   test("llm-function-call-stopped should trigger callback and emit event", async () => {
     let callbackTriggered = false;
     let eventTriggered = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let callbackData: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let eventData: any = null;
 
     const clientWithCallbacks = new PipecatClient({
@@ -238,7 +244,9 @@ describe("PipecatClient Methods", () => {
   test("deprecated llm-function-call should trigger callback and emit event", async () => {
     let callbackTriggered = false;
     let eventTriggered = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let callbackData: any = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let eventData: any = null;
 
     const clientWithCallbacks = new PipecatClient({
@@ -343,6 +351,81 @@ describe("PipecatClient Methods", () => {
     await client.connect();
     client.enableScreenShare(true);
     expect(client.isSharingScreen).toBe(true);
+  });
+
+  test("should auto-disconnect when bot disconnects (default behavior)", async () => {
+    await client.connect();
+    expect(client.connected).toBe(true);
+
+    const disconnectedPromise = new Promise<void>((resolve) => {
+      client.on(RTVIEvent.TransportStateChanged, (state) => {
+        if (state === "disconnected") resolve();
+      });
+    });
+
+    (client.transport as TransportStub).simulateBotDisconnect();
+
+    await disconnectedPromise;
+
+    expect(client.connected).toBe(false);
+    expect(client.state).toBe("disconnected");
+  });
+
+  test("should NOT auto-disconnect when bot disconnects if disconnectOnBotDisconnect is false", async () => {
+    const clientNoBotDisconnect = new PipecatClient({
+      transport: TransportStub.create(),
+      disconnectOnBotDisconnect: false,
+    });
+
+    await clientNoBotDisconnect.connect();
+    expect(clientNoBotDisconnect.connected).toBe(true);
+
+    let disconnectCalled = false;
+    clientNoBotDisconnect.on(RTVIEvent.Disconnected, () => {
+      disconnectCalled = true;
+    });
+
+    (clientNoBotDisconnect.transport as TransportStub).simulateBotDisconnect();
+
+    // Yield to allow any async disconnect to fire if it were going to
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(disconnectCalled).toBe(false);
+    expect(clientNoBotDisconnect.connected).toBe(true);
+    expect(clientNoBotDisconnect.state).toBe("ready");
+  });
+
+  test("should invoke onBotDisconnected callback regardless of disconnectOnBotDisconnect setting", async () => {
+    let callbackCalledDefault = false;
+    let callbackCalledOptOut = false;
+
+    const clientDefault = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onBotDisconnected: () => {
+          callbackCalledDefault = true;
+        },
+      },
+    });
+
+    const clientOptOut = new PipecatClient({
+      transport: TransportStub.create(),
+      disconnectOnBotDisconnect: false,
+      callbacks: {
+        onBotDisconnected: () => {
+          callbackCalledOptOut = true;
+        },
+      },
+    });
+
+    await clientDefault.connect();
+    await clientOptOut.connect();
+
+    (clientDefault.transport as TransportStub).simulateBotDisconnect();
+    (clientOptOut.transport as TransportStub).simulateBotDisconnect();
+
+    expect(callbackCalledDefault).toBe(true);
+    expect(callbackCalledOptOut).toBe(true);
   });
 });
 

@@ -5,7 +5,12 @@
  */
 
 import { PipecatClientOptions, Tracks, Transport } from "../../client";
-import { RTVIMessage, RTVIMessageType, TransportState } from "../../rtvi";
+import {
+  Participant,
+  RTVIMessage,
+  RTVIMessageType,
+  TransportState,
+} from "../../rtvi";
 
 class mockState {
   public isSharingScreen = false;
@@ -149,6 +154,11 @@ export class TransportStub extends Transport {
   // to simulate a message being received
   public handleMessage(message: RTVIMessage): void {
     this._onMessage(message);
+  }
+
+  // to simulate the bot disconnecting
+  public simulateBotDisconnect(participant: Participant): void {
+    this._callbacks.onBotDisconnected?.(participant);
   }
 
   public get state(): TransportState {
