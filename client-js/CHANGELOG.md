@@ -5,6 +5,13 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.1...client-js-v1.7.0) (2026-03-24)
+
+
+### Features
+
+* **js:** disconnect the client when the bot disconnects, but give the option to stay connected ([2f6fbdb](https://github.com/pipecat-ai/pipecat-client-web/commit/2f6fbdbdd44e01faa80f11d70c93e73b41cf3ad7))
+
 ## [1.6.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.0...client-js-v1.6.1) (2026-03-05)
 
 
