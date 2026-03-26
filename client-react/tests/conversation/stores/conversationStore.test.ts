@@ -488,6 +488,101 @@ describe("conversationStore", () => {
     });
   });
 
+  // -----------------------------------------------------------------------
+  // injectMessage -- backdating during active assistant message
+  // -----------------------------------------------------------------------
+  describe("injectMessage (backdating)", () => {
+    const T0 = "2024-01-01T00:00:00.000Z";
+
+    it("backdates injected message before active assistant message", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [{ text: "Hello", final: false, createdAt: T0 }],
+      });
+      const assistantCreatedAt = harness.getMessages()[0].createdAt;
+
+      harness.injectMessage({
+        role: "system",
+        parts: [{ text: "System info", final: true, createdAt: T0 }],
+      });
+
+      const messages = harness.getMessages();
+      expect(messages).toHaveLength(2);
+      // System message should sort before the assistant message
+      expect(messages[0].role).toBe("system");
+      expect(messages[1].role).toBe("assistant");
+      expect(messages[0].createdAt < assistantCreatedAt).toBe(true);
+    });
+
+    it("does not backdate when assistant message is final", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [{ text: "Hello", final: false, createdAt: T0 }],
+      });
+      harness.finalizeAssistant();
+
+      harness.injectMessage({
+        role: "system",
+        parts: [{ text: "System info", final: true, createdAt: T0 }],
+      });
+
+      const messages = harness.getMessages();
+      // System message should sort after the finalized assistant message
+      expect(messages[0].role).toBe("assistant");
+      expect(messages[1].role).toBe("system");
+    });
+
+    it("does not backdate when no assistant message exists", () => {
+      harness.injectMessage({
+        role: "system",
+        parts: [{ text: "System info", final: true, createdAt: T0 }],
+      });
+
+      const messages = harness.getMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].role).toBe("system");
+    });
+
+    it("does not backdate injected user messages", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [{ text: "Hello", final: false, createdAt: T0 }],
+      });
+
+      harness.injectMessage({
+        role: "user",
+        parts: [{ text: "Hi there", final: true, createdAt: T0 }],
+      });
+
+      const messages = harness.getMessages();
+      // User message should sort after the assistant (not backdated)
+      expect(messages[messages.length - 1].role).toBe("user");
+    });
+
+    it("does not backdate when non-final assistant is not the last message", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [{ text: "Hello", final: false, createdAt: T0 }],
+      });
+      // User message comes after the assistant
+      harness.emitUserTranscript("Hey", true);
+      harness.finalizeUser();
+
+      harness.injectMessage({
+        role: "system",
+        parts: [{ text: "System info", final: true, createdAt: T0 }],
+      });
+
+      const messages = harness.getMessages();
+      // System message should be last, not backdated before the user message
+      expect(messages[messages.length - 1].role).toBe("system");
+    });
+  });
+
   describe("filterEmptyMessages", () => {
     it("removes empty messages that have a later non-empty message with same role", () => {
       const messages: ConversationMessage[] = [

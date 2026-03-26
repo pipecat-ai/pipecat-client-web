@@ -9,7 +9,10 @@ import {
   botOutputMessageStateAtom,
   messagesAtom,
 } from "@/conversation/conversationAtoms";
-import type { ConversationMessage } from "@/conversation/types";
+import type {
+  ConversationMessage,
+  ConversationMessagePart,
+} from "@/conversation/types";
 
 /**
  * Store-level test harness that replicates the ConversationProvider's
@@ -287,6 +290,13 @@ export function createStoreHarness() {
     actions.unregisterMessageCallback(store.get, store.set, id);
   }
 
+  function injectMessage(messageData: {
+    role: "user" | "assistant" | "system";
+    parts: ConversationMessagePart[];
+  }) {
+    actions.injectMessage(store.get, store.set, messageData);
+  }
+
   return {
     reset,
     ensureAssistantMessage,
@@ -311,6 +321,7 @@ export function createStoreHarness() {
     updateFunctionCall,
     updateLastStartedFunctionCall,
     updateAssistantBotOutput,
+    injectMessage,
     registerMessageCallback,
     unregisterMessageCallback,
   };
