@@ -16,7 +16,7 @@ export type BotOutputMessageCursor = {
   partFinalFlags: boolean[];
 };
 
-const normalizeForMatching = (text: string): string => {
+export const normalizeForMatching = (text: string): string => {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "");
 };
 
@@ -149,8 +149,10 @@ export function hasUnspokenContent(
 }
 
 /**
- * Advances the cursor for spoken text. Returns true if the cursor was advanced
- * (text was consumed), false if there was nothing to advance (e.g. no parts).
+ * Attempts to consume spoken text against the current cursor position.
+ * Returns true if the text was successfully consumed (cursor may or may not
+ * advance — pure punctuation is consumed without moving the cursor), or false
+ * if there was nothing to consume (e.g. no parts, all parts already spoken).
  * Used to detect "spoken-only" bots that never send unspoken events.
  */
 export function applySpokenBotOutputProgress(
@@ -177,6 +179,13 @@ export function applySpokenBotOutputProgress(
 
   const partText = currentPart.text;
   const startChar = cursor.currentCharIndex;
+
+  // If the spoken text is pure punctuation (e.g. an em dash "—"), normalization
+  // strips it to empty and word-matching would fail. Treat it as successfully
+  // consumed so the cursor stays put and subsequent words continue matching.
+  if (normalizeForMatching(spokenText).trim().length === 0) {
+    return true;
+  }
 
   const newPosition = findSpokenPositionInUnspoken(
     spokenText,
