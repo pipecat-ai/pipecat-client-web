@@ -86,6 +86,61 @@ describe("conversationStore - function calls", () => {
 
       expect(harness.getMessages()).toHaveLength(2);
     });
+
+    it("backdates function call before active assistant message", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [
+          { text: "Let me check", final: false, createdAt: "2024-01-01T00:00:00.000Z" },
+        ],
+      });
+      const assistantCreatedAt = harness.getMessages()[0].createdAt;
+
+      harness.addFunctionCall({ function_name: "get_weather" });
+
+      const messages = harness.getMessages();
+      expect(messages).toHaveLength(2);
+      // Function call should sort before the assistant message
+      expect(messages[0].role).toBe("function_call");
+      expect(messages[1].role).toBe("assistant");
+      expect(messages[0].createdAt < assistantCreatedAt).toBe(true);
+    });
+
+    it("does not backdate when assistant message is final", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [
+          { text: "Done", final: false, createdAt: "2024-01-01T00:00:00.000Z" },
+        ],
+      });
+      harness.finalizeAssistant();
+
+      harness.addFunctionCall({ function_name: "get_weather" });
+
+      const messages = harness.getMessages();
+      expect(messages[0].role).toBe("assistant");
+      expect(messages[1].role).toBe("function_call");
+    });
+
+    it("does not backdate when assistant is not the last message", () => {
+      harness.addMessage({
+        role: "assistant",
+        final: false,
+        parts: [
+          { text: "Hello", final: false, createdAt: "2024-01-01T00:00:00.000Z" },
+        ],
+      });
+      harness.emitUserTranscript("Hey", true);
+      harness.finalizeUser();
+
+      harness.addFunctionCall({ function_name: "get_weather" });
+
+      const messages = harness.getMessages();
+      // Function call should be last, not backdated
+      expect(messages[messages.length - 1].role).toBe("function_call");
+    });
   });
 
   // -----------------------------------------------------------------------
