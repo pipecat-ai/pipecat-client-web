@@ -3,6 +3,7 @@
   "release-type": "node",
   "include-component-in-tag": true,
   "separate-pull-requests": true,
+  "exclude-merges": true,
   "packages": {
     "client-js": {
       "component": "client-js",
