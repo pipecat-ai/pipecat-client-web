@@ -5,6 +5,21 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.2.0...client-react-v1.2.1) (2026-03-31)
+
+
+### Bug Fixes
+
+* **react:** backdate injected messages during active bot response ([ec44e21](https://github.com/pipecat-ai/pipecat-client-web/commit/ec44e21b659bee25cca236599d07c6a93093f6fd))
+* **react:** backdate injected messages during active bot response ([2d5fdf2](https://github.com/pipecat-ai/pipecat-client-web/commit/2d5fdf2285b4eef33867fca4a251d5afe53ceb15))
+* **react:** backdate mid-turn function calls to preserve karaoke cursor ([da6c3e8](https://github.com/pipecat-ai/pipecat-client-web/commit/da6c3e876b87e184962094c0161dbc14dd92b503))
+* **react:** backdate mid-turn function calls to preserve karaoke cursor ([5a885e9](https://github.com/pipecat-ai/pipecat-client-web/commit/5a885e954cdf9a2b1e4282cfdfcd9bf76dcc6bed))
+* **react:** fix karaoke highlighting for non-ASCII text and punctuation ([268f5f6](https://github.com/pipecat-ai/pipecat-client-web/commit/268f5f6910c8e497673604fab2fc511c8a6957c4))
+* **react:** strip turn completion markers from conversation state ([ea78dcf](https://github.com/pipecat-ai/pipecat-client-web/commit/ea78dcf3ec6d9efdc4f08c74e6e19ce479aadbcd))
+* **react:** strip turn completion markers from conversation state ([d5d955b](https://github.com/pipecat-ai/pipecat-client-web/commit/d5d955b284823d6723455ef60b901d9f44a8d770))
+* **react:** treat pure-punctuation spoken text as consumed ([19043f7](https://github.com/pipecat-ai/pipecat-client-web/commit/19043f770a4af475e6eabc9a51cadc86a25ec902))
+* **react:** use Unicode-aware regex for bot output text matching ([be2f9a9](https://github.com/pipecat-ai/pipecat-client-web/commit/be2f9a9008c098d41c56cdc93f230af0ab1c42dd)), closes [#184](https://github.com/pipecat-ai/pipecat-client-web/issues/184)
+
 ## [1.2.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.1.0...client-react-v1.2.0) (2026-03-10)
 
 
