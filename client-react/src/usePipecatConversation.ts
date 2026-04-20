@@ -19,6 +19,7 @@ import {
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
 import type {
   AggregationMetadata,
+  BotOutputFilter,
   ConversationMessage,
   ConversationMessagePart,
 } from "./conversation/types";
@@ -47,6 +48,12 @@ interface Props {
    * Used to determine which aggregations should be excluded from position-based splitting.
    */
   aggregationMetadata?: Record<string, AggregationMetadata>;
+  /**
+   * Filter controlling which portions of BotOutput text are returned.
+   * The underlying atoms always store the full data; this filter controls
+   * what the consumer receives in the `messages` array.
+   */
+  botOutputFilter?: BotOutputFilter;
 }
 
 /**
@@ -72,6 +79,7 @@ export const usePipecatConversation = ({
   onMessageUpdated,
   onMessageAdded,
   aggregationMetadata,
+  botOutputFilter,
 }: Props = {}) => {
   const { injectMessage } = useConversationContext();
 
@@ -164,10 +172,14 @@ export const usePipecatConversation = ({
                 ? part.text.trim()
                 : part.text;
             if (!isSpoken) {
+              // Non-spoken aggregation types follow the unspoken filter
+              const includeUnspoken = botOutputFilter?.unspoken !== false;
               return {
                 ...part,
                 displayMode,
-                text: { spoken: "", unspoken: partText },
+                text: includeUnspoken
+                  ? { spoken: "", unspoken: partText }
+                  : { spoken: "", unspoken: "" },
               };
             }
 
@@ -186,10 +198,16 @@ export const usePipecatConversation = ({
                 ? ""
                 : partText;
 
+            // Apply filter
+            const filteredSpoken =
+              botOutputFilter?.spoken !== false ? spokenText : "";
+            const filteredUnspoken =
+              botOutputFilter?.unspoken !== false ? unspokenText : "";
+
             return {
               ...part,
               displayMode,
-              text: { spoken: spokenText, unspoken: unspokenText },
+              text: { spoken: filteredSpoken, unspoken: filteredUnspoken },
             };
           }
         );
@@ -204,7 +222,7 @@ export const usePipecatConversation = ({
 
     // Messages are already normalized (sorted, filtered, deduped, merged) on write.
     return processedMessages;
-  }, [messages, botOutputMessageState, aggregationMetadata]);
+  }, [messages, botOutputMessageState, aggregationMetadata, botOutputFilter]);
 
   return {
     messages: filteredMessages,
