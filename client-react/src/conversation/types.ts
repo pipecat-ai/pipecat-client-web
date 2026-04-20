@@ -24,6 +24,18 @@ export interface BotOutputText {
 }
 
 /**
+ * Filter controlling which portions of BotOutput text are returned by the hook.
+ * The underlying atoms always store the full data; this filter controls what
+ * the consumer receives.
+ */
+export interface BotOutputFilter {
+  /** Include spoken text (TTS-confirmed portion). Default: true */
+  spoken?: boolean;
+  /** Include unspoken text (LLM output not yet spoken). Default: true */
+  unspoken?: boolean;
+}
+
+/**
  * Metadata for aggregation types to control rendering and speech progress behavior
  */
 export interface AggregationMetadata {

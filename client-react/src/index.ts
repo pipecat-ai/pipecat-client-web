@@ -4,6 +4,15 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+import {
+  deduplicateFunctionCalls,
+  filterEmptyMessages,
+  isMessageEmpty,
+  mergeMessages,
+  sortByCreatedAt,
+} from "./conversation/conversationActions";
+import { filterBotOutputText } from "./conversation/filterBotOutputText";
+import { useConversationContext } from "./conversation/PipecatConversationProvider";
 import { PipecatClientAudio } from "./PipecatClientAudio";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
 import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
@@ -17,25 +26,25 @@ import { usePipecatClientMediaTrack } from "./usePipecatClientMediaTrack";
 import { usePipecatClientMicControl } from "./usePipecatClientMicControl";
 import { usePipecatClientScreenShareControl } from "./usePipecatClientScreenShareControl";
 import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
+import { usePipecatConversation } from "./usePipecatConversation";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 import { VoiceVisualizer } from "./VoiceVisualizer";
-import {
+
+export {
   deduplicateFunctionCalls,
+  filterBotOutputText,
   filterEmptyMessages,
   isMessageEmpty,
   mergeMessages,
-  sortByCreatedAt,
-} from "./conversation/conversationActions";
-import { useConversationContext } from "./conversation/PipecatConversationProvider";
-import { usePipecatConversation } from "./usePipecatConversation";
-
-export {
   PipecatClientAudio,
   PipecatClientCamToggle,
   PipecatClientMicToggle,
   PipecatClientProvider,
   PipecatClientScreenShareToggle,
   PipecatClientVideo,
+  sortByCreatedAt,
+  // Conversation
+  useConversationContext,
   usePipecatClient,
   usePipecatClientCamControl,
   usePipecatClientMediaDevices,
@@ -43,21 +52,15 @@ export {
   usePipecatClientMicControl,
   usePipecatClientScreenShareControl,
   usePipecatClientTransportState,
+  usePipecatConversation,
   useRTVIClientEvent,
   VoiceVisualizer,
-  // Conversation
-  useConversationContext,
-  usePipecatConversation,
-  deduplicateFunctionCalls,
-  filterEmptyMessages,
-  isMessageEmpty,
-  mergeMessages,
-  sortByCreatedAt,
 };
 
 // Conversation types
 export type {
   AggregationMetadata,
+  BotOutputFilter,
   BotOutputText,
   ConversationMessage,
   ConversationMessagePart,
