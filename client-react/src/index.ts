@@ -11,6 +11,7 @@ import {
   mergeMessages,
   sortByCreatedAt,
 } from "./conversation/conversationActions";
+import { filterBotOutputText } from "./conversation/filterBotOutputText";
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
 import { PipecatClientAudio } from "./PipecatClientAudio";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
@@ -31,6 +32,7 @@ import { VoiceVisualizer } from "./VoiceVisualizer";
 
 export {
   deduplicateFunctionCalls,
+  filterBotOutputText,
   filterEmptyMessages,
   isMessageEmpty,
   mergeMessages,

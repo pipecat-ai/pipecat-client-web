@@ -16,6 +16,7 @@ import {
   botOutputMessageStateAtom,
   messagesAtom,
 } from "./conversation/conversationAtoms";
+import { filterBotOutputText } from "./conversation/filterBotOutputText";
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
 import type {
   AggregationMetadata,
@@ -172,14 +173,14 @@ export const usePipecatConversation = ({
                 ? part.text.trim()
                 : part.text;
             if (!isSpoken) {
-              // Non-spoken aggregation types follow the unspoken filter
-              const includeUnspoken = botOutputFilter?.unspoken !== false;
+              // Non-spoken aggregation types: all content is "unspoken".
               return {
                 ...part,
                 displayMode,
-                text: includeUnspoken
-                  ? { spoken: "", unspoken: partText }
-                  : { spoken: "", unspoken: "" },
+                text: filterBotOutputText(
+                  { spoken: "", unspoken: partText },
+                  botOutputFilter
+                ),
               };
             }
 
@@ -198,16 +199,13 @@ export const usePipecatConversation = ({
                 ? ""
                 : partText;
 
-            // Apply filter
-            const filteredSpoken =
-              botOutputFilter?.spoken !== false ? spokenText : "";
-            const filteredUnspoken =
-              botOutputFilter?.unspoken !== false ? unspokenText : "";
-
             return {
               ...part,
               displayMode,
-              text: { spoken: filteredSpoken, unspoken: filteredUnspoken },
+              text: filterBotOutputText(
+                { spoken: spokenText, unspoken: unspokenText },
+                botOutputFilter
+              ),
             };
           }
         );
