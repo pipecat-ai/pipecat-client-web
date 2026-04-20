@@ -13,6 +13,7 @@ import {
   unregisterMessageCallback,
 } from "./conversation/conversationActions";
 import {
+  botOutputEventsAtom,
   botOutputMessageStateAtom,
   messagesAtom,
 } from "./conversation/conversationAtoms";
@@ -222,8 +223,11 @@ export const usePipecatConversation = ({
     return processedMessages;
   }, [messages, botOutputMessageState, aggregationMetadata, botOutputFilter]);
 
+  const botOutputEvents = useAtomValue(botOutputEventsAtom);
+
   return {
     messages: filteredMessages,
     injectMessage,
+    botOutputEvents,
   };
 };

@@ -7,7 +7,7 @@
 import { atom } from "jotai";
 
 import type { BotOutputMessageCursor } from "./botOutput";
-import type { ConversationMessage } from "./types";
+import type { BotOutputEvent, ConversationMessage } from "./types";
 
 /** Raw (pre-normalization) message list */
 export const messagesAtom = atom<ConversationMessage[]>([]);
@@ -30,3 +30,8 @@ export const messageCallbacksAtom = atom<Map<string, MessageCallbacks>>(
 
 /** Whether BotOutput events are supported (RTVI 1.1.0+): null = unknown, true/false = detected */
 export const botOutputSupportedAtom = atom<boolean | null>(null);
+
+/** Raw BotOutput events per message (keyed by message createdAt), for debugging/replay */
+export const botOutputEventsAtom = atom<Map<string, BotOutputEvent[]>>(
+  new Map()
+);
