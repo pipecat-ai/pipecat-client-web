@@ -60,6 +60,7 @@ export {
 // Conversation types
 export type {
   AggregationMetadata,
+  BotOutputEvent,
   BotOutputFilter,
   BotOutputText,
   ConversationMessage,
