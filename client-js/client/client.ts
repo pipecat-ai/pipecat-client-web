@@ -351,7 +351,10 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.BotOutput, data);
       },
       onBotTranscript: (text) => {
-        if (!this._botTranscriptionWarned) {
+        const hasSubscriber =
+          !!options?.callbacks?.onBotTranscript ||
+          this.listenerCount(RTVIEvent.BotTranscript) > 0;
+        if (hasSubscriber && !this._botTranscriptionWarned) {
           logger.warn(
             "[Pipecat Client] Bot transcription is deprecated. Please use the onBotOutput instead."
           );
