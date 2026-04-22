@@ -5,6 +5,19 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.2.1...client-react-v1.3.0) (2026-04-22)
+
+
+### Features
+
+* **react:** add botOutputFilter option to usePipecatConversation ([0a73234](https://github.com/pipecat-ai/pipecat-client-web/commit/0a7323439d669ef0a406f21bb1adad7019b319ff))
+
+
+### Bug Fixes
+
+* **react:** handle S2S races, mid-sentence drift, and multi-word TTS events ([4659e66](https://github.com/pipecat-ai/pipecat-client-web/commit/4659e661cb19dbe774eb9afd34d833359cd8aad5))
+* **react:** handle S2S races, mid-sentence drift, and multi-word TTS events ([1b7b478](https://github.com/pipecat-ai/pipecat-client-web/commit/1b7b478b082a5cad266709ce98c0ab39653ede15))
+
 ## [1.2.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.2.0...client-react-v1.2.1) (2026-03-31)
 
 
