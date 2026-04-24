@@ -5,8 +5,10 @@
  */
 
 /**
- * Internal walker that produces an accessibility snapshot from a DOM
- * subtree.
+ * Framework-agnostic walker that produces an accessibility snapshot
+ * from a DOM subtree. Pure browser APIs (no React, no framework
+ * dependencies), so it works from any vanilla-JS runtime that has a
+ * ``document``.
  *
  * Shape and filtering inspired by Playwright's accessibility snapshot
  * and the Playwright MCP server's LLM-facing format. The goal is a
@@ -22,7 +24,7 @@
  * forces layout once for the walk (~1ms for typical pages).
  */
 
-import type { A11yNode, A11ySnapshot } from "@pipecat-ai/client-js";
+import type { A11yNode, A11ySnapshot } from "../rtvi/ui";
 
 // ---------------------------------------------------------------------------
 // Tunables
@@ -80,11 +82,6 @@ export function findElementByRef(ref: string): Element | null {
 export function __resetRefsForTesting(): void {
   refCounter = 0;
   refToElement.clear();
-  // WeakMap has no clear(); replace it.
-  // (The outer `refMap` const references this module-level variable;
-  // for tests that want a clean counter, calling this before building
-  // fresh DOM is enough — the old WeakMap entries GC out with their
-  // detached nodes.)
 }
 
 // ---------------------------------------------------------------------------
@@ -139,11 +136,7 @@ const INTERACTIVE_ROLES = new Set([
   "tab",
 ]);
 
-const LEAF_ROLES = new Set([
-  ...INTERACTIVE_ROLES,
-  "heading",
-  "img",
-]);
+const LEAF_ROLES = new Set([...INTERACTIVE_ROLES, "heading", "img"]);
 
 function hasAccessibleName(el: Element): boolean {
   if (el.hasAttribute("aria-label")) return true;
@@ -350,10 +343,7 @@ function getState(el: Element): string[] {
   if (el.ownerDocument.activeElement === el) state.push("focused");
   if (el.getAttribute("aria-expanded") === "true") state.push("expanded");
   if (el.getAttribute("aria-selected") === "true") state.push("selected");
-  if (
-    el.hasAttribute("disabled") ||
-    el.getAttribute("aria-disabled") === "true"
-  ) {
+  if (el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true") {
     state.push("disabled");
   }
   const ariaChecked = el.getAttribute("aria-checked");
@@ -377,8 +367,7 @@ function isOffscreen(el: Element): boolean {
   const rect = el.getBoundingClientRect();
   if (rect.width === 0 && rect.height === 0) return true;
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-  const viewportHeight =
-    window.innerHeight || document.documentElement.clientHeight;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   if (rect.bottom <= 0) return true;
   if (rect.top >= viewportHeight) return true;
   if (rect.right <= 0) return true;
@@ -419,12 +408,7 @@ interface WalkOptions {
   trackViewport: boolean;
 }
 
-function walk(
-  el: Element,
-  depth: number,
-  budget: Budget,
-  opts: WalkOptions,
-): A11yNode[] {
+function walk(el: Element, depth: number, budget: Budget, opts: WalkOptions): A11yNode[] {
   if (isExcluded(el)) return [];
   if (budget.count >= MAX_NODES) return [];
 
@@ -483,12 +467,7 @@ function walk(
   return [node];
 }
 
-function walkChildren(
-  el: Element,
-  depth: number,
-  budget: Budget,
-  opts: WalkOptions,
-): A11yNode[] {
+function walkChildren(el: Element, depth: number, budget: Budget, opts: WalkOptions): A11yNode[] {
   const out: A11yNode[] = [];
   // Iterate ``childNodes`` rather than ``children`` so we pick up
   // direct text nodes too (e.g. track titles sitting in a pure-wrapper

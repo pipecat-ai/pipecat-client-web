@@ -33,9 +33,9 @@ import type {
   ToastPayload,
   UICommandHandler,
 } from "@pipecat-ai/client-js";
+import { findElementByRef } from "@pipecat-ai/client-js";
 import { useCallback, useMemo } from "react";
 
-import { findElementByRef } from "./a11ySnapshotWalker";
 import { useUICommandHandler } from "./useUICommandHandler";
 
 /**

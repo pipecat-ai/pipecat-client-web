@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { findElementByRef } from "./a11ySnapshotWalker";
 import {
   deduplicateFunctionCalls,
   filterEmptyMessages,
@@ -50,7 +49,6 @@ export {
   deduplicateFunctionCalls,
   filterBotOutputText,
   filterEmptyMessages,
-  findElementByRef,
   isMessageEmpty,
   mergeMessages,
   PipecatClientAudio,
@@ -113,7 +111,11 @@ export type {
   UICommandHandler,
   UIEventEnvelope,
 } from "@pipecat-ai/client-js";
+export type { A11ySnapshotStreamerOptions } from "@pipecat-ai/client-js";
 export {
+  A11ySnapshotStreamer,
+  findElementByRef,
+  snapshotDocument,
   UI_COMMAND_MESSAGE_TYPE,
   UI_EVENT_MESSAGE_TYPE,
   UI_SNAPSHOT_EVENT_NAME,
