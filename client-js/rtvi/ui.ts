@@ -126,6 +126,11 @@ export const UI_SNAPSHOT_EVENT_NAME = "__ui_snapshot";
  * Shape is modeled on Playwright's accessibility snapshot and the
  * Playwright MCP server's LLM-facing serialization. Portable across
  * web, iOS (UIAccessibility), and Android (AccessibilityNodeInfo).
+ *
+ * Stability: this is the v1 wire format. Field names and semantics
+ * are versioned via the SDK's package version; consumer servers
+ * (e.g. `pipecat-subagents`'s `UIAgent`) track compatible client
+ * releases in their own changelogs.
  */
 export interface A11yNode {
   /**
@@ -141,7 +146,12 @@ export interface A11yNode {
   name?: string;
   /** Current value for inputs (omitted for passwords), progress, etc. */
   value?: string;
-  /** Short state tags: "focused", "expanded", "checked", "disabled", "selected". */
+  /**
+   * Short state tags. Known values: ``"focused"``, ``"selected"``,
+   * ``"expanded"``, ``"checked"``, ``"disabled"``, ``"offscreen"``.
+   * Apps may add their own, but should stick to single lowercase
+   * words so they render cleanly as ``[tag]`` in ``<ui_state>``.
+   */
   state?: string[];
   /** Heading level, 1-6. */
   level?: number;
