@@ -215,6 +215,34 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(transport.initDevicesCallCount).toBe(1);
     expect(client.state).toBe("authenticated");
   });
+
+  // initDevices() at the abstract-client layer does not branch on
+  // enableMic/enableCam — those options are stored and passed to the transport
+  // via initialize() but never read by PipecatClient.initDevices itself.
+  // Per-transport propagation is characterized in
+  // pipecat-client-web-transports (see tests/src/transports/*.spec.ts).
+  test.each([
+    { enableMic: true, enableCam: false },
+    { enableMic: false, enableCam: false },
+    { enableMic: true, enableCam: true },
+    { enableMic: false, enableCam: true },
+  ])(
+    "initDevices() state transitions are identical regardless of enable options (%j)",
+    async (opts) => {
+      const localTransport = CharacterizationTransport.create();
+      const localClient = new PipecatClient({
+        transport: localTransport,
+        ...opts,
+      });
+      const states = recordStateChanges(localClient);
+
+      await localClient.initDevices();
+
+      expect(localTransport.initDevicesCallCount).toBe(1);
+      expect(localClient.state).toBe("initialized");
+      expect(states).toEqual(["initializing", "initialized"]);
+    }
+  );
 });
 
 describe("DeviceError — characterization", () => {
