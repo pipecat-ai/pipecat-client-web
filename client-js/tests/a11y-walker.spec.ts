@@ -6,10 +6,7 @@
 
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import {
-  findElementByRef,
-  snapshotDocument,
-} from "../src/a11ySnapshotWalker";
+import { findElementByRef, snapshotDocument } from "../rtvi/a11y-walker";
 
 function html(body: string): HTMLElement {
   document.body.innerHTML = body;

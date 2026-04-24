@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+export * from "./a11y-streamer";
 export * from "./client";
 export * from "./dispatcher";
 export * from "./logger";
