@@ -19,6 +19,16 @@ import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
 import { PipecatClientProvider } from "./PipecatClientProvider";
 import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle";
 import { PipecatClientVideo } from "./PipecatClientVideo";
+import {
+  useNavigateHandler,
+  useStandardCommandHandlers,
+  useStandardFocusHandler,
+  useStandardHighlightHandler,
+  useStandardScrollToHandler,
+  useToastHandler,
+} from "./standardHandlers";
+import { UIAgentContext } from "./UIAgentContext";
+import { UIAgentProvider } from "./UIAgentProvider";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
@@ -28,6 +38,9 @@ import { usePipecatClientScreenShareControl } from "./usePipecatClientScreenShar
 import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 import { usePipecatConversation } from "./usePipecatConversation";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
+import { useUIAgentClient } from "./useUIAgentClient";
+import { useUICommandHandler } from "./useUICommandHandler";
+import { useUIEventSender } from "./useUIEventSender";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 
 export {
@@ -43,8 +56,11 @@ export {
   PipecatClientScreenShareToggle,
   PipecatClientVideo,
   sortByCreatedAt,
+  UIAgentContext,
+  UIAgentProvider,
   // Conversation
   useConversationContext,
+  useNavigateHandler,
   usePipecatClient,
   usePipecatClientCamControl,
   usePipecatClientMediaDevices,
@@ -54,6 +70,14 @@ export {
   usePipecatClientTransportState,
   usePipecatConversation,
   useRTVIClientEvent,
+  useStandardCommandHandlers,
+  useStandardFocusHandler,
+  useStandardHighlightHandler,
+  useStandardScrollToHandler,
+  useToastHandler,
+  useUIAgentClient,
+  useUICommandHandler,
+  useUIEventSender,
   VoiceVisualizer,
 };
 
@@ -68,3 +92,20 @@ export type {
   FunctionCallData,
   FunctionCallRenderer,
 } from "./conversation/types";
+
+// UI agent protocol re-exports from @pipecat-ai/client-js so React
+// consumers don't need a second import.
+export type {
+  FocusPayload,
+  HighlightPayload,
+  NavigatePayload,
+  ScrollToPayload,
+  ToastPayload,
+  UICommandEnvelope,
+  UICommandHandler,
+  UIEventEnvelope,
+} from "@pipecat-ai/client-js";
+export {
+  UI_COMMAND_MESSAGE_TYPE,
+  UI_EVENT_MESSAGE_TYPE,
+} from "@pipecat-ai/client-js";
