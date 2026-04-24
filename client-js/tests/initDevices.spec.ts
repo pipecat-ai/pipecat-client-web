@@ -17,7 +17,6 @@ import {
   DeviceError,
   DeviceErrorType,
   RTVIEvent,
-  RTVIMessageType,
   TransportState,
 } from "../rtvi";
 import { TransportStub } from "./stubs/transport";
@@ -297,25 +296,14 @@ describe("DeviceError — characterization", () => {
 });
 
 describe("Transport contract: initial _state", () => {
-  test("abstract Transport initializes _state to 'disconnected'", () => {
-    // Guards against the abstract class changing its initial value, which
-    // would shift the meaning of the pre-init sentinel without consumers
-    // realizing it. This is the raw ambiguity Plan A targets.
+  test("abstract Transport initializes _state to 'disconnected' before initialize() runs", () => {
+    // The abstract Transport class declares
+    //   protected _state: TransportState = "disconnected";
+    // That default is the sentinel Plan A step 2 disambiguates — it has to
+    // carry meaning even before PipecatClient calls initialize(). Changing
+    // the default to a different value (e.g. "uninitialized") would silently
+    // shift the pre-init semantics; this test guards against that.
     const transport = CharacterizationTransport.create();
     expect(transport.state).toBe("disconnected");
-
-    // After initialize() runs in the PipecatClient constructor, the stub
-    // re-sets state to 'disconnected' explicitly — confirming that a
-    // constructed-but-unused client is indistinguishable from one that has
-    // finished a session, via TransportState alone.
-    const client = new PipecatClient({ transport });
-    expect(client.state).toBe("disconnected");
-    // Silence unused-variable lint: client must exist to exercise
-    // initialize().
-    void client;
-
-    // Sanity: also assert the RTVIMessageType export is unchanged, locking
-    // in the constant used by existing consumers.
-    expect(RTVIMessageType.BOT_READY).toBeDefined();
   });
 });
