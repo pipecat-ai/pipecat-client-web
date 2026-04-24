@@ -54,6 +54,7 @@
   "devDependencies": {
     "@jest/globals": "^30.2.0",
     "@pipecat-ai/client-js": "*",
+    "@testing-library/react": "^16.1.0",
     "@types/jest": "^30.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
