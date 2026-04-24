@@ -77,18 +77,98 @@ export interface NavigatePayload {
 
 /** Payload for the built-in `scroll_to` command. */
 export interface ScrollToPayload {
-  target_id: string;
+  /**
+   * Snapshot ref (e.g. ``"e42"``) assigned by the a11y walker. When
+   * set, the standard handler resolves this first; use when the server
+   * is referencing an element it saw in ``<ui_state>``.
+   */
+  ref?: string | null;
+  /**
+   * Element id (``document.getElementById``). Used as a fallback when
+   * ``ref`` is not set or no longer resolves.
+   */
+  target_id?: string | null;
   /** Typically `"smooth"` or `"instant"`. Clients may ignore. */
   behavior?: string | null;
 }
 
 /** Payload for the built-in `highlight` command. */
 export interface HighlightPayload {
-  target_id: string;
+  ref?: string | null;
+  target_id?: string | null;
   duration_ms?: number | null;
 }
 
 /** Payload for the built-in `focus` command. */
 export interface FocusPayload {
-  target_id: string;
+  ref?: string | null;
+  target_id?: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Structural awareness: a11y snapshot
+// ---------------------------------------------------------------------------
+
+/**
+ * Reserved UI event name carrying an accessibility snapshot from the
+ * client to the server. `UIAgent` recognizes this name and stores the
+ * payload in `_latest_snapshot` without dispatching to `@on_ui_event`
+ * handlers or injecting a `<ui_event>` developer message.
+ *
+ * Underscore-prefixed to signal SDK-internal and avoid colliding with
+ * app-defined event names.
+ */
+export const UI_SNAPSHOT_EVENT_NAME = "__ui_snapshot";
+
+/**
+ * One node in the accessibility snapshot tree.
+ *
+ * Shape is modeled on Playwright's accessibility snapshot and the
+ * Playwright MCP server's LLM-facing serialization. Portable across
+ * web, iOS (UIAccessibility), and Android (AccessibilityNodeInfo).
+ */
+export interface A11yNode {
+  /**
+   * Stable reference id of the form ``e{N}``. The same DOM node keeps
+   * the same ref across snapshots for as long as it is mounted. Lets
+   * the LLM cross-reference elements between turns ("the button I
+   * mentioned earlier").
+   */
+  ref: string;
+  /** ARIA role (explicit or tag-derived). */
+  role: string;
+  /** Accessible name, truncated to 100 chars. */
+  name?: string;
+  /** Current value for inputs (omitted for passwords), progress, etc. */
+  value?: string;
+  /** Short state tags: "focused", "expanded", "checked", "disabled", "selected". */
+  state?: string[];
+  /** Heading level, 1-6. */
+  level?: number;
+  /**
+   * Column count for grid-like containers. Populated from
+   * ``aria-colcount`` on the element. Lets the LLM compute
+   * row/column positions from the flat reading order of children.
+   */
+  colcount?: number;
+  /**
+   * Row count for grid-like containers. Populated from
+   * ``aria-rowcount`` on the element.
+   */
+  rowcount?: number;
+  /** Child nodes. */
+  children?: A11yNode[];
+}
+
+/**
+ * Shape of the payload inside a `__ui_snapshot` UI event.
+ *
+ * A full tree is sent on each update; the server keeps the latest and
+ * renders it into `<ui_state>...</ui_state>` when an agent injects it.
+ */
+export interface A11ySnapshot {
+  /** The root of the accessibility tree (usually `document.body`'s node). */
+  root: A11yNode;
+  /** Client-side timestamp (ms since epoch) when the snapshot was taken. */
+  captured_at: number;
 }
