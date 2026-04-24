@@ -103,6 +103,10 @@ const EXCLUDED_TAGS = new Set([
 function isExcluded(el: Element): boolean {
   if (EXCLUDED_TAGS.has(el.tagName.toLowerCase())) return true;
   if (el.getAttribute("aria-hidden") === "true") return true;
+  // Explicit app-level opt-out for PII / sensitive subtrees. Skips the
+  // element and its descendants entirely, without needing to also
+  // hide it from screen readers (unlike aria-hidden).
+  if (el.hasAttribute("data-a11y-exclude")) return true;
   if ((el as HTMLElement).hidden) return true;
   // offsetParent == null is a fast-ish check for display:none for most
   // elements (doesn't catch position:fixed hidden or visibility:hidden,

@@ -112,6 +112,37 @@ describe("snapshotDocument: exclusions", () => {
     expect(main?.children?.map((c) => c.name)).toEqual(["Here"]);
   });
 
+  it("skips data-a11y-exclude subtrees", () => {
+    html(`
+      <main>
+        <button>Visible</button>
+        <section data-a11y-exclude>
+          <h2>PII</h2>
+          <button>Sensitive</button>
+        </section>
+        <button>Also visible</button>
+      </main>
+    `);
+    const snap = snapshotDocument();
+    const main = snap.root.children?.[0];
+    const names = main?.children?.map((c) => c.name);
+    expect(names).toEqual(["Visible", "Also visible"]);
+  });
+
+  it("excludes even when the attribute is present with no value", () => {
+    // data-a11y-exclude="" and data-a11y-exclude both exclude.
+    html(`
+      <main>
+        <button data-a11y-exclude="">Hidden 1</button>
+        <button data-a11y-exclude>Hidden 2</button>
+        <button>Visible</button>
+      </main>
+    `);
+    const snap = snapshotDocument();
+    const main = snap.root.children?.[0];
+    expect(main?.children?.map((c) => c.name)).toEqual(["Visible"]);
+  });
+
   it("skips script and style elements", () => {
     html(`
       <main>
