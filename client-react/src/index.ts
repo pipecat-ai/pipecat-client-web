@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+import { findElementByRef } from "./a11ySnapshotWalker";
 import {
   deduplicateFunctionCalls,
   filterEmptyMessages,
@@ -29,6 +30,7 @@ import {
 } from "./standardHandlers";
 import { UIAgentContext } from "./UIAgentContext";
 import { UIAgentProvider } from "./UIAgentProvider";
+import { useA11ySnapshot } from "./useA11ySnapshot";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
@@ -47,6 +49,7 @@ export {
   deduplicateFunctionCalls,
   filterBotOutputText,
   filterEmptyMessages,
+  findElementByRef,
   isMessageEmpty,
   mergeMessages,
   PipecatClientAudio,
@@ -58,6 +61,7 @@ export {
   sortByCreatedAt,
   UIAgentContext,
   UIAgentProvider,
+  useA11ySnapshot,
   // Conversation
   useConversationContext,
   useNavigateHandler,
@@ -96,6 +100,8 @@ export type {
 // UI agent protocol re-exports from @pipecat-ai/client-js so React
 // consumers don't need a second import.
 export type {
+  A11yNode,
+  A11ySnapshot,
   FocusPayload,
   HighlightPayload,
   NavigatePayload,
@@ -108,4 +114,5 @@ export type {
 export {
   UI_COMMAND_MESSAGE_TYPE,
   UI_EVENT_MESSAGE_TYPE,
+  UI_SNAPSHOT_EVENT_NAME,
 } from "@pipecat-ai/client-js";
