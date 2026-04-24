@@ -4,11 +4,20 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+import type { A11yNode } from "@pipecat-ai/client-js";
 import { UI_SNAPSHOT_EVENT_NAME } from "@pipecat-ai/client-js";
 import { useEffect } from "react";
 
 import { snapshotDocument } from "./a11ySnapshotWalker";
 import { useUIAgentClient } from "./useUIAgentClient";
+
+function countNodes(node: A11yNode): number {
+  let count = 1;
+  if (node.children) {
+    for (const child of node.children) count += countNodes(child);
+  }
+  return count;
+}
 
 /** Options for ``useA11ySnapshot``. */
 export interface UseA11ySnapshotOptions {
@@ -37,6 +46,15 @@ export interface UseA11ySnapshotOptions {
    * @default true
    */
   trackViewport?: boolean;
+  /**
+   * When ``true``, log each emitted snapshot to the browser console
+   * (node count, rough token estimate, and the raw tree). Useful for
+   * debugging prompt behavior in dev / staging. Mirrors the server's
+   * ``log_snapshots`` option on ``UIAgent``.
+   *
+   * @default false
+   */
+  logSnapshots?: boolean;
 }
 
 /**
@@ -69,7 +87,12 @@ export interface UseA11ySnapshotOptions {
  * flows through the existing ``UIAgentClient.sendEvent`` pipe.
  */
 export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
-  const { enabled = true, debounceMs = 300, trackViewport = true } = options;
+  const {
+    enabled = true,
+    debounceMs = 300,
+    trackViewport = true,
+    logSnapshots = false,
+  } = options;
   const client = useUIAgentClient();
 
   useEffect(() => {
@@ -83,6 +106,18 @@ export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
       try {
         const snapshot = snapshotDocument(undefined, { trackViewport });
         client.sendEvent(UI_SNAPSHOT_EVENT_NAME, snapshot);
+        if (logSnapshots) {
+          const nodeCount = countNodes(snapshot.root);
+          const serialized = JSON.stringify(snapshot);
+          const estTokens = Math.round(serialized.length / 4);
+          // Grouped so it collapses nicely in DevTools. The raw tree
+          // is included last so it can be expanded on demand.
+          console.groupCollapsed(
+            `[useA11ySnapshot] emit: ${nodeCount} nodes, ~${estTokens} tokens`,
+          );
+          console.log("snapshot:", snapshot);
+          console.groupEnd();
+        }
       } catch {
         // Swallow walker errors so we don't crash the app from a
         // background snapshot attempt. Errors will show in DevTools
@@ -117,6 +152,7 @@ export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
         "aria-hidden",
         "aria-colcount",
         "aria-rowcount",
+        "data-a11y-exclude",
         "disabled",
         "hidden",
         "tabindex",
@@ -158,5 +194,5 @@ export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
       window.removeEventListener("resize", resizeHandler);
       document.removeEventListener("visibilitychange", visibilityHandler);
     };
-  }, [enabled, client, debounceMs, trackViewport]);
+  }, [enabled, client, debounceMs, trackViewport, logSnapshots]);
 }
