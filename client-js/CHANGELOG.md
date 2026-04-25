@@ -5,6 +5,39 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+
+- **UI Agent protocol (v1).** Client-side support for AI agents that
+  observe and drive a GUI app, paired with the `UIAgent` work in
+  `pipecat-ai-subagents`.
+  - New `UIAgentClient` class that wraps an existing `PipecatClient` and
+    exposes `sendEvent(name, payload)` for client-to-server UI events
+    plus `registerCommandHandler(name, handler)` for server-to-client
+    UI commands. Subscribes to `RTVIEvent.ServerMessage` via `attach()`,
+    which returns a detach function for symmetric teardown.
+  - New `A11ySnapshotStreamer` class that walks the document's
+    accessibility tree and streams snapshots to the server on DOM
+    mutations, focus changes, scroll-end, resize, and tab visibility.
+    Framework-agnostic: pairs with the React `useA11ySnapshot` hook in
+    `@pipecat-ai/client-react`.
+  - New `snapshotDocument(root?, options?)` for one-off snapshots and
+    `findElementByRef(ref)` for resolving a server-supplied snapshot
+    ref (e.g. `"e42"`) back to a live DOM element. Refs are stable
+    across snapshots while the DOM node is mounted.
+  - New `A11yNode` and `A11ySnapshot` types describing the wire shape,
+    plus `SnapshotOptions` and `A11ySnapshotStreamerOptions`. The walker
+    supports per-node viewport tracking via `trackViewport` (default
+    on) and PII opt-out via the `data-a11y-exclude` attribute on any
+    element.
+  - New standard command payload types (`ToastPayload`, `NavigatePayload`,
+    `ScrollToPayload`, `HighlightPayload`, `FocusPayload`) matching the
+    server's command vocabulary, plus `UICommandHandler`,
+    `UIEventEnvelope`, and `UICommandEnvelope`.
+  - New wire-format constants: `UI_EVENT_MESSAGE_TYPE`,
+    `UI_COMMAND_MESSAGE_TYPE`, `UI_SNAPSHOT_EVENT_NAME`.
+
 ## [1.7.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.1...client-js-v1.7.0) (2026-03-24)
 
 ### Features
