@@ -5,6 +5,38 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+
+- **UI Agent protocol (v1).** React idiom for the v1 UI Agent protocol
+  shipped in `@pipecat-ai/client-js` and `pipecat-ai-subagents`.
+  - New `UIAgentProvider` that wraps children with a `UIAgentClient`
+    bound to the ambient (or explicit) `PipecatClient`. Subscription
+    lifecycle follows React mount/unmount, including `StrictMode`'s
+    double-invoke in development.
+  - New `useA11ySnapshot()` hook that streams accessibility snapshots
+    to the server. Thin lifecycle wrapper around `A11ySnapshotStreamer`
+    from `@pipecat-ai/client-js`. Options: `enabled`, `debounceMs`,
+    `trackViewport`, `logSnapshots`.
+  - New `useUIAgentClient()`, `useUIEventSender()`, and
+    `useUICommandHandler(name, handler)` hooks for the basics of the
+    protocol.
+  - New opt-in standard command handlers:
+    `useStandardScrollToHandler({ block, inline, container, offset, ... })`,
+    `useStandardFocusHandler({ preventScroll })`,
+    `useStandardHighlightHandler({ className, defaultDurationMs, scrollIntoViewFirst })`,
+    plus `useStandardCommandHandlers(...)` to install all three at
+    once. Each resolves the target element by snapshot `ref` first,
+    then falls back to `document.getElementById(target_id)`.
+  - New typed-sugar hooks `useToastHandler(handler)` and
+    `useNavigateHandler(handler)` for the `toast` and `navigate`
+    commands; apps wire their own toast renderer / router.
+  - Re-exports `A11ySnapshotStreamer`, `findElementByRef`,
+    `snapshotDocument`, the wire-format constants, and the standard
+    payload / envelope / handler types from `@pipecat-ai/client-js` so
+    React consumers don't need a second import.
+
 ## [1.4.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.3.0...client-react-v1.4.0) (2026-05-05)
 
 
