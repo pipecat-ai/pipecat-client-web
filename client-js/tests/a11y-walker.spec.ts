@@ -205,6 +205,79 @@ describe("snapshotDocument: values and state", () => {
     expect(h?.role).toBe("heading");
     expect(h?.level).toBe(3);
   });
+
+  it("emits select value as the selected option's visible text", () => {
+    html(`
+      <select aria-label="Draft slot">
+        <option value="0">Pick #1</option>
+        <option value="5" selected>Pick #6</option>
+        <option value="11">Pick #12</option>
+      </select>
+    `);
+    const snap = snapshotDocument();
+    const combo = snap.root.children?.[0];
+    expect(combo?.role).toBe("combobox");
+    expect(combo?.value).toBe("Pick #6");
+  });
+
+  it("falls back to select value when the option has no text", () => {
+    html(`<select aria-label="x"><option value="42" selected></option></select>`);
+    const snap = snapshotDocument();
+    const combo = snap.root.children?.[0];
+    expect(combo?.value).toBe("42");
+  });
+
+  it("emits select options as children with selected state", () => {
+    html(`
+      <select aria-label="Draft slot">
+        <option value="0">Pick #1</option>
+        <option value="5" selected>Pick #6</option>
+        <option value="11" disabled>Pick #12</option>
+      </select>
+    `);
+    const snap = snapshotDocument();
+    const combo = snap.root.children?.[0];
+    expect(combo?.children).toHaveLength(3);
+    expect(combo?.children?.[0]).toMatchObject({
+      role: "option",
+      name: "Pick #1",
+    });
+    expect(combo?.children?.[0].state).toBeUndefined();
+    expect(combo?.children?.[1]).toMatchObject({
+      role: "option",
+      name: "Pick #6",
+    });
+    expect(combo?.children?.[1].state).toContain("selected");
+    expect(combo?.children?.[2].state).toContain("disabled");
+  });
+
+  it("truncates long option lists with an ellipsis sibling", () => {
+    const opts = Array.from({ length: 30 }, (_, i) => `<option>Item ${i}</option>`).join("");
+    html(`<select aria-label="Big list">${opts}</select>`);
+    const snap = snapshotDocument();
+    const combo = snap.root.children?.[0];
+    expect(combo?.children).toHaveLength(21); // 20 options + 1 ellipsis
+    expect(combo?.children?.[20]).toMatchObject({
+      role: "ellipsis",
+      name: "10 more",
+    });
+  });
+
+  it("skips hidden and aria-hidden options", () => {
+    html(`
+      <select aria-label="x">
+        <option>One</option>
+        <option hidden>Two</option>
+        <option aria-hidden="true">Three</option>
+        <option selected>Four</option>
+      </select>
+    `);
+    const snap = snapshotDocument();
+    const combo = snap.root.children?.[0];
+    expect(combo?.children).toHaveLength(2);
+    expect(combo?.children?.[0].name).toBe("One");
+    expect(combo?.children?.[1].name).toBe("Four");
+  });
 });
 
 describe("snapshotDocument: names and truncation", () => {

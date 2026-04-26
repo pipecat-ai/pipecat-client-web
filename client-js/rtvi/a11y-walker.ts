@@ -34,6 +34,10 @@ const MAX_DEPTH = 10;
 const MAX_NODES = 200;
 const MAX_CHILDREN_PER_NODE = 50;
 const NAME_MAX = 100;
+// Tighter cap on emitted ``<option>`` children. Country / state pickers
+// can have hundreds of entries; truncating at 20 keeps the snapshot
+// useful without ballooning LLM context.
+const MAX_SELECT_OPTIONS = 20;
 
 // ---------------------------------------------------------------------------
 // Ref registry: stable ``e{N}`` IDs per DOM node, persist as long as the
@@ -333,6 +337,11 @@ function getValue(el: Element): string | undefined {
     return el.value || undefined;
   }
   if (el instanceof HTMLSelectElement) {
+    // Prefer the selected option's visible text; the raw ``value`` is
+    // often a numeric id or sentinel that means nothing to a reader.
+    const selected = el.selectedOptions[0];
+    const text = selected?.text?.trim();
+    if (text) return text;
     return el.value || undefined;
   }
   return undefined;
@@ -462,9 +471,55 @@ function walk(el: Element, depth: number, budget: Budget, opts: WalkOptions): A1
         node.children = children;
       }
     }
+  } else if (el instanceof HTMLSelectElement) {
+    // Combobox is a leaf role, but for native ``<select>`` we synthesize
+    // ``option`` children so the agent can see all available choices,
+    // not just the one currently selected. Without this, an LLM has no
+    // way to know what other values it could ask the user to pick.
+    const options = collectSelectOptions(el, budget, node.ref);
+    if (options.length > 0) node.children = options;
   }
 
   return [node];
+}
+
+function collectSelectOptions(
+  select: HTMLSelectElement,
+  budget: Budget,
+  parentRef: string,
+): A11yNode[] {
+  const out: A11yNode[] = [];
+  const all = select.options;
+  let emitted = 0;
+  for (let i = 0; i < all.length; i++) {
+    if (budget.count >= MAX_NODES) break;
+    const opt = all[i];
+    if (opt.hidden) continue;
+    if (opt.getAttribute("aria-hidden") === "true") continue;
+    if (emitted >= MAX_SELECT_OPTIONS) {
+      budget.count++;
+      out.push({
+        ref: `${parentRef}.more`,
+        role: "ellipsis",
+        name: `${all.length - emitted} more`,
+      });
+      break;
+    }
+    budget.count++;
+    emitted++;
+    const text = (opt.text || opt.value || "").trim();
+    const optNode: A11yNode = {
+      ref: getRef(opt),
+      role: "option",
+      name: truncate(text),
+    };
+    const state: string[] = [];
+    if (opt.selected) state.push("selected");
+    if (opt.disabled) state.push("disabled");
+    if (state.length) optNode.state = state;
+    out.push(optNode);
+  }
+  return out;
 }
 
 function walkChildren(el: Element, depth: number, budget: Budget, opts: WalkOptions): A11yNode[] {
