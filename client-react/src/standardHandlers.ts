@@ -26,6 +26,7 @@
  */
 
 import type {
+  ClickPayload,
   FocusPayload,
   HighlightPayload,
   NavigatePayload,
@@ -351,7 +352,15 @@ export interface StandardSetInputValueOptions {
  * vanilla ``onChange`` listeners pick up the new value naturally.
  *
  * With ``replace: false`` the new text is appended to the current
- * value; the default replaces.
+ * value; the default replaces. The flag is ignored for native
+ * ``<select>`` since a select either has the value or doesn't.
+ *
+ * Native ``<select>`` is supported in addition to text inputs and
+ * textareas: programmatic ``option.click()`` doesn't reliably change
+ * the selection, so the handler sets ``el.value`` and dispatches a
+ * ``change`` event (selects don't fire ``input`` on programmatic
+ * change). For custom comboboxes (ARIA listbox + popup), apps wire
+ * their own command matching the library's interaction model.
  */
 export const useStandardSetInputValueHandler = (
   options: StandardSetInputValueOptions = {},
@@ -360,6 +369,14 @@ export const useStandardSetInputValueHandler = (
   const handler = useCallback(
     (payload: SetInputValuePayload) => {
       const el = resolveTarget(payload);
+
+      if (el instanceof HTMLSelectElement) {
+        if (el.disabled) return;
+        el.value = payload.value;
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
+
       if (
         !(el instanceof HTMLInputElement) &&
         !(el instanceof HTMLTextAreaElement)
@@ -383,6 +400,34 @@ export const useStandardSetInputValueHandler = (
   useUICommandHandler<SetInputValuePayload>("set_input_value", handler);
 };
 
+/**
+ * Enable the default ``click`` handler.
+ *
+ * Resolves the target by ref / target_id and calls
+ * ``el.click()``. Refuses on elements that expose a ``disabled``
+ * property in the truthy state (form controls, ``<button>``,
+ * ``<a>`` with ``aria-disabled="true"``) so the agent can't bypass
+ * UI affordances the user is meant to control.
+ *
+ * Use for checkboxes, radios, submit buttons, links, and any
+ * app-specific clickable element. For native ``<select>``, prefer
+ * ``set_input_value``.
+ */
+export const useStandardClickHandler = (): void => {
+  const handler = useCallback((payload: ClickPayload) => {
+    const el = resolveTarget(payload);
+    if (!(el instanceof HTMLElement)) return;
+    // Form controls and buttons expose a ``disabled`` property
+    // directly. ``<a>`` and arbitrary elements with role="button"
+    // can carry ``aria-disabled``; honor that too.
+    const disabledProp = (el as { disabled?: unknown }).disabled;
+    if (disabledProp === true) return;
+    if (el.getAttribute("aria-disabled") === "true") return;
+    el.click();
+  }, []);
+  useUICommandHandler<ClickPayload>("click", handler);
+};
+
 /** Options accepted by ``useStandardCommandHandlers`` (one object per handler). */
 export interface StandardCommandHandlerOptions {
   scrollTo?: StandardScrollToOptions;
@@ -394,8 +439,8 @@ export interface StandardCommandHandlerOptions {
 
 /**
  * Enable all DOM-based default handlers (`scroll_to`, `focus`,
- * `highlight`, `select_text`, `set_input_value`) at once. Pass
- * per-handler option objects to customize.
+ * `highlight`, `select_text`, `set_input_value`, `click`) at once.
+ * Pass per-handler option objects to customize.
  */
 export const useStandardCommandHandlers = (
   options: StandardCommandHandlerOptions = {},
@@ -405,6 +450,7 @@ export const useStandardCommandHandlers = (
   useStandardHighlightHandler(options.highlight);
   useStandardSelectTextHandler(options.selectText);
   useStandardSetInputValueHandler(options.setInputValue);
+  useStandardClickHandler();
 };
 
 /**

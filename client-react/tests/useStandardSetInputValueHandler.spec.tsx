@@ -137,4 +137,40 @@ describe("useStandardSetInputValueHandler", () => {
     const input = document.getElementById("i") as HTMLInputElement;
     expect(input.value).toBe("kept");
   });
+
+  it("sets a native <select> by value and dispatches change", () => {
+    const pipecat = setup(`
+      <select id="s">
+        <option value="a">A</option>
+        <option value="b">B</option>
+        <option value="c">C</option>
+      </select>
+    `);
+    const sel = document.getElementById("s") as HTMLSelectElement;
+    const events: string[] = [];
+    sel.addEventListener("input", () => events.push("input"));
+    sel.addEventListener("change", () => events.push("change"));
+
+    emit(pipecat, { target_id: "s", value: "b" });
+
+    expect(sel.value).toBe("b");
+    // Selects don't fire input on programmatic change; only change.
+    expect(events).toEqual(["change"]);
+  });
+
+  it("refuses to set a disabled <select>", () => {
+    const pipecat = setup(`
+      <select id="s" disabled>
+        <option value="a">A</option>
+        <option value="b">B</option>
+      </select>
+    `);
+    const sel = document.getElementById("s") as HTMLSelectElement;
+    // First option is the default selected value.
+    expect(sel.value).toBe("a");
+
+    emit(pipecat, { target_id: "s", value: "b" });
+
+    expect(sel.value).toBe("a");
+  });
 });

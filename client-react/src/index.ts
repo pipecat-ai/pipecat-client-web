@@ -21,6 +21,7 @@ import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle
 import { PipecatClientVideo } from "./PipecatClientVideo";
 import {
   useNavigateHandler,
+  useStandardClickHandler,
   useStandardCommandHandlers,
   useStandardFocusHandler,
   useStandardHighlightHandler,
@@ -79,6 +80,7 @@ export {
   usePipecatClientTransportState,
   usePipecatConversation,
   useRTVIClientEvent,
+  useStandardClickHandler,
   useStandardCommandHandlers,
   useStandardFocusHandler,
   useStandardHighlightHandler,
@@ -118,6 +120,7 @@ export type {
 export type {
   A11yNode,
   A11ySnapshot,
+  ClickPayload,
   FocusPayload,
   HighlightPayload,
   NavigatePayload,
