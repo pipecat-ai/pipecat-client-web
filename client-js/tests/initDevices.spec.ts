@@ -46,7 +46,17 @@ class CharacterizationTransport extends TransportStub {
         setTimeout(() => reject(err), 10);
       });
     }
-    return super.initDevices();
+    // Mirror what a happy-path transport does: enumerate first, then notify.
+    // Events fire AFTER the underlying acquisition completes, before the
+    // promise settles, so PipecatClient sees them inside its await.
+    return super.initDevices().then(() => {
+      this._callbacks.onMicUpdated?.({
+        deviceId: "mic-default",
+      } as MediaDeviceInfo);
+      this._callbacks.onCamUpdated?.({
+        deviceId: "cam-default",
+      } as MediaDeviceInfo);
+    });
   }
 
   private forceState(next: TransportState): void {
@@ -145,19 +155,27 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(client.state).toBe("ready");
   });
 
-  test("reconnect after disconnect re-runs initDevices() (state reverts to 'disconnected')", async () => {
+  test("reconnect after disconnect does NOT re-run initDevices() (mediaState gate)", async () => {
     await client.connect();
     await client.disconnect();
 
     expect(client.state).toBe("disconnected");
     expect(transport.initDevicesCallCount).toBe(1);
+    // The fake transport reports both devices acquired on init (mirroring
+    // what daily-js actually does, even when enableMic / enableCam disagree).
+    expect(client.mediaState).toEqual({
+      mic: { state: "granted" },
+      cam: { state: "granted" },
+    });
 
     await client.connect();
 
-    // Because disconnect() returns state to 'disconnected' — the same sentinel
-    // as the pre-init initial state — the implicit-init gate trips again.
-    // This is the downstream visible symptom behind the stuck-spinner bug.
-    expect(transport.initDevicesCallCount).toBe(2);
+    // Step 2 replaced the `state === "disconnected"` gate with
+    // needsInit(mediaState). Post-disconnect, mediaState is still
+    // {mic:"granted", cam:"granted"}, so the implicit-init no longer
+    // double-fires. Picker access survives the disconnect — this is the
+    // contract voice-ui-kit will rely on in step 4.
+    expect(transport.initDevicesCallCount).toBe(1);
     expect(client.state).toBe("ready");
   });
 
