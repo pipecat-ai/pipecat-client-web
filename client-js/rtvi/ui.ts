@@ -277,6 +277,48 @@ export interface A11yNode {
 }
 
 /**
+ * The user's current text selection, when one exists.
+ *
+ * Lets the agent ground deictic references like "this paragraph",
+ * "what I selected", or "the highlighted text" against actual on-page
+ * content rather than re-asking the user to repeat it.
+ *
+ * Document selections (selecting text across paragraphs, headings,
+ * etc.) carry the closest common-ancestor element's ``ref`` plus the
+ * full selected text. Offsets are not provided for document
+ * selections because they would require walking text-node positions
+ * inside the ancestor; the agent reasons over the ``text`` field.
+ *
+ * Input/textarea selections do carry ``start_offset`` and
+ * ``end_offset`` (taken straight from
+ * ``HTMLInputElement.selectionStart`` / ``selectionEnd``) so a
+ * round-trip ``select_text`` command can reproduce the exact range.
+ */
+export interface A11ySelection {
+  /**
+   * Ref of the element that carries the selection. For document
+   * selections this is the closest common-ancestor element with a
+   * ref; for input/textarea it is the input element itself.
+   */
+  ref: string;
+  /**
+   * The selected text. Truncated at 2000 characters with a trailing
+   * ellipsis to keep ``<ui_state>`` injections bounded.
+   */
+  text: string;
+  /**
+   * Character offset within the input's ``value`` where the
+   * selection starts. Only set for ``<input>`` and ``<textarea>``.
+   */
+  start_offset?: number;
+  /**
+   * Character offset within the input's ``value`` where the
+   * selection ends. Only set for ``<input>`` and ``<textarea>``.
+   */
+  end_offset?: number;
+}
+
+/**
  * Shape of the payload inside a `__ui_snapshot` UI event.
  *
  * A full tree is sent on each update; the server keeps the latest and
@@ -287,4 +329,12 @@ export interface A11ySnapshot {
   root: A11yNode;
   /** Client-side timestamp (ms since epoch) when the snapshot was taken. */
   captured_at: number;
+  /**
+   * The user's current text selection, when one exists. Omitted when
+   * nothing is selected (or the selection is collapsed to a single
+   * cursor position with no characters in between). The server
+   * renders this as a ``<selection ref="...">...</selection>`` block
+   * inside ``<ui_state>``.
+   */
+  selection?: A11ySelection;
 }

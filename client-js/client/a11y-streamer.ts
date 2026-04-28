@@ -77,6 +77,7 @@ export class A11ySnapshotStreamer {
   private scrollEndHandler?: () => void;
   private resizeHandler?: () => void;
   private visibilityHandler?: () => void;
+  private selectionHandler?: () => void;
 
   constructor(client: UIAgentClient, options: A11ySnapshotStreamerOptions = {}) {
     this.client = client;
@@ -146,6 +147,13 @@ export class A11ySnapshotStreamer {
       if (document.visibilityState === "visible") this.schedule();
     };
     document.addEventListener("visibilitychange", this.visibilityHandler);
+
+    // ``selectionchange`` fires throughout a drag-select; the existing
+    // debounce coalesces the burst into a single snapshot once the
+    // user stops moving. Snapshots end up carrying the latest
+    // selection alongside the rest of the screen state.
+    this.selectionHandler = () => this.schedule();
+    document.addEventListener("selectionchange", this.selectionHandler);
   }
 
   /** Stop streaming. Safe to call before ``start()`` or multiple times. */
@@ -169,6 +177,9 @@ export class A11ySnapshotStreamer {
       if (this.visibilityHandler) {
         document.removeEventListener("visibilitychange", this.visibilityHandler);
       }
+      if (this.selectionHandler) {
+        document.removeEventListener("selectionchange", this.selectionHandler);
+      }
     }
     if (typeof window !== "undefined") {
       if (this.scrollEndHandler) {
@@ -184,6 +195,7 @@ export class A11ySnapshotStreamer {
     this.scrollEndHandler = undefined;
     this.resizeHandler = undefined;
     this.visibilityHandler = undefined;
+    this.selectionHandler = undefined;
   }
 
   private schedule(): void {

@@ -618,3 +618,160 @@ describe("findElementByRef", () => {
     expect(findElementByRef(ref!)).toBeNull();
   });
 });
+
+describe("snapshotDocument: paragraphs", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("emits a paragraph node with truncated text as its name", () => {
+    html(`<main><p>The quick brown fox jumps over the lazy dog.</p></main>`);
+    const snap = snapshotDocument();
+    const main = snap.root.children?.[0];
+    expect(main?.role).toBe("main");
+    const p = main?.children?.[0];
+    expect(p?.role).toBe("paragraph");
+    expect(p?.name).toBe("The quick brown fox jumps over the lazy dog.");
+    // Plain prose: name covers everything, no leftover children.
+    expect(p?.children).toBeUndefined();
+    expect(p?.ref).toMatch(/^e\d+$/);
+  });
+
+  it("keeps inline links nested while suppressing duplicate text", () => {
+    html(`<main><p>Read <a href="/x">this</a> for details.</p></main>`);
+    const snap = snapshotDocument();
+    const p = snap.root.children?.[0].children?.[0];
+    expect(p?.role).toBe("paragraph");
+    expect(p?.name).toBe("Read this for details.");
+    // Link still surfaces; surrounding text is not duplicated as text children.
+    expect(p?.children).toHaveLength(1);
+    expect(p?.children?.[0]).toMatchObject({ role: "link", name: "this" });
+  });
+
+  it("does not leak text from pure-wrapper descendants of a paragraph", () => {
+    html(`<main><p>Read <span>this part</span> please.</p></main>`);
+    const snap = snapshotDocument();
+    const p = snap.root.children?.[0].children?.[0];
+    expect(p?.role).toBe("paragraph");
+    expect(p?.name).toBe("Read this part please.");
+    // <span> has no role; its text would otherwise surface as a text
+    // child via flattening. Skip it.
+    expect(p?.children).toBeUndefined();
+  });
+});
+
+describe("snapshotDocument: selection capture", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    window.getSelection()?.removeAllRanges();
+  });
+
+  function selectRangeIn(el: Element, start = 0, end?: number) {
+    const text = el.firstChild;
+    if (!text || text.nodeType !== Node.TEXT_NODE) {
+      throw new Error("expected first child to be a text node");
+    }
+    const range = document.createRange();
+    range.setStart(text, start);
+    range.setEnd(text, end ?? (text.textContent?.length ?? 0));
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  it("omits selection when nothing is selected", () => {
+    html(`<main><p>Some text.</p></main>`);
+    const snap = snapshotDocument();
+    expect(snap.selection).toBeUndefined();
+  });
+
+  it("omits selection when collapsed (bare cursor)", () => {
+    html(`<main><p id="p">Some text.</p></main>`);
+    const p = document.getElementById("p")!;
+    const range = document.createRange();
+    range.setStart(p.firstChild!, 2);
+    range.setEnd(p.firstChild!, 2);
+    const sel = window.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    const snap = snapshotDocument();
+    expect(snap.selection).toBeUndefined();
+  });
+
+  it("anchors a document selection at the enclosing paragraph", () => {
+    html(`<main><p id="p">First sentence here.</p></main>`);
+    snapshotDocument();
+    const p = document.getElementById("p")!;
+    selectRangeIn(p, 0, 5);
+
+    const snap = snapshotDocument();
+    expect(snap.selection).toBeDefined();
+    expect(snap.selection!.text).toBe("First");
+    expect(findElementByRef(snap.selection!.ref)).toBe(p);
+  });
+
+  it("walks up past unrefed wrappers to the nearest walked element", () => {
+    // <span> and plain <div> have no walker role and so no ref. The
+    // walk-up should skip past them to the enclosing paragraph.
+    html(`
+      <main>
+        <p id="p">Read <span id="emph">this part</span> please.</p>
+      </main>
+    `);
+    snapshotDocument();
+    const p = document.getElementById("p")!;
+    const span = document.getElementById("emph")!;
+    selectRangeIn(span, 0, 4); // "this"
+
+    const snap = snapshotDocument();
+    expect(snap.selection?.text).toBe("this");
+    // <span> has no role; walk-up lands on the paragraph.
+    expect(findElementByRef(snap.selection!.ref)).toBe(p);
+  });
+
+  it("captures input selectionStart/selectionEnd with offsets", () => {
+    html(`<main><label for="i">Q</label><input id="i" value="hello world" /></main>`);
+    const input = document.getElementById("i") as HTMLInputElement;
+    snapshotDocument();
+    input.focus();
+    input.setSelectionRange(6, 11);
+
+    const snap = snapshotDocument();
+    expect(snap.selection).toBeDefined();
+    expect(snap.selection!.text).toBe("world");
+    expect(snap.selection!.start_offset).toBe(6);
+    expect(snap.selection!.end_offset).toBe(11);
+    expect(findElementByRef(snap.selection!.ref)).toBe(input);
+  });
+
+  it("omits selection when the surrounding subtree has no ref (e.g. aria-hidden)", () => {
+    html(`
+      <main>
+        <p>Visible.</p>
+        <div aria-hidden="true"><p id="hidden">Hidden text.</p></div>
+      </main>
+    `);
+
+    snapshotDocument();
+    const hidden = document.getElementById("hidden")!;
+    selectRangeIn(hidden, 0, 6);
+
+    const snap = snapshotDocument();
+    // The aria-hidden subtree was excluded by the walker, so its
+    // descendants have no refs; selection has nothing to anchor to.
+    expect(snap.selection).toBeUndefined();
+  });
+
+  it("truncates very long selection text to keep <ui_state> bounded", () => {
+    const long = "abc".repeat(1000); // 3000 chars
+    document.body.innerHTML = `<main><p id="p">${long}</p></main>`;
+    snapshotDocument();
+    const p = document.getElementById("p")!;
+    selectRangeIn(p, 0, long.length);
+
+    const snap = snapshotDocument();
+    expect(snap.selection!.text.length).toBeLessThanOrEqual(2000);
+    expect(snap.selection!.text.endsWith("…")).toBe(true);
+  });
+});
