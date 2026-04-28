@@ -9,8 +9,11 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { UIAgentClient } from "./../client/ui-agent-client";
 import { RTVIEvent } from "./../rtvi";
 import {
+  UI_CANCEL_TASK_EVENT_NAME,
   UI_COMMAND_MESSAGE_TYPE,
   UI_EVENT_MESSAGE_TYPE,
+  UI_TASK_MESSAGE_TYPE,
+  type UITaskEnvelope,
 } from "./../rtvi/ui";
 
 type ServerMessageListener = (data: unknown) => void;
@@ -210,5 +213,160 @@ describe("UIAgentClient command dispatch", () => {
 
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("UIAgentClient task dispatch", () => {
+  const groupStarted: UITaskEnvelope = {
+    type: UI_TASK_MESSAGE_TYPE,
+    kind: "group_started",
+    task_id: "t1",
+    agents: ["w1", "w2"],
+    label: "Doing stuff",
+    cancellable: true,
+    at: 1700,
+  };
+  const taskUpdate: UITaskEnvelope = {
+    type: UI_TASK_MESSAGE_TYPE,
+    kind: "task_update",
+    task_id: "t1",
+    agent_name: "w1",
+    data: { kind: "tool_call", tool: "WebSearch" },
+    at: 1701,
+  };
+  const taskCompleted: UITaskEnvelope = {
+    type: UI_TASK_MESSAGE_TYPE,
+    kind: "task_completed",
+    task_id: "t1",
+    agent_name: "w1",
+    status: "completed",
+    response: { ok: true },
+    at: 1702,
+  };
+  const groupCompleted: UITaskEnvelope = {
+    type: UI_TASK_MESSAGE_TYPE,
+    kind: "group_completed",
+    task_id: "t1",
+    at: 1703,
+  };
+
+  it("invokes every task listener with the typed envelope", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+    const a = jest.fn();
+    const b = jest.fn();
+
+    ui.addTaskListener(a);
+    ui.addTaskListener(b);
+    ui.attach();
+
+    pipecat.emitServerMessage(groupStarted);
+    pipecat.emitServerMessage(taskUpdate);
+    pipecat.emitServerMessage(taskCompleted);
+    pipecat.emitServerMessage(groupCompleted);
+
+    const envelopes = [groupStarted, taskUpdate, taskCompleted, groupCompleted];
+    expect(a.mock.calls.map((c) => c[0])).toEqual(envelopes);
+    expect(b.mock.calls.map((c) => c[0])).toEqual(envelopes);
+  });
+
+  it("does nothing until attach is called", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+    const listener = jest.fn();
+
+    ui.addTaskListener(listener);
+    pipecat.emitServerMessage(groupStarted);
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("removeTaskListener stops dispatch for that listener", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+    const listener = jest.fn();
+
+    ui.addTaskListener(listener);
+    ui.attach();
+    ui.removeTaskListener(listener);
+    pipecat.emitServerMessage(groupStarted);
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("removeAllTaskListeners drops every listener", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+    const a = jest.fn();
+    const b = jest.fn();
+
+    ui.addTaskListener(a);
+    ui.addTaskListener(b);
+    ui.attach();
+    ui.removeAllTaskListeners();
+    pipecat.emitServerMessage(groupStarted);
+
+    expect(a).not.toHaveBeenCalled();
+    expect(b).not.toHaveBeenCalled();
+  });
+
+  it("ignores ui.task envelopes whose kind is not a string", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+    const listener = jest.fn();
+
+    ui.addTaskListener(listener);
+    ui.attach();
+    pipecat.emitServerMessage({ type: UI_TASK_MESSAGE_TYPE });
+    pipecat.emitServerMessage({ type: UI_TASK_MESSAGE_TYPE, kind: 42 });
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("does not invoke command handlers for ui.task envelopes", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+    const command = jest.fn();
+    const task = jest.fn();
+
+    ui.registerCommandHandler("toast", command);
+    ui.addTaskListener(task);
+    ui.attach();
+    pipecat.emitServerMessage(groupStarted);
+
+    expect(command).not.toHaveBeenCalled();
+    expect(task).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("UIAgentClient.cancelTask", () => {
+  it("sends a __cancel_task UI event with task_id", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+
+    ui.cancelTask("t1");
+
+    expect(pipecat.sendClientMessage).toHaveBeenCalledWith(
+      UI_EVENT_MESSAGE_TYPE,
+      {
+        name: UI_CANCEL_TASK_EVENT_NAME,
+        payload: { task_id: "t1" },
+      },
+    );
+  });
+
+  it("includes reason when provided", () => {
+    const pipecat = makeMockPipecatClient();
+    const ui = new UIAgentClient(pipecat as never);
+
+    ui.cancelTask("t1", "user clicked cancel");
+
+    expect(pipecat.sendClientMessage).toHaveBeenCalledWith(
+      UI_EVENT_MESSAGE_TYPE,
+      {
+        name: UI_CANCEL_TASK_EVENT_NAME,
+        payload: { task_id: "t1", reason: "user clicked cancel" },
+      },
+    );
   });
 });
