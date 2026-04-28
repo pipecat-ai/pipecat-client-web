@@ -24,7 +24,7 @@
  * forces layout once for the walk (~1ms for typical pages).
  */
 
-import type { A11yNode, A11ySnapshot } from "../rtvi/ui";
+import type { A11yNode, A11ySelection, A11ySnapshot } from "../rtvi/ui";
 
 // ---------------------------------------------------------------------------
 // Tunables
@@ -38,6 +38,11 @@ const NAME_MAX = 100;
 // can have hundreds of entries; truncating at 20 keeps the snapshot
 // useful without ballooning LLM context.
 const MAX_SELECT_OPTIONS = 20;
+// Selections benefit from preserving paragraph structure, but the agent
+// only needs enough text to disambiguate the referent. 2000 chars is
+// roughly 500 tokens — meaningful context without dominating the
+// ``<ui_state>`` injection.
+const SELECTION_TEXT_MAX = 2000;
 
 // ---------------------------------------------------------------------------
 // Ref registry: stable ``e{N}`` IDs per DOM node, persist as long as the
@@ -197,6 +202,14 @@ function getRole(el: Element): string | null {
       return null; // consumed by its associated input
     case "img":
       return el.getAttribute("alt") !== null ? "img" : null;
+    case "p":
+      // Promote prose containers so paragraph-level deixis works:
+      // selection anchors at the enclosing paragraph, and the agent
+      // can address individual paragraphs by ref for select_text /
+      // scroll_to / highlight. Pure-wrapper flattening would lose
+      // both. Paragraphs are walked as non-leaf so inline links and
+      // emphasis still nest underneath.
+      return "paragraph";
     case "ul":
     case "ol":
       return "list";
@@ -315,11 +328,14 @@ function getName(el: Element, role: string): string | undefined {
     return alt ? truncate(alt) : undefined;
   }
 
-  // Leaf interactive / heading / link roles use text from descendants.
-  // Use ``collectAccessibleText`` so sibling children (e.g. multiple
-  // ``<span>`` inside a button) are joined with spaces rather than
-  // concatenated by ``textContent``.
-  if (LEAF_ROLES.has(role)) {
+  // Leaf interactive / heading / link roles, plus paragraphs, use
+  // text from descendants. Paragraphs aren't leaves (they may carry
+  // nested links / emphasis) but we want the prose preview as the
+  // node's name so the LLM has the gist without expanding text
+  // children. ``collectAccessibleText`` joins sibling children with
+  // spaces so ``<span>Foo</span><span>Bar</span>`` yields ``"Foo Bar"``
+  // rather than ``"FooBar"``.
+  if (LEAF_ROLES.has(role) || role === "paragraph") {
     const text = collectAccessibleText(el);
     return text ? truncate(text) : undefined;
   }
@@ -417,7 +433,13 @@ interface WalkOptions {
   trackViewport: boolean;
 }
 
-function walk(el: Element, depth: number, budget: Budget, opts: WalkOptions): A11yNode[] {
+function walk(
+  el: Element,
+  depth: number,
+  budget: Budget,
+  opts: WalkOptions,
+  inheritSkipTextNodes = false,
+): A11yNode[] {
   if (isExcluded(el)) return [];
   if (budget.count >= MAX_NODES) return [];
 
@@ -436,7 +458,11 @@ function walk(el: Element, depth: number, budget: Budget, opts: WalkOptions): A1
 
   if (role === null) {
     // Pure wrapper: inline children into the parent's child list.
-    return walkChildren(el, depth, budget, opts);
+    // Inherit the caller's text-skip flag so e.g. a <span> inside a
+    // <p> doesn't leak its text as a duplicate text-role node.
+    return walkChildren(el, depth, budget, opts, {
+      skipTextNodes: inheritSkipTextNodes,
+    });
   }
 
   budget.count++;
@@ -457,7 +483,11 @@ function walk(el: Element, depth: number, budget: Budget, opts: WalkOptions): A1
   if (rowcount !== undefined) node.rowcount = rowcount;
 
   if (!LEAF_ROLES.has(role)) {
-    const children = walkChildren(el, depth + 1, budget, opts);
+    // For paragraphs the text content is already in the node's
+    // ``name``. Skip raw text-node children so the same prose
+    // doesn't appear twice in ``<ui_state>``.
+    const skipTextNodes = role === "paragraph";
+    const children = walkChildren(el, depth + 1, budget, opts, { skipTextNodes });
     if (children.length > 0) {
       if (children.length > MAX_CHILDREN_PER_NODE) {
         const kept = children.slice(0, MAX_CHILDREN_PER_NODE);
@@ -522,7 +552,23 @@ function collectSelectOptions(
   return out;
 }
 
-function walkChildren(el: Element, depth: number, budget: Budget, opts: WalkOptions): A11yNode[] {
+interface WalkChildrenOptions {
+  /**
+   * When ``true``, raw text-node children are not emitted. Used by
+   * ``paragraph`` whose ``name`` already carries the prose; emitting
+   * the same text again as ``- text "..."`` children would duplicate
+   * it in ``<ui_state>``.
+   */
+  skipTextNodes?: boolean;
+}
+
+function walkChildren(
+  el: Element,
+  depth: number,
+  budget: Budget,
+  opts: WalkOptions,
+  childOpts: WalkChildrenOptions = {},
+): A11yNode[] {
   const out: A11yNode[] = [];
   // Iterate ``childNodes`` rather than ``children`` so we pick up
   // direct text nodes too (e.g. track titles sitting in a pure-wrapper
@@ -531,6 +577,7 @@ function walkChildren(el: Element, depth: number, budget: Budget, opts: WalkOpti
   for (let i = 0; i < el.childNodes.length; i++) {
     const child = el.childNodes[i];
     if (child.nodeType === 3 /* TEXT_NODE */) {
+      if (childOpts.skipTextNodes) continue;
       const text = collapseWhitespace(child.textContent ?? "");
       if (text) {
         if (budget.count >= MAX_NODES) break;
@@ -538,13 +585,120 @@ function walkChildren(el: Element, depth: number, budget: Budget, opts: WalkOpti
         out.push({ ref: "", role: "text", name: truncate(text) });
       }
     } else if (child.nodeType === 1 /* ELEMENT_NODE */) {
-      const nodes = walk(child as Element, depth, budget, opts);
+      const nodes = walk(
+        child as Element,
+        depth,
+        budget,
+        opts,
+        childOpts.skipTextNodes,
+      );
       for (const n of nodes) out.push(n);
       if (budget.count >= MAX_NODES) break;
     }
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up a ref for ``el`` without assigning a new one.
+ *
+ * Selections frequently land on text nodes whose closest element
+ * ancestor is a structural tag like ``<p>`` or ``<span>`` that the
+ * walker treats as a pure wrapper and so doesn't ref. Climb the
+ * ancestor chain until we find a walked element.
+ *
+ * Returns ``null`` when an ``aria-hidden="true"`` or
+ * ``data-a11y-exclude`` ancestor is encountered before any
+ * ref-bearing element, so selections inside subtrees the app has
+ * explicitly hidden from accessibility don't leak into the snapshot.
+ */
+function findRefBearingAncestor(start: Element | null): Element | null {
+  let el: Element | null = start;
+  while (el) {
+    if (
+      el.getAttribute("aria-hidden") === "true" ||
+      el.hasAttribute("data-a11y-exclude")
+    ) {
+      return null;
+    }
+    if (refMap.has(el)) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function clampSelectionText(text: string): string {
+  if (text.length <= SELECTION_TEXT_MAX) return text;
+  return text.slice(0, SELECTION_TEXT_MAX - 1) + "…";
+}
+
+/**
+ * Capture the user's current text selection as an ``A11ySelection``.
+ *
+ * Returns ``null`` when nothing is selected, the selection is
+ * collapsed (a bare cursor position), or no ancestor of the
+ * selection has been assigned a ref by the walker (e.g. selection
+ * landed entirely inside an ``aria-hidden`` subtree).
+ *
+ * Input/textarea takes precedence over the document selection
+ * because ``window.getSelection().toString()`` is empty for those
+ * elements; we read ``selectionStart`` / ``selectionEnd`` directly
+ * and surface them as offsets so a round-trip ``select_text``
+ * command can reproduce the range.
+ */
+export function serializeSelection(): A11ySelection | null {
+  if (typeof document === "undefined") return null;
+
+  // Input / textarea: own selection model, distinct from
+  // ``window.getSelection()``.
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    const start = active.selectionStart;
+    const end = active.selectionEnd;
+    if (start !== null && end !== null && start !== end) {
+      const ref = refMap.get(active);
+      if (!ref) return null;
+      const text = active.value.slice(start, end);
+      if (!text) return null;
+      return {
+        ref,
+        text: clampSelectionText(text),
+        start_offset: start,
+        end_offset: end,
+      };
+    }
+  }
+
+  // Document selection.
+  const sel = document.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const text = sel.toString();
+  if (!text) return null;
+
+  const range = sel.getRangeAt(0);
+  let common: Node | null = range.commonAncestorContainer;
+  // Climb to the nearest element node first.
+  while (common && common.nodeType !== 1 /* ELEMENT_NODE */) {
+    common = common.parentNode;
+  }
+  const anchor = findRefBearingAncestor(common as Element | null);
+  if (!anchor) return null;
+  const ref = refMap.get(anchor);
+  if (!ref) return null;
+
+  return {
+    ref,
+    text: clampSelectionText(text),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Walker entry point
+// ---------------------------------------------------------------------------
 
 export interface SnapshotOptions {
   /**
@@ -579,6 +733,9 @@ export function snapshotDocument(
   const opts: WalkOptions = { trackViewport: options.trackViewport ?? true };
   const budget: Budget = { count: 0 };
   const children = walkChildren(el, 0, budget, opts);
+  // Capture selection after the walk so refs are populated for
+  // anything visible on the page.
+  const selection = serializeSelection();
   return {
     root: {
       ref: getRef(el),
@@ -586,5 +743,6 @@ export function snapshotDocument(
       ...(children.length > 0 ? { children } : {}),
     },
     captured_at: Date.now(),
+    ...(selection ? { selection } : {}),
   };
 }

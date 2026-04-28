@@ -152,4 +152,25 @@ describe("A11ySnapshotStreamer", () => {
     expect(emissions).toHaveLength(1);
     streamer.stop();
   });
+
+  it("re-emits on selectionchange so snapshots reflect the latest selection", () => {
+    const emissions: Emission[] = [];
+    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+      debounceMs: 100,
+    });
+    streamer.start();
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(1);
+
+    document.dispatchEvent(new Event("selectionchange"));
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(2);
+
+    streamer.stop();
+
+    // After stop(), selectionchange should not produce more snapshots.
+    document.dispatchEvent(new Event("selectionchange"));
+    jest.advanceTimersByTime(500);
+    expect(emissions).toHaveLength(2);
+  });
 });
