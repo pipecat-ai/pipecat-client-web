@@ -31,6 +31,7 @@ import type {
   NavigatePayload,
   ScrollToPayload,
   SelectTextPayload,
+  SetInputValuePayload,
   ToastPayload,
   UICommandHandler,
 } from "@pipecat-ai/client-js";
@@ -328,18 +329,73 @@ export const useStandardSelectTextHandler = (
   useUICommandHandler<SelectTextPayload>("select_text", handler);
 };
 
+/** Options accepted by ``useStandardSetInputValueHandler``. */
+export interface StandardSetInputValueOptions {
+  /**
+   * When true, fire ``focus()`` on the target before writing so the
+   * user sees the cursor land in the field. The element is blurred
+   * after the change events fire to avoid stealing keyboard focus
+   * from the user mid-conversation. @default false
+   */
+  focusFirst?: boolean;
+}
+
+/**
+ * Enable the default ``set_input_value`` handler.
+ *
+ * Resolves the target by ref / target_id, refuses on
+ * ``disabled``, ``readonly``, or ``<input type="hidden">`` (silent
+ * no-op so the agent can't bypass UI affordances the user is meant
+ * to control), then assigns ``el.value`` and dispatches single-shot
+ * ``input`` and ``change`` events so React-controlled inputs and
+ * vanilla ``onChange`` listeners pick up the new value naturally.
+ *
+ * With ``replace: false`` the new text is appended to the current
+ * value; the default replaces.
+ */
+export const useStandardSetInputValueHandler = (
+  options: StandardSetInputValueOptions = {},
+): void => {
+  const { focusFirst = false } = options;
+  const handler = useCallback(
+    (payload: SetInputValuePayload) => {
+      const el = resolveTarget(payload);
+      if (
+        !(el instanceof HTMLInputElement) &&
+        !(el instanceof HTMLTextAreaElement)
+      ) {
+        return;
+      }
+      // Refuse on fields the user can't edit themselves.
+      if (el.disabled || el.readOnly) return;
+      if (el instanceof HTMLInputElement && el.type === "hidden") return;
+
+      const next =
+        payload.replace === false ? (el.value ?? "") + payload.value : payload.value;
+      if (focusFirst) el.focus({ preventScroll: true });
+      el.value = next;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      if (focusFirst) el.blur();
+    },
+    [focusFirst],
+  );
+  useUICommandHandler<SetInputValuePayload>("set_input_value", handler);
+};
+
 /** Options accepted by ``useStandardCommandHandlers`` (one object per handler). */
 export interface StandardCommandHandlerOptions {
   scrollTo?: StandardScrollToOptions;
   focus?: StandardFocusOptions;
   highlight?: StandardHighlightOptions;
   selectText?: StandardSelectTextOptions;
+  setInputValue?: StandardSetInputValueOptions;
 }
 
 /**
  * Enable all DOM-based default handlers (`scroll_to`, `focus`,
- * `highlight`, `select_text`) at once. Pass per-handler option
- * objects to customize.
+ * `highlight`, `select_text`, `set_input_value`) at once. Pass
+ * per-handler option objects to customize.
  */
 export const useStandardCommandHandlers = (
   options: StandardCommandHandlerOptions = {},
@@ -348,6 +404,7 @@ export const useStandardCommandHandlers = (
   useStandardFocusHandler(options.focus);
   useStandardHighlightHandler(options.highlight);
   useStandardSelectTextHandler(options.selectText);
+  useStandardSetInputValueHandler(options.setInputValue);
 };
 
 /**

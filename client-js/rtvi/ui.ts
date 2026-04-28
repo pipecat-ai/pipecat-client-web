@@ -106,6 +106,24 @@ export interface FocusPayload {
 }
 
 /**
+ * Payload for the built-in `set_input_value` command.
+ *
+ * Asks the client to write `value` into a text input or textarea.
+ * The standard handler refuses to write into `disabled`,
+ * `readonly`, or `<input type="hidden">` targets so the agent can't
+ * bypass UI affordances the user is meant to control. With
+ * `replace: false` the value is appended to whatever is already in
+ * the field; the default replaces.
+ */
+export interface SetInputValuePayload {
+  ref?: string | null;
+  target_id?: string | null;
+  value: string;
+  /** When omitted, defaults to `true` (replace existing value). */
+  replace?: boolean | null;
+}
+
+/**
  * Payload for the built-in `select_text` command.
  *
  * Mirror of the read-side {@link A11ySelection}: the agent asks the
