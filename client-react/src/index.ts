@@ -25,6 +25,7 @@ import {
   useStandardFocusHandler,
   useStandardHighlightHandler,
   useStandardScrollToHandler,
+  useStandardSelectTextHandler,
   useToastHandler,
 } from "./standardHandlers";
 import { UIAgentContext } from "./UIAgentContext";
@@ -81,6 +82,7 @@ export {
   useStandardFocusHandler,
   useStandardHighlightHandler,
   useStandardScrollToHandler,
+  useStandardSelectTextHandler,
   useToastHandler,
   useUIAgentClient,
   useUICommandHandler,
@@ -118,6 +120,7 @@ export type {
   HighlightPayload,
   NavigatePayload,
   ScrollToPayload,
+  SelectTextPayload,
   TaskStatus,
   ToastPayload,
   UICommandEnvelope,

@@ -105,6 +105,29 @@ export interface FocusPayload {
   target_id?: string | null;
 }
 
+/**
+ * Payload for the built-in `select_text` command.
+ *
+ * Mirror of the read-side {@link A11ySelection}: the agent asks the
+ * client to make a text selection on the page so the user can see
+ * what content the agent is referring to. With `start_offset` /
+ * `end_offset` omitted, the entire target's text is selected.
+ *
+ * Document elements use a `Range` over descendant text nodes and the
+ * standard handler walks them to convert character offsets into
+ * `(textNode, offsetInNode)` pairs. `<input>` and `<textarea>`
+ * targets use `setSelectionRange(start, end)` (or `el.select()` when
+ * offsets are absent).
+ */
+export interface SelectTextPayload {
+  ref?: string | null;
+  target_id?: string | null;
+  /** Character offset within the target where the selection starts. */
+  start_offset?: number | null;
+  /** End character offset, exclusive. */
+  end_offset?: number | null;
+}
+
 // ---------------------------------------------------------------------------
 // Structural awareness: a11y snapshot
 // ---------------------------------------------------------------------------

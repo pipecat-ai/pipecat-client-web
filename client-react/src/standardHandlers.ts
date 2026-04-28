@@ -30,6 +30,7 @@ import type {
   HighlightPayload,
   NavigatePayload,
   ScrollToPayload,
+  SelectTextPayload,
   ToastPayload,
   UICommandHandler,
 } from "@pipecat-ai/client-js";
@@ -209,16 +210,136 @@ export const useStandardHighlightHandler = (
   useUICommandHandler<HighlightPayload>("highlight", handler);
 };
 
+/** Options accepted by ``useStandardSelectTextHandler``. */
+export interface StandardSelectTextOptions {
+  /**
+   * When true, the target is scrolled into view before the selection
+   * is applied so the user actually sees what was selected. @default true
+   */
+  scrollIntoViewFirst?: boolean;
+  /** ``scrollIntoView`` block position when scrolling first. @default "center" */
+  block?: ScrollLogicalPosition;
+}
+
+/**
+ * Walk descendant text nodes of ``el`` in document order and locate
+ * the ``(textNode, offsetInNode)`` position that corresponds to
+ * character offset ``charOffset`` over the concatenated text content.
+ *
+ * Callers are expected to pre-validate ``charOffset`` against
+ * ``el.textContent.length``; this helper returns ``null`` if no text
+ * node covers the offset.
+ */
+function findTextNodePosition(
+  el: Element,
+  charOffset: number,
+): [Node, number] | null {
+  const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let consumed = 0;
+  let node = walker.nextNode();
+  while (node) {
+    const len = (node.textContent ?? "").length;
+    if (consumed + len >= charOffset) {
+      return [node, charOffset - consumed];
+    }
+    consumed += len;
+    node = walker.nextNode();
+  }
+  // Offset == total length: clamp to the end of the last text node
+  // so an exclusive end-offset at the end of the content still
+  // resolves cleanly.
+  if (charOffset === consumed && consumed > 0) {
+    const w = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let last: Node | null = null;
+    let next = w.nextNode();
+    while (next) {
+      last = next;
+      next = w.nextNode();
+    }
+    if (last) return [last, (last.textContent ?? "").length];
+  }
+  return null;
+}
+
+/**
+ * Enable the default ``select_text`` handler.
+ *
+ * Resolves the target by ref / target_id (same as the other
+ * handlers). For ``<input>`` and ``<textarea>``, calls
+ * ``setSelectionRange(start, end)``, or ``el.select()`` when offsets
+ * are not provided. For document elements, builds a ``Range`` from
+ * the descendant text nodes; with offsets absent, uses
+ * ``Range.selectNodeContents(el)``.
+ */
+export const useStandardSelectTextHandler = (
+  options: StandardSelectTextOptions = {},
+): void => {
+  const { scrollIntoViewFirst = true, block = "center" } = options;
+  const handler = useCallback(
+    (payload: SelectTextPayload) => {
+      const el = resolveTarget(payload);
+      if (!el) return;
+      if (scrollIntoViewFirst) {
+        el.scrollIntoView({ behavior: "smooth", block });
+      }
+
+      const start = payload.start_offset ?? null;
+      const end = payload.end_offset ?? null;
+
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+        if (start !== null && end !== null) {
+          el.focus({ preventScroll: true });
+          el.setSelectionRange(start, end);
+        } else {
+          el.select();
+        }
+        return;
+      }
+
+      const range = el.ownerDocument.createRange();
+      if (start !== null && end !== null) {
+        const totalLen = (el.textContent ?? "").length;
+        const inRange =
+          start >= 0 && end >= 0 && start <= end && end <= totalLen;
+        if (!inRange) {
+          // Stale or invalid offsets: fall back to selecting the
+          // whole element rather than emit a broken range.
+          range.selectNodeContents(el);
+        } else {
+          const startPos = findTextNodePosition(el, start);
+          const endPos = findTextNodePosition(el, end);
+          if (!startPos || !endPos) {
+            range.selectNodeContents(el);
+          } else {
+            range.setStart(startPos[0], startPos[1]);
+            range.setEnd(endPos[0], endPos[1]);
+          }
+        }
+      } else {
+        range.selectNodeContents(el);
+      }
+      const sel = el.ownerDocument.defaultView?.getSelection();
+      if (!sel) return;
+      sel.removeAllRanges();
+      sel.addRange(range);
+    },
+    [scrollIntoViewFirst, block],
+  );
+  useUICommandHandler<SelectTextPayload>("select_text", handler);
+};
+
 /** Options accepted by ``useStandardCommandHandlers`` (one object per handler). */
 export interface StandardCommandHandlerOptions {
   scrollTo?: StandardScrollToOptions;
   focus?: StandardFocusOptions;
   highlight?: StandardHighlightOptions;
+  selectText?: StandardSelectTextOptions;
 }
 
 /**
  * Enable all DOM-based default handlers (`scroll_to`, `focus`,
- * `highlight`) at once. Pass per-handler option objects to customize.
+ * `highlight`, `select_text`) at once. Pass per-handler option
+ * objects to customize.
  */
 export const useStandardCommandHandlers = (
   options: StandardCommandHandlerOptions = {},
@@ -226,6 +347,7 @@ export const useStandardCommandHandlers = (
   useStandardScrollToHandler(options.scrollTo);
   useStandardFocusHandler(options.focus);
   useStandardHighlightHandler(options.highlight);
+  useStandardSelectTextHandler(options.selectText);
 };
 
 /**
