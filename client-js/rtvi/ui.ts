@@ -120,6 +120,112 @@ export interface FocusPayload {
  */
 export const UI_SNAPSHOT_EVENT_NAME = "__ui_snapshot";
 
+// ---------------------------------------------------------------------------
+// Task lifecycle protocol
+// ---------------------------------------------------------------------------
+
+/**
+ * Discriminator written into the `data` field of an `RTVIServerMessage`
+ * carrying a UI task lifecycle event.
+ *
+ * The server emits `{ type: "ui.task", kind, ... }`; the client
+ * dispatcher filters on this value before invoking task listeners.
+ */
+export const UI_TASK_MESSAGE_TYPE = "ui.task";
+
+/**
+ * Reserved UI event name for cancelling an in-flight user task group.
+ *
+ * Sent from client to server with payload
+ * `{ task_id: string, reason?: string }`. The server's `UIAgent`
+ * routes this to `cancel_task` when the matching group was registered
+ * with `cancellable: true`.
+ *
+ * Underscore-prefixed to signal SDK-internal.
+ */
+export const UI_CANCEL_TASK_EVENT_NAME = "__cancel_task";
+
+/**
+ * Status of a worker within a task group.
+ *
+ * Mirrors `pipecat_subagents.agents.task_context.TaskStatus`. Tasks
+ * are surfaced to the client as `"running"` from the moment the
+ * group_started envelope arrives. The terminal status is set when
+ * `task_completed` arrives.
+ */
+export type TaskStatus =
+  | "running"
+  | "completed"
+  | "cancelled"
+  | "failed"
+  | "error";
+
+/** Group dispatched: the worker list is now known. */
+export interface UITaskGroupStartedEnvelope {
+  type: typeof UI_TASK_MESSAGE_TYPE;
+  kind: "group_started";
+  /** Shared identifier for every task in the group. */
+  task_id: string;
+  /** Worker agent names in dispatch order. */
+  agents: string[];
+  /** Optional human-readable label set by the server. */
+  label?: string | null;
+  /** Whether the client may request cancellation via `cancelTask`. */
+  cancellable: boolean;
+  /** Epoch ms when the group started. */
+  at: number;
+}
+
+/** Per-worker progress: `data` is whatever the worker passed to `send_task_update`. */
+export interface UITaskUpdateEnvelope {
+  type: typeof UI_TASK_MESSAGE_TYPE;
+  kind: "task_update";
+  task_id: string;
+  /** The worker that produced this update. */
+  agent_name: string;
+  /** Worker-defined payload. Forwarded verbatim. */
+  data: unknown;
+  at: number;
+}
+
+/** Per-worker terminal: status + final response. */
+export interface UITaskCompletedEnvelope {
+  type: typeof UI_TASK_MESSAGE_TYPE;
+  kind: "task_completed";
+  task_id: string;
+  agent_name: string;
+  status: TaskStatus;
+  /** Worker's final response payload. */
+  response?: unknown;
+  at: number;
+}
+
+/** Group terminal: every worker has responded (or the group was cancelled). */
+export interface UITaskGroupCompletedEnvelope {
+  type: typeof UI_TASK_MESSAGE_TYPE;
+  kind: "group_completed";
+  task_id: string;
+  at: number;
+}
+
+/** Discriminated union of every `ui.task` envelope kind. */
+export type UITaskEnvelope =
+  | UITaskGroupStartedEnvelope
+  | UITaskUpdateEnvelope
+  | UITaskCompletedEnvelope
+  | UITaskGroupCompletedEnvelope;
+
+/**
+ * Signature for a listener passed to `UIAgentClient.addTaskListener`.
+ *
+ * Receives every `ui.task` envelope in arrival order. Switch on
+ * `envelope.kind` to react to specific lifecycle phases. The React
+ * `useUITasks` hook is the recommended consumer for app code; this
+ * lower-level listener is for hosts that want to drive their own
+ * state.
+ */
+export type UITaskListener = (envelope: UITaskEnvelope) => void;
+
 /**
  * One node in the accessibility snapshot tree.
  *

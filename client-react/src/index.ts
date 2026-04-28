@@ -30,6 +30,8 @@ import {
 } from "./standardHandlers";
 import { UIAgentContext } from "./UIAgentContext";
 import { UIAgentProvider } from "./UIAgentProvider";
+import { UITasksContext } from "./UITasksContext";
+import { UITasksProvider } from "./UITasksProvider";
 import { useA11ySnapshot } from "./useA11ySnapshot";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
@@ -43,6 +45,7 @@ import { useRTVIClientEvent } from "./useRTVIClientEvent";
 import { useUIAgentClient } from "./useUIAgentClient";
 import { useUICommandHandler } from "./useUICommandHandler";
 import { useUIEventSender } from "./useUIEventSender";
+import { useUITasks } from "./useUITasks";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 
 export {
@@ -60,6 +63,8 @@ export {
   sortByCreatedAt,
   UIAgentContext,
   UIAgentProvider,
+  UITasksContext,
+  UITasksProvider,
   useA11ySnapshot,
   // Conversation
   useConversationContext,
@@ -82,8 +87,17 @@ export {
   useUIAgentClient,
   useUICommandHandler,
   useUIEventSender,
+  useUITasks,
   VoiceVisualizer,
 };
+
+// UI tasks types
+export type {
+  Task,
+  TaskGroup,
+  TaskUpdate,
+  UITasksAPI,
+} from "./uiTasksTypes";
 
 // Conversation types
 export type {
@@ -106,17 +120,26 @@ export type {
   HighlightPayload,
   NavigatePayload,
   ScrollToPayload,
+  TaskStatus,
   ToastPayload,
   UICommandEnvelope,
   UICommandHandler,
   UIEventEnvelope,
+  UITaskCompletedEnvelope,
+  UITaskEnvelope,
+  UITaskGroupCompletedEnvelope,
+  UITaskGroupStartedEnvelope,
+  UITaskListener,
+  UITaskUpdateEnvelope,
 } from "@pipecat-ai/client-js";
 export type { A11ySnapshotStreamerOptions } from "@pipecat-ai/client-js";
 export {
   A11ySnapshotStreamer,
   findElementByRef,
   snapshotDocument,
+  UI_CANCEL_TASK_EVENT_NAME,
   UI_COMMAND_MESSAGE_TYPE,
   UI_EVENT_MESSAGE_TYPE,
   UI_SNAPSHOT_EVENT_NAME,
+  UI_TASK_MESSAGE_TYPE,
 } from "@pipecat-ai/client-js";
