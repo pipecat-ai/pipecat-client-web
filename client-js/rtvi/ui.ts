@@ -106,14 +106,35 @@ export interface FocusPayload {
 }
 
 /**
+ * Payload for the built-in `click` command.
+ *
+ * Closes the form-fill loop for non-text inputs (checkboxes,
+ * radios) and exposes the rest of the action vocabulary (submit
+ * buttons, links, app-specific clickable nodes). The standard
+ * handler refuses on `disabled` targets.
+ *
+ * For native `<select>`, prefer `set_input_value` (clicking
+ * options doesn't reliably change the selection); for custom
+ * comboboxes, apps wire their own command matching the library's
+ * interaction model.
+ */
+export interface ClickPayload {
+  ref?: string | null;
+  target_id?: string | null;
+}
+
+/**
  * Payload for the built-in `set_input_value` command.
  *
- * Asks the client to write `value` into a text input or textarea.
- * The standard handler refuses to write into `disabled`,
- * `readonly`, or `<input type="hidden">` targets so the agent can't
- * bypass UI affordances the user is meant to control. With
- * `replace: false` the value is appended to whatever is already in
- * the field; the default replaces.
+ * Asks the client to write `value` into a text input, textarea, or
+ * native `<select>`. The standard handler refuses to write into
+ * `disabled`, `readonly`, or `<input type="hidden">` targets so the
+ * agent can't bypass UI affordances the user is meant to control.
+ *
+ * For text inputs and textareas, `replace: false` appends the value
+ * to whatever is already in the field; the default replaces. The
+ * flag is ignored for native `<select>` (a select either has the
+ * value or doesn't; "appending" is meaningless).
  */
 export interface SetInputValuePayload {
   ref?: string | null;
