@@ -15,6 +15,8 @@ import {
   BotReadyData,
   BotTTSTextData,
   ClientMessageData,
+  DeviceErrorReason,
+  DeviceStatus,
   ErrorData,
   LLMContextMessage,
   LLMFunctionCallData,
@@ -23,6 +25,7 @@ import {
   LLMFunctionCallResultResponse,
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
+  MediaState,
   Participant,
   PipecatMetricsData,
   RTVIEvent,
@@ -57,6 +60,31 @@ export type FunctionCallParams = {
   arguments: Record<string, unknown>;
 };
 
+/**
+ * Map a DeviceErrorType onto a DeviceErrorReason that captures the per-device
+ * failure mode. Speaker-affecting errors are not represented here because
+ * MediaState only tracks mic and cam.
+ */
+function deviceErrorReasonFromType(
+  type: RTVIErrors.DeviceErrorType
+): DeviceErrorReason {
+  switch (type) {
+    case "in-use":
+      return "already-in-use";
+    case "permissions":
+      return "blocked";
+    case "not-found":
+      return "not-found";
+    case "undefined-mediadevices":
+      return "not-supported";
+    case "constraints":
+      return "invalid-constraints";
+    case "unknown":
+    default:
+      return "unknown";
+  }
+}
+
 export type FunctionCallCallback = (
   fn: FunctionCallParams
 ) => Promise<LLMFunctionCallResult | void>;
@@ -87,6 +115,7 @@ export type RTVIEventCallbacks = Partial<{
   onMicUpdated: (mic: MediaDeviceInfo) => void;
   onSpeakerUpdated: (speaker: MediaDeviceInfo) => void;
   onDeviceError: (error: RTVIErrors.DeviceError) => void;
+  onMediaStateChanged: (mediaState: MediaState) => void;
   onTrackStarted: (track: MediaStreamTrack, participant?: Participant) => void;
   onTrackStopped: (track: MediaStreamTrack, participant?: Participant) => void;
   onScreenTrackStarted: (
@@ -182,6 +211,14 @@ export class PipecatClient extends RTVIEventEmitter {
   private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
 
+  // Per-device device state. Independent of TransportState — driven by
+  // initDevices() and DeviceError events, never by transport connect/disconnect.
+  // See common_types.ts for the rationale and the daily-react reference.
+  private _mediaState: MediaState = {
+    mic: { state: "uninitialized" },
+    cam: { state: "uninitialized" },
+  };
+
   constructor(options: PipecatClientOptions) {
     super();
 
@@ -275,10 +312,14 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.AvailableSpeakersUpdated, speakers);
       },
       onCamUpdated: (cam) => {
+        // Real device selected → permission was granted. Upgrade MediaState
+        // (no-op if already granted, sticky if blocked / in-use / etc).
+        if (cam?.deviceId) this._markDeviceGranted("cam");
         options?.callbacks?.onCamUpdated?.(cam);
         this.emit(RTVIEvent.CamUpdated, cam);
       },
       onMicUpdated: (mic) => {
+        if (mic?.deviceId) this._markDeviceGranted("mic");
         options?.callbacks?.onMicUpdated?.(mic);
         this.emit(RTVIEvent.MicUpdated, mic);
       },
@@ -287,6 +328,12 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.SpeakerUpdated, speaker);
       },
       onDeviceError: (error) => {
+        // Classify into MediaState in real time. Works the same whether the
+        // error fires during an initDevices() call (mid-await) or out of band
+        // (e.g. devicechange-driven). The post-transport Permissions API
+        // re-query in initDevices() then has the final word for any 'denied'
+        // override.
+        this._classifyAndApplyDeviceError(error);
         options?.callbacks?.onDeviceError?.(error);
         this.emit(RTVIEvent.DeviceError, error);
       },
@@ -412,11 +459,94 @@ export class PipecatClient extends RTVIEventEmitter {
   // ------ Transport methods
 
   /**
-   * Initialize local media devices
+   * Initialize local media devices.
+   *
+   * Drives MediaState transitions: both mic and cam move to 'initializing' on
+   * entry. On success, each device moves to 'granted' only if the transport
+   * reports it as acquired (via onMicUpdated / onCamUpdated with a real
+   * deviceId); otherwise that device falls back to 'uninitialized'. On
+   * failure the in-flight DeviceError (if any) classifies the affected
+   * device(s) per-device; anything still at 'initializing' falls back to
+   * 'unknown'. The original error is always re-thrown.
+   *
+   * Calling this again after a failure is the recovery path — a second call
+   * re-enters 'initializing' and reclassifies. There is no separate
+   * retryDevices() method.
    */
   public async initDevices() {
     logger.debug("[Pipecat Client] Initializing devices...");
-    await this._transport.initDevices();
+    // Both devices enter the lifecycle, regardless of enableMic / enableCam.
+    // The actual transport behavior is asymmetric and not predictable from
+    // options alone (e.g. daily-js's startCamera honors startVideoOff but not
+    // startAudioOff — it acquires the mic even when the caller said
+    // enableMic: false). MediaState mirrors what the transport actually did,
+    // sourced from onMicUpdated / onCamUpdated events that fire with a real
+    // deviceId only when permission was granted. Devices the transport never
+    // speaks to fall back to 'uninitialized' below.
+    this._setMediaState({
+      mic: { state: "initializing" },
+      cam: { state: "initializing" },
+    });
+
+    try {
+      await this._transport.initDevices();
+      // Transport resolved. Per-device transitions during the await:
+      //   - onMicUpdated / onCamUpdated upgraded reported devices to 'granted'
+      //   - onDeviceError applied per-device 'error' classifications
+      // Anything still at 'initializing' wasn't reported either way — the
+      // transport simply didn't speak to that device (e.g. daily-js skipping
+      // cam under startVideoOff: true). Fall it back to 'uninitialized'.
+      this._resolveLingeringInitializing({ state: "uninitialized" });
+    } catch (error) {
+      // Transport rejected. Same as above but the fallback for unspoken-to
+      // devices is 'unknown' — something failed and we can't tell whether
+      // this device would have worked.
+      this._resolveLingeringInitializing({
+        state: "error",
+        reason: "unknown",
+      });
+      throw error;
+    } finally {
+      // Re-query the Permissions API now that the prompt (if any) has been
+      // dismissed. Authoritative source for 'denied' regardless of what the
+      // transport said. See the helper for the under-reporting rationale.
+      await this._enrichFromPermissionsAPI();
+    }
+  }
+
+  /**
+   * After the transport's initDevices() resolves or rejects, any device
+   * still at 'initializing' didn't receive a 'granted' upgrade from
+   * onMicUpdated / onCamUpdated and wasn't classified by a DeviceError
+   * (which would have moved it to 'error'). Apply the supplied fallback so
+   * it doesn't linger.
+   *
+   * On success, fallback is 'uninitialized' (the transport simply didn't
+   * speak to that device — e.g. daily-js skipping cam under
+   * startVideoOff: true). On failure, fallback is an 'unknown' error (we
+   * know something went wrong but can't pin it on this device).
+   */
+  private _resolveLingeringInitializing(fallback: DeviceStatus): void {
+    const patch: Partial<MediaState> = {};
+    for (const kind of ["mic", "cam"] as const) {
+      if (this._mediaState[kind].state === "initializing") {
+        patch[kind] = fallback;
+      }
+    }
+    if (Object.keys(patch).length > 0) this._setMediaState(patch);
+  }
+
+  /**
+   * Upgrade a device to 'granted'. Called from the wrapped onMicUpdated /
+   * onCamUpdated when the transport reports an actual selected device.
+   * Allowed from any state — a previously errored device (e.g. 'not-found'
+   * because the cam was unplugged) can recover when the device reappears
+   * on a subsequent initDevices() call.
+   */
+  private _markDeviceGranted(kind: "mic" | "cam"): void {
+    if (this._mediaState[kind].state !== "granted") {
+      this._setMediaState({ [kind]: { state: "granted" } });
+    }
   }
 
   /**
@@ -427,8 +557,12 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   @transportAlreadyStarted
   public async startBot(startBotParams: APIRequest): Promise<unknown> {
-    if (this._transport.state === "disconnected") {
-      await this._transport.initDevices();
+    // Implicit init when devices haven't been initialized yet. Pre-Plan-A
+    // this gate read transport.state === "disconnected", which fired both
+    // pre-init AND post-session — leading to redundant initDevices() calls
+    // on reconnect. needsInit(mediaState) is the unambiguous replacement.
+    if (this.needsInit()) {
+      await this.initDevices();
     }
     this._transport.state = "authenticating";
     this._transport.startBotParams = startBotParams;
@@ -487,8 +621,8 @@ export class PipecatClient extends RTVIEventEmitter {
       (async () => {
         this._connectResolve = resolve;
 
-        if (this._transport.state === "disconnected") {
-          await this._transport.initDevices();
+        if (this.needsInit()) {
+          await this.initDevices();
         }
 
         try {
@@ -536,6 +670,103 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
+   * Apply a partial MediaState patch and emit MediaStateUpdated if the patch
+   * actually changes anything. The callback always receives a fresh object.
+   */
+  private _setMediaState(patch: Partial<MediaState>): void {
+    const next: MediaState = { ...this._mediaState, ...patch };
+    if (
+      this._statusEquals(next.mic, this._mediaState.mic) &&
+      this._statusEquals(next.cam, this._mediaState.cam)
+    ) {
+      return;
+    }
+    this._mediaState = next;
+    this._options.callbacks?.onMediaStateChanged?.(this.mediaState);
+    this.emit(RTVIEvent.MediaStateUpdated, this.mediaState);
+  }
+
+  /**
+   * Structural equality for two DeviceStatus values. Distinct error
+   * statuses (different `reason` or `details`) are treated as distinct so a
+   * status update fires when the underlying error changes, even if `state`
+   * was already 'error'.
+   */
+  private _statusEquals(a: DeviceStatus, b: DeviceStatus): boolean {
+    if (a.state !== b.state) return false;
+    if (a.state === "error" && b.state === "error") {
+      return a.reason === b.reason && a.details === b.details;
+    }
+    return true;
+  }
+
+  /**
+   * Map a DeviceError onto a partial MediaState patch and apply it. Mirrors
+   * daily-react's camera-error classifier — affected devices flip to an
+   * `'error'` status carrying the reason and the original error payload.
+   */
+  private _classifyAndApplyDeviceError(error: RTVIErrors.DeviceError): void {
+    const status: DeviceStatus = {
+      state: "error",
+      reason: deviceErrorReasonFromType(error.type),
+      details: error.details,
+    };
+    const patch: Partial<MediaState> = {};
+    if (error.devices.includes("mic")) patch.mic = status;
+    if (error.devices.includes("cam")) patch.cam = status;
+    if (Object.keys(patch).length === 0) return; // speaker-only or empty
+    this._setMediaState(patch);
+  }
+
+  /**
+   * Permissions API enrichment, run AFTER the transport's initDevices()
+   * resolves. By that point the prompt (if any) has been dismissed, and the
+   * Permissions API's `denied` answer is authoritative — it overrides any
+   * under-reported DeviceError.
+   *
+   * Concrete case worth flagging: on a page where the user previously
+   * blocked permissions, daily-js's `camera-error` only names whichever
+   * device the transport tried first when re-initializing — even though
+   * both are blocked. Re-querying here catches the missing one. Worth a
+   * follow-up daily-js ticket.
+   *
+   * Silently no-ops where the API is unavailable (Safari, some mobile
+   * browsers) or throws on an unsupported descriptor.
+   */
+  private async _enrichFromPermissionsAPI(): Promise<void> {
+    // PermissionDescriptor's `name` field isn't a standard enum across
+    // browsers (Safari historically narrower than Chrome/Firefox), and
+    // 'microphone' / 'camera' are not in lib.dom's PermissionName union in
+    // every TS version. Hand-roll the descriptor type and cast.
+    type PermDescriptor = { name: "microphone" | "camera" };
+    type Q = (descriptor: PermDescriptor) => Promise<{ state: string }>;
+    const permissions = (
+      globalThis as unknown as {
+        navigator?: { permissions?: { query: Q } };
+      }
+    ).navigator?.permissions;
+    if (!permissions?.query) return;
+    const query = permissions.query.bind(permissions);
+
+    const patch: Partial<MediaState> = {};
+    await Promise.all(
+      (["mic", "cam"] as const).map(async (kind) => {
+        try {
+          const result = await query({
+            name: kind === "mic" ? "microphone" : "camera",
+          });
+          if (result.state === "denied") {
+            patch[kind] = { state: "error", reason: "blocked" };
+          }
+        } catch {
+          // Browsers may throw on unsupported descriptor names — swallow.
+        }
+      })
+    );
+    if (Object.keys(patch).length > 0) this._setMediaState(patch);
+  }
+
+  /**
    * Internal wrapper around the transport's sendMessage method
    */
   private _sendMessage(message: RTVIMessage): void {
@@ -574,6 +805,48 @@ export class PipecatClient extends RTVIEventEmitter {
 
   public get state(): TransportState {
     return this._transport.state;
+  }
+
+  /**
+   * Per-device device state (mic, cam). Independent of transport state.
+   *
+   * Updated by initDevices() and DeviceError events. Returns a snapshot — to
+   * track changes, subscribe to RTVIEvent.MediaStateUpdated or pass an
+   * onMediaStateChanged callback in the client constructor.
+   */
+  public get mediaState(): MediaState {
+    // Deep snapshot — DeviceStatus is a nested object, so a shallow spread
+    // would still hand the caller a reference to our per-device records.
+    return {
+      mic: { ...this._mediaState.mic },
+      cam: { ...this._mediaState.cam },
+    };
+  }
+
+  /**
+   * Whether initDevices() still has work to do. Returns true if any device
+   * the caller opted into (enableMic / enableCam) is still 'uninitialized'.
+   * Devices the caller opted out of are not considered — they stay
+   * 'uninitialized' by design and must not gate the implicit init.
+   *
+   * Used internally by connect() / startBot() to decide whether to drive an
+   * implicit initDevices(); exposed publicly so consumers (e.g. step 3's
+   * useMediaState hook) can branch on the same logic.
+   */
+  public needsInit(): boolean {
+    if (
+      this._options.enableMic !== false &&
+      this._mediaState.mic.state === "uninitialized"
+    ) {
+      return true;
+    }
+    if (
+      this._options.enableCam !== false &&
+      this._mediaState.cam.state === "uninitialized"
+    ) {
+      return true;
+    }
+    return false;
   }
 
   public get version(): string {
