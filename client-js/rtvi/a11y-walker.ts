@@ -87,6 +87,23 @@ export function findElementByRef(ref: string): Element | null {
   return el;
 }
 
+/**
+ * Inverse of ``findElementByRef``: return the snapshot ref the walker
+ * has assigned to ``el``, if any. Returns ``null`` for elements the
+ * walker has not yet visited (refs are assigned during snapshot
+ * walking; an element only has a ref if it appeared in a previous
+ * snapshot).
+ *
+ * Useful when an app needs to associate a user interaction (e.g.
+ * the current text selection, a click on a non-tracked element) with
+ * a snapshot-known node. Walk up ``el.parentElement`` looking for the
+ * first ancestor that has a ref to find the closest snapshot-known
+ * container.
+ */
+export function findRefForElement(el: Element): string | null {
+  return refMap.get(el) ?? null;
+}
+
 /** Reset the ref counter and registry. Test-only helper. */
 export function __resetRefsForTesting(): void {
   refCounter = 0;
