@@ -21,14 +21,14 @@ const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
   return {
-    sendClientMessage: jest.fn(),
+    sendRTVIMessage: jest.fn(),
     on: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "serverMessage") {
+      if (event === "uiCommand") {
         listeners.add(handler as (data: unknown) => void);
       }
     }),
     off: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "serverMessage") {
+      if (event === "uiCommand") {
         listeners.delete(handler as (data: unknown) => void);
       }
     }),
@@ -63,7 +63,7 @@ describe("useUICommandHandler", () => {
     );
 
     act(() => {
-      pipecat.emit({ type: "ui.command", name: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ name: "toast", payload: { title: "Hi" } });
     });
 
     expect(calls).toEqual([{ title: "Hi" }]);
@@ -91,7 +91,7 @@ describe("useUICommandHandler", () => {
     rendered.unmount();
 
     act(() => {
-      pipecat.emit({ type: "ui.command", name: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ name: "toast", payload: { title: "Hi" } });
     });
 
     expect(calls).toEqual([]);

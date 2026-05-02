@@ -34,9 +34,10 @@ interface UIAgentProviderProps {
 /**
  * Wraps its children with a `UIAgentClient` bound to a Pipecat client.
  *
- * The client subscribes to the Pipecat client's `RTVIEvent.ServerMessage`
- * stream to dispatch UI commands. On unmount (or when the underlying
- * Pipecat client changes), the subscription is torn down via the detach
+ * The client subscribes to the Pipecat client's `RTVIEvent.UICommand`
+ * and `RTVIEvent.UITask` streams to dispatch UI commands and task
+ * lifecycle envelopes. On unmount (or when the underlying Pipecat
+ * client changes), the subscription is torn down via the detach
  * function returned from `client.attach()`.
  */
 export const UIAgentProvider: React.FC<
@@ -52,8 +53,9 @@ export const UIAgentProvider: React.FC<
 
   useEffect(() => {
     if (!client) return;
-    // `client.attach()` subscribes to RTVIEvent.ServerMessage and
-    // returns a detach function. Returning it here as the effect
+    // `client.attach()` subscribes to RTVIEvent.UICommand and
+    // RTVIEvent.UITask and returns a detach function. Returning it as
+    // the effect
     // cleanup means subscription lifecycle follows React mount/unmount,
     // including `StrictMode`'s double-invoke in development.
     return client.attach();

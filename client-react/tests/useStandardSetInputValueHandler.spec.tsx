@@ -21,14 +21,14 @@ const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
   return {
-    sendClientMessage: jest.fn(),
+    sendRTVIMessage: jest.fn(),
     on: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "serverMessage") {
+      if (event === "uiCommand") {
         listeners.add(handler as (data: unknown) => void);
       }
     }),
     off: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "serverMessage") {
+      if (event === "uiCommand") {
         listeners.delete(handler as (data: unknown) => void);
       }
     }),

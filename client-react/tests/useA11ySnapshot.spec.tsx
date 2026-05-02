@@ -13,7 +13,7 @@ import { useA11ySnapshot } from "../src/useA11ySnapshot";
 
 function makeMockPipecatClient() {
   return {
-    sendClientMessage: jest.fn(),
+    sendRTVIMessage: jest.fn(),
     on: jest.fn(),
     off: jest.fn(),
   };
@@ -46,22 +46,21 @@ describe("useA11ySnapshot", () => {
     );
 
     // No emission yet (before debounce elapses).
-    expect(pipecat.sendClientMessage).not.toHaveBeenCalled();
+    expect(pipecat.sendRTVIMessage).not.toHaveBeenCalled();
 
     // Advance past debounce window.
     act(() => {
       jest.advanceTimersByTime(100);
     });
 
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
-    const [type, data] = pipecat.sendClientMessage.mock.calls[0] as [
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
+    const [type, data] = pipecat.sendRTVIMessage.mock.calls[0] as [
       string,
-      { name: string; payload: unknown },
+      { tree: Record<string, unknown> },
     ];
-    expect(type).toBe("ui.event");
-    expect(data.name).toBe("__ui_snapshot");
-    expect(data.payload).toHaveProperty("root");
-    expect(data.payload).toHaveProperty("captured_at");
+    expect(type).toBe("ui-snapshot");
+    expect(data.tree).toHaveProperty("root");
+    expect(data.tree).toHaveProperty("captured_at");
   });
 
   it("coalesces rapid mutations into a single debounced snapshot", () => {
@@ -84,7 +83,7 @@ describe("useA11ySnapshot", () => {
     act(() => {
       jest.advanceTimersByTime(200);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
 
     // Fire several mutations in quick succession.
     const main = document.querySelector("main")!;
@@ -99,11 +98,11 @@ describe("useA11ySnapshot", () => {
     // Nothing emitted yet (still inside debounce window).
     // MutationObserver is async, so we need a microtask flush before timers.
     return Promise.resolve().then(() => {
-      expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
+      expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
       act(() => {
         jest.advanceTimersByTime(200);
       });
-      expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(2);
+      expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -127,7 +126,7 @@ describe("useA11ySnapshot", () => {
       jest.advanceTimersByTime(500);
     });
 
-    expect(pipecat.sendClientMessage).not.toHaveBeenCalled();
+    expect(pipecat.sendRTVIMessage).not.toHaveBeenCalled();
   });
 
   it("emits on scrollend", () => {
@@ -150,14 +149,14 @@ describe("useA11ySnapshot", () => {
     act(() => {
       jest.advanceTimersByTime(100);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
 
     act(() => {
       window.dispatchEvent(new Event("scrollend"));
       jest.advanceTimersByTime(100);
     });
 
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(2);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(2);
   });
 
   it("emits on window resize and visibilitychange", () => {
@@ -179,13 +178,13 @@ describe("useA11ySnapshot", () => {
     act(() => {
       jest.advanceTimersByTime(100);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
 
     act(() => {
       window.dispatchEvent(new Event("resize"));
       jest.advanceTimersByTime(100);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(2);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(2);
 
     // Visibility flipping to visible fires an emission; flipping to
     // hidden should not.
@@ -197,7 +196,7 @@ describe("useA11ySnapshot", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       jest.advanceTimersByTime(100);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(2);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(2);
 
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -207,7 +206,7 @@ describe("useA11ySnapshot", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       jest.advanceTimersByTime(100);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(3);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(3);
   });
 
   it("stops emitting after unmount", () => {
@@ -229,7 +228,7 @@ describe("useA11ySnapshot", () => {
     act(() => {
       jest.advanceTimersByTime(100);
     });
-    expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
 
     rendered.unmount();
 
@@ -244,7 +243,7 @@ describe("useA11ySnapshot", () => {
       act(() => {
         jest.advanceTimersByTime(500);
       });
-      expect(pipecat.sendClientMessage).toHaveBeenCalledTimes(1);
+      expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
     });
   });
 });

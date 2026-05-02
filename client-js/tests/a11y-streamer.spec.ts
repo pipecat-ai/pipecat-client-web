@@ -17,14 +17,16 @@ import { A11ySnapshotStreamer } from "../client/a11y-streamer";
 import type { UIAgentClient } from "../client/ui-agent-client";
 import type { A11ySnapshot } from "../rtvi/ui";
 
-type Emission = { name: string; payload: unknown };
+type Emission = { msgType: string; data: unknown };
 
 function makeStubClient(emissions: Emission[]): UIAgentClient {
-  // Only the ``sendEvent`` method is exercised by the streamer.
+  // The streamer calls ``pipecatClient.sendRTVIMessage`` to emit
+  // first-class ``ui-snapshot`` RTVI messages.
+  const sendRTVIMessage = jest.fn((msgType: string, data: unknown) => {
+    emissions.push({ msgType, data });
+  });
   const stub = {
-    sendEvent: jest.fn((name: string, payload: unknown) => {
-      emissions.push({ name, payload });
-    }),
+    pipecatClient: { sendRTVIMessage },
   } as unknown as UIAgentClient;
   return stub;
 }
@@ -52,8 +54,8 @@ describe("A11ySnapshotStreamer", () => {
     jest.advanceTimersByTime(100);
 
     expect(emissions).toHaveLength(1);
-    expect(emissions[0].name).toBe("__ui_snapshot");
-    const snap = emissions[0].payload as A11ySnapshot;
+    expect(emissions[0].msgType).toBe("ui-snapshot");
+    const snap = (emissions[0].data as { tree: A11ySnapshot }).tree;
     expect(snap.root).toBeDefined();
     expect(snap.captured_at).toBeGreaterThan(0);
     streamer.stop();
