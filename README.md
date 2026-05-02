@@ -134,6 +134,18 @@ pcClient.on(RTVIEvent.Disconnected, () => {
 });
 ```
 
+## UI Agent Protocol (v1)
+
+Both packages ship a v1 client implementation of the UI Agent Protocol, a structured wire format that lets server-side AI agents observe and drive a GUI app. Pairs with the `UIAgent` class in [`pipecat-subagents`](https://github.com/pipecat-ai/pipecat-subagents) on the Python side.
+
+The client side provides:
+
+- **`UIAgentClient`** (`client-js`): wraps `PipecatClient` with `sendEvent(name, payload)` for client-to-server UI events and `registerCommandHandler(name, handler)` for server-to-client UI commands.
+- **`A11ySnapshotStreamer`** (`client-js`): walks the document's accessibility tree and streams snapshots to the server on DOM mutations, focus changes, scroll, resize, and tab visibility. Framework-agnostic.
+- **React bindings** (`client-react`): `UIAgentProvider`, `UITasksProvider`, hooks (`useUIAgentClient`, `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useA11ySnapshot`), and opt-in DOM defaults (`useStandardScrollToHandler`, `useStandardHighlightHandler`, `useStandardSelectTextHandler`, `useStandardSetInputValueHandler`, `useStandardClickHandler`, `useStandardFocusHandler`).
+
+See each package README for usage, and the package CHANGELOGs for the full v1 entry.
+
 ## Documentation
 
 Pipecat Client Web implements a client instance that:
