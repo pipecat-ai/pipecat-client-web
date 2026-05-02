@@ -13,8 +13,8 @@
  * or non-React apps instantiate the class directly.
  */
 
+import { RTVIMessageType } from "../rtvi";
 import { snapshotDocument } from "../rtvi/a11y-walker";
-import { UI_SNAPSHOT_MESSAGE_TYPE } from "../rtvi/ui";
 import type { UIAgentClient } from "./ui-agent-client";
 
 /** Options for ``A11ySnapshotStreamer``. */
@@ -214,7 +214,7 @@ export class A11ySnapshotStreamer {
       // ui-snapshot is a first-class RTVI top-level type; bypass the
       // sendEvent path (which targets ui-event) and send the typed
       // message directly. The server expects { tree: A11ySnapshot }.
-      this.client.pipecatClient.sendRTVIMessage(UI_SNAPSHOT_MESSAGE_TYPE, {
+      this.client.pipecatClient.sendRTVIMessage(RTVIMessageType.UI_SNAPSHOT, {
         tree: snapshot,
       });
       if (this.logSnapshots) {

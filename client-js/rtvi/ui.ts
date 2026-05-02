@@ -5,24 +5,6 @@
  */
 
 /**
- * RTVI top-level message type for client-to-server UI events.
- *
- * Kept as a string constant so developers can use it directly with
- * `PipecatClient.sendRTVIMessage` if they choose not to use
- * `UIAgentClient`.
- */
-export const UI_EVENT_MESSAGE_TYPE = "ui-event";
-
-/**
- * RTVI top-level message type for server-to-client UI commands.
- *
- * The server emits a top-level `ui-command` RTVI message; the client
- * dispatches via `RTVIEvent.UICommand`. `UIAgentClient` filters by
- * `data.name` to invoke the registered handler.
- */
-export const UI_COMMAND_MESSAGE_TYPE = "ui-command";
-
-/**
  * Shape of the `data` field of a `ui-event` RTVI message
  * (client → server). `UIEventEnvelope` is what travels in the
  * `data` field.
@@ -169,41 +151,9 @@ export interface SelectTextPayload {
 // Structural awareness: a11y snapshot
 // ---------------------------------------------------------------------------
 
-/**
- * Reserved UI event name carrying an accessibility snapshot from the
- * client to the server. `UIAgent` recognizes this name and stores the
- * payload in `_latest_snapshot` without dispatching to `@on_ui_event`
- * handlers or injecting a `<ui_event>` developer message.
- *
- * Underscore-prefixed to signal SDK-internal and avoid colliding with
- * app-defined event names.
- */
-export const UI_SNAPSHOT_MESSAGE_TYPE = "ui-snapshot";
-
 // ---------------------------------------------------------------------------
 // Task lifecycle protocol
 // ---------------------------------------------------------------------------
-
-/**
- * Discriminator written into the `data` field of an `RTVIServerMessage`
- * carrying a UI task lifecycle event.
- *
- * The server emits `{ type: "ui.task", kind, ... }`; the client
- * dispatcher filters on this value before invoking task listeners.
- */
-export const UI_TASK_MESSAGE_TYPE = "ui-task";
-
-/**
- * Reserved UI event name for cancelling an in-flight user task group.
- *
- * Sent from client to server with payload
- * `{ task_id: string, reason?: string }`. The server's `UIAgent`
- * routes this to `cancel_task` when the matching group was registered
- * with `cancellable: true`.
- *
- * Underscore-prefixed to signal SDK-internal.
- */
-export const UI_CANCEL_TASK_MESSAGE_TYPE = "ui-cancel-task";
 
 /**
  * Status of a worker within a task group.

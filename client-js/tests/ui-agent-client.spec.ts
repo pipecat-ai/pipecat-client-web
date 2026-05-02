@@ -7,12 +7,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import { UIAgentClient } from "./../client/ui-agent-client";
-import { RTVIEvent } from "./../rtvi";
-import {
-  UI_CANCEL_TASK_MESSAGE_TYPE,
-  UI_EVENT_MESSAGE_TYPE,
-  type UITaskEnvelope,
-} from "./../rtvi/ui";
+import { RTVIEvent, RTVIMessageType } from "./../rtvi";
+import { type UITaskEnvelope } from "./../rtvi/ui";
 
 type Listener = (data: unknown) => void;
 
@@ -58,7 +54,7 @@ describe("UIAgentClient.sendEvent", () => {
 
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
-      UI_EVENT_MESSAGE_TYPE,
+      RTVIMessageType.UI_EVENT,
       { name: "nav_click", payload: { view: "home" } },
     );
   });
@@ -70,7 +66,7 @@ describe("UIAgentClient.sendEvent", () => {
     ui.sendEvent("hello");
 
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
-      UI_EVENT_MESSAGE_TYPE,
+      RTVIMessageType.UI_EVENT,
       { name: "hello", payload: undefined },
     );
   });
@@ -358,7 +354,7 @@ describe("UIAgentClient.cancelTask", () => {
     ui.cancelTask("t1");
 
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
-      UI_CANCEL_TASK_MESSAGE_TYPE,
+      RTVIMessageType.UI_CANCEL_TASK,
       { task_id: "t1" },
     );
   });
@@ -370,7 +366,7 @@ describe("UIAgentClient.cancelTask", () => {
     ui.cancelTask("t1", "user clicked cancel");
 
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
-      UI_CANCEL_TASK_MESSAGE_TYPE,
+      RTVIMessageType.UI_CANCEL_TASK,
       { task_id: "t1", reason: "user clicked cancel" },
     );
   });

@@ -144,9 +144,4 @@ export {
   A11ySnapshotStreamer,
   findElementByRef,
   snapshotDocument,
-  UI_CANCEL_TASK_MESSAGE_TYPE,
-  UI_COMMAND_MESSAGE_TYPE,
-  UI_EVENT_MESSAGE_TYPE,
-  UI_SNAPSHOT_MESSAGE_TYPE,
-  UI_TASK_MESSAGE_TYPE,
 } from "@pipecat-ai/client-js";

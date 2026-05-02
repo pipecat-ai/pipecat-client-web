@@ -5,10 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import {
-  UI_CANCEL_TASK_MESSAGE_TYPE,
-  type UITaskEnvelope,
-} from "@pipecat-ai/client-js";
+import { RTVIMessageType, type UITaskEnvelope } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
@@ -259,7 +256,7 @@ describe("useUITasks reducer", () => {
     });
 
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
-      UI_CANCEL_TASK_MESSAGE_TYPE,
+      RTVIMessageType.UI_CANCEL_TASK,
       { task_id: "t1", reason: "user clicked cancel" },
     );
   });
