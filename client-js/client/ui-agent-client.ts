@@ -4,10 +4,8 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIEvent } from "../rtvi";
+import { RTVIEvent, RTVIMessageType } from "../rtvi";
 import {
-  UI_CANCEL_TASK_MESSAGE_TYPE,
-  UI_EVENT_MESSAGE_TYPE,
   type UICommandEnvelope,
   type UICommandHandler,
   type UIEventEnvelope,
@@ -64,7 +62,7 @@ export class UIAgentClient {
       name,
       payload: payload as T | undefined,
     };
-    this._client.sendRTVIMessage(UI_EVENT_MESSAGE_TYPE, envelope);
+    this._client.sendRTVIMessage(RTVIMessageType.UI_EVENT, envelope);
   }
 
   /**
@@ -128,7 +126,7 @@ export class UIAgentClient {
   cancelTask(task_id: string, reason?: string): void {
     const payload: { task_id: string; reason?: string } = { task_id };
     if (reason !== undefined) payload.reason = reason;
-    this._client.sendRTVIMessage(UI_CANCEL_TASK_MESSAGE_TYPE, payload);
+    this._client.sendRTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload);
   }
 
   /**

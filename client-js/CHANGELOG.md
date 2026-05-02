@@ -35,8 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `ScrollToPayload`, `HighlightPayload`, `FocusPayload`) matching the
     server's command vocabulary, plus `UICommandHandler`,
     `UIEventEnvelope`, and `UICommandEnvelope`.
-  - New wire-format constants: `UI_EVENT_MESSAGE_TYPE`,
-    `UI_COMMAND_MESSAGE_TYPE`, `UI_SNAPSHOT_EVENT_NAME`.
+  - New `RTVIMessageType` members for the protocol's UI types
+    (`UI_EVENT`, `UI_COMMAND`, `UI_SNAPSHOT`, `UI_CANCEL_TASK`,
+    `UI_TASK`); use these enum members with
+    `PipecatClient.sendRTVIMessage` if you bypass `UIAgentClient`.
   - Bumped `RTVI_PROTOCOL_VERSION` from `1.2.0` to `1.3.0`, matching the
     server-side bump that introduces the `ui-*` message types. Purely
     additive: only new top-level RTVI message types are introduced and no
