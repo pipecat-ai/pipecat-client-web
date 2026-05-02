@@ -23,10 +23,10 @@ describe("useUIEventSender", () => {
     mockUsePipecatClient.mockReset();
   });
 
-  it("sends ui.event through the ambient Pipecat client", () => {
-    const sendClientMessage = jest.fn();
+  it("sends ui-event through the ambient Pipecat client", () => {
+    const sendRTVIMessage = jest.fn();
     mockUsePipecatClient.mockReturnValue({
-      sendClientMessage,
+      sendRTVIMessage,
       on: jest.fn(),
       off: jest.fn(),
     });
@@ -50,8 +50,8 @@ describe("useUIEventSender", () => {
       sender("nav_click", { view: "home" });
     });
 
-    expect(sendClientMessage).toHaveBeenCalledTimes(1);
-    expect(sendClientMessage).toHaveBeenCalledWith("ui.event", {
+    expect(sendRTVIMessage).toHaveBeenCalledTimes(1);
+    expect(sendRTVIMessage).toHaveBeenCalledWith("ui-event", {
       name: "nav_click",
       payload: { view: "home" },
     });
@@ -89,14 +89,14 @@ describe("useUIEventSender", () => {
     // Context path returns an unrelated client; the prop should win.
     const contextSendClientMessage = jest.fn();
     mockUsePipecatClient.mockReturnValue({
-      sendClientMessage: contextSendClientMessage,
+      sendRTVIMessage: contextSendClientMessage,
       on: jest.fn(),
       off: jest.fn(),
     });
 
     const propSendClientMessage = jest.fn();
     const propClient = {
-      sendClientMessage: propSendClientMessage,
+      sendRTVIMessage: propSendClientMessage,
       on: jest.fn(),
       off: jest.fn(),
     };
@@ -122,7 +122,7 @@ describe("useUIEventSender", () => {
     });
 
     expect(propSendClientMessage).toHaveBeenCalledTimes(1);
-    expect(propSendClientMessage).toHaveBeenCalledWith("ui.event", {
+    expect(propSendClientMessage).toHaveBeenCalledWith("ui-event", {
       name: "nav_click",
       payload: { view: "home" },
     });
@@ -137,7 +137,7 @@ describe("useUIEventSender", () => {
 
     const propSendClientMessage = jest.fn();
     const propClient = {
-      sendClientMessage: propSendClientMessage,
+      sendRTVIMessage: propSendClientMessage,
       on: jest.fn(),
       off: jest.fn(),
     };
@@ -163,7 +163,7 @@ describe("useUIEventSender", () => {
     });
 
     expect(propSendClientMessage).toHaveBeenCalledTimes(1);
-    expect(propSendClientMessage).toHaveBeenCalledWith("ui.event", {
+    expect(propSendClientMessage).toHaveBeenCalledWith("ui-event", {
       name: "hello",
       payload: undefined,
     });

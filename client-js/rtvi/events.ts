@@ -39,6 +39,10 @@ export enum RTVIEvent {
   ServerResponse = "serverResponse",
   MessageError = "messageError",
 
+  /** UI Agent Protocol */
+  UICommand = "uiCommand",
+  UITask = "uiTask",
+
   /** service events */
   Metrics = "metrics",
 
@@ -120,6 +124,12 @@ export type RTVIEvents = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serverResponse: (data: any) => void;
   messageError: (message: RTVIMessage) => void;
+
+  /** UI Agent Protocol */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  uiCommand: (data: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  uiTask: (data: any) => void;
 
   /** service events */
   metrics: (data: PipecatMetricsData) => void;

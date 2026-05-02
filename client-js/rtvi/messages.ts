@@ -25,6 +25,10 @@ export enum RTVIMessageType {
   // Client-to-server messages
   CLIENT_MESSAGE = "client-message",
   SEND_TEXT = "send-text",
+  // UI Agent Protocol (client-to-server)
+  UI_EVENT = "ui-event",
+  UI_SNAPSHOT = "ui-snapshot",
+  UI_CANCEL_TASK = "ui-cancel-task",
   // DEPRECATED
   APPEND_TO_CONTEXT = "append-to-context",
 
@@ -40,6 +44,9 @@ export enum RTVIMessageType {
   SERVER_RESPONSE = "server-response", // Server response to client message
   ERROR_RESPONSE = "error-response", // Error message in response to an outbound message
   APPEND_TO_CONTEXT_RESULT = "append-to-context-result", // Result of appending to context
+  // UI Agent Protocol (server-to-client)
+  UI_COMMAND = "ui-command",
+  UI_TASK = "ui-task",
 
   /** Speaking and Transcription Messages */
   USER_STARTED_SPEAKING = "user-started-speaking", // User started speaking

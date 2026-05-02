@@ -6,9 +6,7 @@
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import {
-  UI_CANCEL_TASK_EVENT_NAME,
-  UI_EVENT_MESSAGE_TYPE,
-  UI_TASK_MESSAGE_TYPE,
+  UI_CANCEL_TASK_MESSAGE_TYPE,
   type UITaskEnvelope,
 } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
@@ -26,27 +24,33 @@ jest.mock("../src/usePipecatClient", () => ({
 const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 
 function makeMockPipecatClient() {
-  const listeners: Set<(data: unknown) => void> = new Set();
+  const listeners: Map<string, Set<(data: unknown) => void>> = new Map();
+  const get = (event: string) => {
+    let s = listeners.get(event);
+    if (!s) {
+      s = new Set();
+      listeners.set(event, s);
+    }
+    return s;
+  };
   return {
-    sendClientMessage: jest.fn(),
+    sendRTVIMessage: jest.fn(),
     on: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "serverMessage") {
-        listeners.add(handler as (data: unknown) => void);
-      }
+      get(event as string).add(handler as (data: unknown) => void);
     }),
     off: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "serverMessage") {
-        listeners.delete(handler as (data: unknown) => void);
-      }
+      get(event as string).delete(handler as (data: unknown) => void);
     }),
+    /** Fire RTVIEvent.UITask with the given envelope. */
     emit: (data: unknown) => {
-      for (const l of listeners) l(data);
+      for (const l of get("uiTask")) l(data);
     },
   };
 }
 
+// ui-task envelopes are now the inner ``data`` of a ``ui-task`` RTVI
+// message; no top-level type field.
 const groupStarted: UITaskEnvelope = {
-  type: UI_TASK_MESSAGE_TYPE,
   kind: "group_started",
   task_id: "t1",
   agents: ["w1", "w2"],
@@ -55,7 +59,6 @@ const groupStarted: UITaskEnvelope = {
   at: 1700,
 };
 const w1Update: UITaskEnvelope = {
-  type: UI_TASK_MESSAGE_TYPE,
   kind: "task_update",
   task_id: "t1",
   agent_name: "w1",
@@ -63,7 +66,6 @@ const w1Update: UITaskEnvelope = {
   at: 1701,
 };
 const w1Completed: UITaskEnvelope = {
-  type: UI_TASK_MESSAGE_TYPE,
   kind: "task_completed",
   task_id: "t1",
   agent_name: "w1",
@@ -72,7 +74,6 @@ const w1Completed: UITaskEnvelope = {
   at: 1702,
 };
 const w2Completed: UITaskEnvelope = {
-  type: UI_TASK_MESSAGE_TYPE,
   kind: "task_completed",
   task_id: "t1",
   agent_name: "w2",
@@ -81,7 +82,6 @@ const w2Completed: UITaskEnvelope = {
   at: 1703,
 };
 const groupCompleted: UITaskEnvelope = {
-  type: UI_TASK_MESSAGE_TYPE,
   kind: "group_completed",
   task_id: "t1",
   at: 1704,
@@ -248,7 +248,7 @@ describe("useUITasks reducer", () => {
     expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1", "t2"]);
   });
 
-  it("cancelTask sends a __cancel_task UI event with the task_id", () => {
+  it("cancelTask sends a first-class ui-cancel-task RTVI message with the task_id", () => {
     const pipecat = makeMockPipecatClient();
     mockUsePipecatClient.mockReturnValue(pipecat);
 
@@ -258,12 +258,9 @@ describe("useUITasks reducer", () => {
       getApi().cancelTask("t1", "user clicked cancel");
     });
 
-    expect(pipecat.sendClientMessage).toHaveBeenCalledWith(
-      UI_EVENT_MESSAGE_TYPE,
-      {
-        name: UI_CANCEL_TASK_EVENT_NAME,
-        payload: { task_id: "t1", reason: "user clicked cancel" },
-      },
+    expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
+      UI_CANCEL_TASK_MESSAGE_TYPE,
+      { task_id: "t1", reason: "user clicked cancel" },
     );
   });
 

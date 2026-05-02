@@ -14,7 +14,7 @@
  */
 
 import { snapshotDocument } from "../rtvi/a11y-walker";
-import { UI_SNAPSHOT_EVENT_NAME } from "../rtvi/ui";
+import { UI_SNAPSHOT_MESSAGE_TYPE } from "../rtvi/ui";
 import type { UIAgentClient } from "./ui-agent-client";
 
 /** Options for ``A11ySnapshotStreamer``. */
@@ -211,7 +211,12 @@ export class A11ySnapshotStreamer {
       const snapshot = snapshotDocument(undefined, {
         trackViewport: this.trackViewport,
       });
-      this.client.sendEvent(UI_SNAPSHOT_EVENT_NAME, snapshot);
+      // ui-snapshot is a first-class RTVI top-level type; bypass the
+      // sendEvent path (which targets ui-event) and send the typed
+      // message directly. The server expects { tree: A11ySnapshot }.
+      this.client.pipecatClient.sendRTVIMessage(UI_SNAPSHOT_MESSAGE_TYPE, {
+        tree: snapshot,
+      });
       if (this.logSnapshots) {
         const nodeCount = countNodes(snapshot.root);
         const estTokens = Math.round(JSON.stringify(snapshot).length / 4);

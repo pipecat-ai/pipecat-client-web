@@ -938,6 +938,23 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
+   * Directly send a typed RTVI message to the bot via the transport.
+   *
+   * Unlike `sendClientMessage`, this does not wrap the payload in a
+   * `client-message` envelope: the message goes on the wire with the
+   * caller-supplied `type` as the top-level RTVI type. Use this for
+   * first-class RTVI message types (e.g. the UI Agent Protocol's
+   * `ui-event`, `ui-snapshot`, `ui-cancel-task`).
+   *
+   * @param msgType - The top-level RTVI message type, e.g. `"ui-event"`.
+   * @param data - The message payload sent as the `data` field.
+   */
+  @transportReady
+  public sendRTVIMessage(msgType: string, data?: unknown): void {
+    this._sendMessage(new RTVIMessage(msgType, data));
+  }
+
+  /**
    * Directly send a message to the bot via the transport.
    * Wait for and return the response.
    * @param msgType - a string representing the message type
@@ -1093,6 +1110,14 @@ export class PipecatClient extends RTVIEventEmitter {
       case RTVIMessageType.SERVER_MESSAGE: {
         this._options.callbacks?.onServerMessage?.(ev.data);
         this.emit(RTVIEvent.ServerMessage, ev.data);
+        break;
+      }
+      case RTVIMessageType.UI_COMMAND: {
+        this.emit(RTVIEvent.UICommand, ev.data);
+        break;
+      }
+      case RTVIMessageType.UI_TASK: {
+        this.emit(RTVIEvent.UITask, ev.data);
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {

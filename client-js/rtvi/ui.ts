@@ -5,28 +5,27 @@
  */
 
 /**
- * RTVI client-message type used for UI events sent from client to server.
+ * RTVI top-level message type for client-to-server UI events.
  *
  * Kept as a string constant so developers can use it directly with
- * `PipecatClient.sendClientMessage` if they choose not to use `UIAgentClient`.
+ * `PipecatClient.sendRTVIMessage` if they choose not to use
+ * `UIAgentClient`.
  */
-export const UI_EVENT_MESSAGE_TYPE = "ui.event";
+export const UI_EVENT_MESSAGE_TYPE = "ui-event";
 
 /**
- * Discriminator written into the `data` field of the `RTVIServerMessage`
- * carrying a UI command.
+ * RTVI top-level message type for server-to-client UI commands.
  *
- * The server emits `{ type: "ui.command", name, payload }`; the client
- * dispatcher filters on this value before invoking the registered
- * handler.
+ * The server emits a top-level `ui-command` RTVI message; the client
+ * dispatches via `RTVIEvent.UICommand`. `UIAgentClient` filters by
+ * `data.name` to invoke the registered handler.
  */
-export const UI_COMMAND_MESSAGE_TYPE = "ui.command";
+export const UI_COMMAND_MESSAGE_TYPE = "ui-command";
 
 /**
- * Shape of the payload sent over the wire for a UI event.
- *
- * The outer RTVI envelope is `{ t: "ui.event", d: UIEventEnvelope }`;
- * `UIEventEnvelope` is the `d` field contents.
+ * Shape of the `data` field of a `ui-event` RTVI message
+ * (client → server). `UIEventEnvelope` is what travels in the
+ * `data` field.
  */
 export interface UIEventEnvelope<T = unknown> {
   /** App-defined event name. */
@@ -36,12 +35,11 @@ export interface UIEventEnvelope<T = unknown> {
 }
 
 /**
- * Shape of the `data` field inside an `RTVIServerMessage` carrying a
- * UI command. The outer `RTVIEvent.ServerMessage` handler receives an
+ * Shape of the `data` field of a `ui-command` RTVI message
+ * (server → client). The `RTVIEvent.UICommand` handler receives an
  * object of this shape.
  */
 export interface UICommandEnvelope<T = unknown> {
-  type: typeof UI_COMMAND_MESSAGE_TYPE;
   /** App-defined command name. */
   name: string;
   /** App-defined payload. */
@@ -180,7 +178,7 @@ export interface SelectTextPayload {
  * Underscore-prefixed to signal SDK-internal and avoid colliding with
  * app-defined event names.
  */
-export const UI_SNAPSHOT_EVENT_NAME = "__ui_snapshot";
+export const UI_SNAPSHOT_MESSAGE_TYPE = "ui-snapshot";
 
 // ---------------------------------------------------------------------------
 // Task lifecycle protocol
@@ -193,7 +191,7 @@ export const UI_SNAPSHOT_EVENT_NAME = "__ui_snapshot";
  * The server emits `{ type: "ui.task", kind, ... }`; the client
  * dispatcher filters on this value before invoking task listeners.
  */
-export const UI_TASK_MESSAGE_TYPE = "ui.task";
+export const UI_TASK_MESSAGE_TYPE = "ui-task";
 
 /**
  * Reserved UI event name for cancelling an in-flight user task group.
@@ -205,7 +203,7 @@ export const UI_TASK_MESSAGE_TYPE = "ui.task";
  *
  * Underscore-prefixed to signal SDK-internal.
  */
-export const UI_CANCEL_TASK_EVENT_NAME = "__cancel_task";
+export const UI_CANCEL_TASK_MESSAGE_TYPE = "ui-cancel-task";
 
 /**
  * Status of a worker within a task group.
@@ -224,7 +222,6 @@ export type TaskStatus =
 
 /** Group dispatched: the worker list is now known. */
 export interface UITaskGroupStartedEnvelope {
-  type: typeof UI_TASK_MESSAGE_TYPE;
   kind: "group_started";
   /** Shared identifier for every task in the group. */
   task_id: string;
@@ -240,7 +237,6 @@ export interface UITaskGroupStartedEnvelope {
 
 /** Per-worker progress: `data` is whatever the worker passed to `send_task_update`. */
 export interface UITaskUpdateEnvelope {
-  type: typeof UI_TASK_MESSAGE_TYPE;
   kind: "task_update";
   task_id: string;
   /** The worker that produced this update. */
@@ -252,7 +248,6 @@ export interface UITaskUpdateEnvelope {
 
 /** Per-worker terminal: status + final response. */
 export interface UITaskCompletedEnvelope {
-  type: typeof UI_TASK_MESSAGE_TYPE;
   kind: "task_completed";
   task_id: string;
   agent_name: string;
@@ -264,7 +259,6 @@ export interface UITaskCompletedEnvelope {
 
 /** Group terminal: every worker has responded (or the group was cancelled). */
 export interface UITaskGroupCompletedEnvelope {
-  type: typeof UI_TASK_MESSAGE_TYPE;
   kind: "group_completed";
   task_id: string;
   at: number;
