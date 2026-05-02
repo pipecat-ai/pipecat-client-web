@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `UIEventEnvelope`, and `UICommandEnvelope`.
   - New wire-format constants: `UI_EVENT_MESSAGE_TYPE`,
     `UI_COMMAND_MESSAGE_TYPE`, `UI_SNAPSHOT_EVENT_NAME`.
+  - Bumped `RTVI_PROTOCOL_VERSION` from `1.2.0` to `1.3.0`, matching the
+    server-side bump that introduces the `ui-*` message types. Purely
+    additive: only new top-level RTVI message types are introduced and no
+    existing wire shapes changed. The server's major-version compatibility
+    check on `client-ready` still passes for older 1.x clients/servers, so
+    cross-version connections continue to work; older endpoints simply do
+    not exercise the new types.
 
 ## [1.7.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.6.1...client-js-v1.7.0) (2026-03-24)
 
