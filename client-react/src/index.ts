@@ -15,6 +15,7 @@ import { filterBotOutputText } from "./conversation/filterBotOutputText";
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
 import { PipecatClientAudio } from "./PipecatClientAudio";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
+import { useMediaState } from "./PipecatClientMediaState";
 import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
 import { PipecatClientProvider } from "./PipecatClientProvider";
 import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle";
@@ -45,6 +46,7 @@ export {
   sortByCreatedAt,
   // Conversation
   useConversationContext,
+  useMediaState,
   usePipecatClient,
   usePipecatClientCamControl,
   usePipecatClientMediaDevices,

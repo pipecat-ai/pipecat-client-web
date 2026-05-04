@@ -19,12 +19,23 @@ import {
   version as packageVersion,
 } from "../package.json";
 import { PipecatConversationProvider } from "./conversation/PipecatConversationProvider";
+import { PipecatClientMediaStateProvider } from "./PipecatClientMediaState";
 import { PipecatClientStateProvider } from "./PipecatClientState";
 import { RTVIEventContext } from "./RTVIEventContext";
 
 export interface Props {
   client: PipecatClient;
   jotaiStore?: React.ComponentProps<typeof JotaiProvider>["store"];
+  /**
+   * Call `client.initDevices()` automatically when the provider mounts, if
+   * the client still needs init (i.e. no device has reached 'granted' yet).
+   *
+   * Defaults to `false` to preserve the safe behavior of not requesting
+   * device permissions before the user takes a deliberate action. Apps that
+   * already gathered consent (e.g. via signup flow, or a "join" button that
+   * itself triggers initDevices) can opt in by setting this to `true`.
+   */
+  autoInitDevices?: boolean;
 }
 
 const defaultStore = createStore();
@@ -39,13 +50,27 @@ type EventHandlersMap = {
 
 export const PipecatClientProvider: React.FC<
   React.PropsWithChildren<Props>
-> = ({ children, client, jotaiStore = defaultStore }) => {
+> = ({ children, client, jotaiStore = defaultStore, autoInitDevices = false }) => {
   useEffect(() => {
     setAboutClient({
       library: packageName,
       library_version: packageVersion,
     });
   }, []);
+
+  // Opt-in auto-init. Skip if the client has already initialized — covers
+  // hot-reload and provider remounts. Errors propagate via the client's
+  // own DeviceError event / MediaState classifier; we don't surface them
+  // here.
+  useEffect(() => {
+    if (!autoInitDevices || !client) return;
+    if (!client.needsInit()) return;
+    void client.initDevices().catch(() => {
+      // Intentionally swallowed — consumers observe failures via
+      // RTVIEvent.DeviceError, RTVIEvent.MediaStateUpdated, or the client's
+      // mediaState getter.
+    });
+  }, [autoInitDevices, client]);
 
   const eventHandlersMap = useRef<EventHandlersMap>({});
 
@@ -118,9 +143,11 @@ export const PipecatClientProvider: React.FC<
       <PipecatClientContext.Provider value={{ client }}>
         <RTVIEventContext.Provider value={{ on, off }}>
           <PipecatClientStateProvider>
-            <PipecatConversationProvider>
-              {children}
-            </PipecatConversationProvider>
+            <PipecatClientMediaStateProvider>
+              <PipecatConversationProvider>
+                {children}
+              </PipecatConversationProvider>
+            </PipecatClientMediaStateProvider>
           </PipecatClientStateProvider>
         </RTVIEventContext.Provider>
       </PipecatClientContext.Provider>
