@@ -9,14 +9,8 @@ import { act, render } from "@testing-library/react";
 import React from "react";
 
 import { RTVIEvent } from "@pipecat-ai/client-js";
+import { PipecatClientProvider } from "../src/PipecatClientProvider";
 import { useStandardSelectTextHandler } from "../src/standardHandlers";
-import { usePipecatClient } from "../src/usePipecatClient";
-
-jest.mock("../src/usePipecatClient", () => ({
-  usePipecatClient: jest.fn(),
-}));
-
-const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 
 function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
@@ -54,20 +48,28 @@ function withHandler() {
   return Probe;
 }
 
+function setup(html: string) {
+  const pipecat = makeMockPipecatClient();
+  document.body.innerHTML = html;
+
+  const Probe = withHandler();
+  render(
+    <PipecatClientProvider client={pipecat as never}>
+      <Probe />
+    </PipecatClientProvider>,
+  );
+  return pipecat;
+}
+
 describe("useStandardSelectTextHandler", () => {
   beforeEach(() => {
-    mockUsePipecatClient.mockReset();
+    jest.clearAllMocks();
     document.body.innerHTML = "";
     window.getSelection()?.removeAllRanges();
   });
 
   it("selects all text in a document element when no offsets are given", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
-    document.body.innerHTML = `<p id="p">First sentence here.</p>`;
-
-    const Probe = withHandler();
-    render(<Probe />);
+    const pipecat = setup(`<p id="p">First sentence here.</p>`);
 
     emit(pipecat, { target_id: "p" });
 
@@ -76,12 +78,7 @@ describe("useStandardSelectTextHandler", () => {
   });
 
   it("selects a sub-range using start_offset / end_offset on a document element", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
-    document.body.innerHTML = `<p id="p">First sentence here.</p>`;
-
-    const Probe = withHandler();
-    render(<Probe />);
+    const pipecat = setup(`<p id="p">First sentence here.</p>`);
 
     emit(pipecat, { target_id: "p", start_offset: 6, end_offset: 14 });
 
@@ -90,15 +87,12 @@ describe("useStandardSelectTextHandler", () => {
   });
 
   it("walks descendant text nodes to find the right offset", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
     // The selection straddles a child element: "this part" is split
     // across an outer text node, an inline <span>, and another outer
     // text node. The walker needs to step through them.
-    document.body.innerHTML = `<p id="p">Read <span>this part</span> please.</p>`;
-
-    const Probe = withHandler();
-    render(<Probe />);
+    const pipecat = setup(
+      `<p id="p">Read <span>this part</span> please.</p>`,
+    );
 
     emit(pipecat, { target_id: "p", start_offset: 5, end_offset: 14 });
 
@@ -107,12 +101,7 @@ describe("useStandardSelectTextHandler", () => {
   });
 
   it("uses setSelectionRange on input/textarea targets", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
-    document.body.innerHTML = `<input id="i" value="hello world" />`;
-
-    const Probe = withHandler();
-    render(<Probe />);
+    const pipecat = setup(`<input id="i" value="hello world" />`);
 
     emit(pipecat, { target_id: "i", start_offset: 6, end_offset: 11 });
 
@@ -122,12 +111,7 @@ describe("useStandardSelectTextHandler", () => {
   });
 
   it("calls el.select() on input/textarea when no offsets are given", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
-    document.body.innerHTML = `<input id="i" value="hello world" />`;
-
-    const Probe = withHandler();
-    render(<Probe />);
+    const pipecat = setup(`<input id="i" value="hello world" />`);
 
     const input = document.getElementById("i") as HTMLInputElement;
     const select = jest.spyOn(input, "select");
@@ -138,12 +122,7 @@ describe("useStandardSelectTextHandler", () => {
   });
 
   it("falls back to selecting all content when offsets are out of range", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
-    document.body.innerHTML = `<p id="p">Short.</p>`;
-
-    const Probe = withHandler();
-    render(<Probe />);
+    const pipecat = setup(`<p id="p">Short.</p>`);
 
     emit(pipecat, { target_id: "p", start_offset: 1000, end_offset: 2000 });
 
@@ -154,9 +133,7 @@ describe("useStandardSelectTextHandler", () => {
   });
 
   it("is a no-op when neither ref nor target_id resolves", () => {
-    const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
-    document.body.innerHTML = `<p id="p">Some text.</p>`;
+    const pipecat = setup(`<p id="p">Some text.</p>`);
     // Pre-existing selection so we can verify it isn't disturbed.
     const p = document.getElementById("p")!;
     const range = document.createRange();
@@ -165,9 +142,6 @@ describe("useStandardSelectTextHandler", () => {
     const sel = window.getSelection()!;
     sel.removeAllRanges();
     sel.addRange(range);
-
-    const Probe = withHandler();
-    render(<Probe />);
 
     emit(pipecat, { target_id: "nope" });
 

@@ -9,9 +9,9 @@ import {
   type UICommandEnvelope,
   type UICommandHandler,
 } from "@pipecat-ai/client-js";
-import { useEffect } from "react";
+import { useCallback } from "react";
 
-import { usePipecatClient } from "./usePipecatClient";
+import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
 /**
  * Register a handler for a named UI command.
@@ -29,16 +29,14 @@ export const useUICommandHandler = <T = unknown>(
   command: string,
   handler: UICommandHandler<T>,
 ): void => {
-  const client = usePipecatClient();
-  useEffect(() => {
-    if (!client) return;
-    const listener = (data: UICommandEnvelope) => {
-      if (data.command !== command) return;
-      void handler(data.payload as T);
-    };
-    client.on(RTVIEvent.UICommand, listener);
-    return () => {
-      client.off(RTVIEvent.UICommand, listener);
-    };
-  }, [client, command, handler]);
+  useRTVIClientEvent(
+    RTVIEvent.UICommand,
+    useCallback(
+      (data: UICommandEnvelope) => {
+        if (data.command !== command) return;
+        void handler(data.payload as T);
+      },
+      [command, handler],
+    ),
+  );
 };

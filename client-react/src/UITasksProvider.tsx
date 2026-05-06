@@ -5,11 +5,12 @@
  */
 
 import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
-import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import React, { useCallback, useMemo, useReducer } from "react";
 
 import { UITasksContext } from "./UITasksContext";
 import type { Task, TaskGroup, UITasksAPI } from "./uiTasksTypes";
 import { usePipecatClient } from "./usePipecatClient";
+import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
 type State = TaskGroup[];
 
@@ -107,14 +108,10 @@ export const UITasksProvider: React.FC<React.PropsWithChildren> = ({
   const client = usePipecatClient();
   const [groups, dispatch] = useReducer(reducer, [] as State);
 
-  useEffect(() => {
-    if (!client) return;
-    const listener = (env: UITaskEnvelope) => dispatch(env);
-    client.on(RTVIEvent.UITask, listener);
-    return () => {
-      client.off(RTVIEvent.UITask, listener);
-    };
-  }, [client]);
+  useRTVIClientEvent(
+    RTVIEvent.UITask,
+    useCallback((env: UITaskEnvelope) => dispatch(env), []),
+  );
 
   const cancelTask = useCallback(
     (taskId: string, reason?: string) => {

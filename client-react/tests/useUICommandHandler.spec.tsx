@@ -9,14 +9,8 @@ import { act, render } from "@testing-library/react";
 import React from "react";
 
 import { RTVIEvent } from "@pipecat-ai/client-js";
-import { usePipecatClient } from "../src/usePipecatClient";
+import { PipecatClientProvider } from "../src/PipecatClientProvider";
 import { useUICommandHandler } from "../src/useUICommandHandler";
-
-jest.mock("../src/usePipecatClient", () => ({
-  usePipecatClient: jest.fn(),
-}));
-
-const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 
 function makeMockPipecatClient() {
   const listeners: Map<string, Set<(data: unknown) => void>> = new Map();
@@ -43,12 +37,11 @@ function makeMockPipecatClient() {
 
 describe("useUICommandHandler", () => {
   beforeEach(() => {
-    mockUsePipecatClient.mockReset();
+    jest.clearAllMocks();
   });
 
   it("registers a handler on mount and dispatches matching commands", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
     const calls: unknown[] = [];
 
@@ -59,7 +52,11 @@ describe("useUICommandHandler", () => {
       return null;
     };
 
-    render(<Probe />);
+    render(
+      <PipecatClientProvider client={pipecat as never}>
+        <Probe />
+      </PipecatClientProvider>,
+    );
 
     expect(pipecat.on).toHaveBeenCalledWith(
       RTVIEvent.UICommand,
@@ -76,7 +73,6 @@ describe("useUICommandHandler", () => {
 
   it("unregisters on unmount", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
     const calls: unknown[] = [];
 
@@ -87,7 +83,11 @@ describe("useUICommandHandler", () => {
       return null;
     };
 
-    const rendered = render(<Probe />);
+    const rendered = render(
+      <PipecatClientProvider client={pipecat as never}>
+        <Probe />
+      </PipecatClientProvider>,
+    );
 
     rendered.unmount();
 

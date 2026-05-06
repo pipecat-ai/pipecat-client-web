@@ -9,15 +9,9 @@ import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
+import { PipecatClientProvider } from "../src/PipecatClientProvider";
 import { UITasksProvider } from "../src/UITasksProvider";
-import { usePipecatClient } from "../src/usePipecatClient";
 import { useUITasks } from "../src/useUITasks";
-
-jest.mock("../src/usePipecatClient", () => ({
-  usePipecatClient: jest.fn(),
-}));
-
-const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 
 function makeMockPipecatClient() {
   const listeners: Map<string, Set<(data: unknown) => void>> = new Map();
@@ -85,31 +79,32 @@ const groupCompleted: UITaskEnvelope = {
 
 type TasksAPI = ReturnType<typeof useUITasks>;
 
-function renderWithProviders() {
+function renderWithProviders(pipecat = makeMockPipecatClient()) {
   let api: TasksAPI = { groups: [], cancelTask: () => {} };
   const Probe: React.FC = () => {
     api = useUITasks();
     return null;
   };
   const result = render(
-    <UITasksProvider>
-      <Probe />
-    </UITasksProvider>,
+    <PipecatClientProvider client={pipecat as never}>
+      <UITasksProvider>
+        <Probe />
+      </UITasksProvider>
+    </PipecatClientProvider>,
   );
   return {
     ...result,
+    pipecat,
     getApi: () => api,
   };
 }
 
 describe("useUITasks reducer", () => {
   beforeEach(() => {
-    mockUsePipecatClient.mockReset();
+    jest.clearAllMocks();
   });
 
   it("returns an empty list before any envelope arrives", () => {
-    mockUsePipecatClient.mockReturnValue(makeMockPipecatClient());
-
     const { getApi } = renderWithProviders();
 
     expect(getApi().groups).toEqual([]);
@@ -117,9 +112,8 @@ describe("useUITasks reducer", () => {
 
   it("creates a group with running tasks on group_started", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
     });
@@ -140,9 +134,8 @@ describe("useUITasks reducer", () => {
 
   it("appends task_update payloads to the matching task in arrival order", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
       pipecat.emit(w1Update);
@@ -165,9 +158,8 @@ describe("useUITasks reducer", () => {
 
   it("transitions a task from running to completed on task_completed", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
       pipecat.emit(w1Completed);
@@ -181,9 +173,8 @@ describe("useUITasks reducer", () => {
 
   it("group is running until group_completed arrives, then aggregates", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
       pipecat.emit(w1Completed);
@@ -201,9 +192,8 @@ describe("useUITasks reducer", () => {
 
   it("aggregates to error when any worker errored", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
       pipecat.emit(w1Completed);
@@ -216,9 +206,8 @@ describe("useUITasks reducer", () => {
 
   it("aggregates to cancelled when a worker cancelled and none errored", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
       pipecat.emit(w1Completed);
@@ -231,9 +220,8 @@ describe("useUITasks reducer", () => {
 
   it("preserves arrival order for multiple groups", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
       pipecat.emit({ ...groupStarted, task_id: "t2", at: 1800 });
@@ -244,9 +232,8 @@ describe("useUITasks reducer", () => {
 
   it("cancelTask sends a first-class ui-cancel-task RTVI message with the task_id", () => {
     const pipecat = makeMockPipecatClient();
-    mockUsePipecatClient.mockReturnValue(pipecat);
 
-    const { getApi } = renderWithProviders();
+    const { getApi } = renderWithProviders(pipecat);
 
     act(() => {
       getApi().cancelTask("t1", "user clicked cancel");
@@ -259,8 +246,6 @@ describe("useUITasks reducer", () => {
   });
 
   it("default API is a no-op when no provider is mounted", () => {
-    mockUsePipecatClient.mockReturnValue(undefined);
-
     let api: TasksAPI = { groups: [], cancelTask: () => {} };
     const Probe: React.FC = () => {
       api = useUITasks();
