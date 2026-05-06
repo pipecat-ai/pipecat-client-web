@@ -137,7 +137,6 @@ export type {
 } from "@pipecat-ai/client-js";
 export type { A11ySnapshotStreamerOptions } from "@pipecat-ai/client-js";
 export {
-  A11ySnapshotStreamer,
   findElementByRef,
   snapshotDocument,
 } from "@pipecat-ai/client-js";

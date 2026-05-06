@@ -14,19 +14,9 @@ import {
 } from "@jest/globals";
 
 import { A11ySnapshotStreamer } from "../client/a11ySnapshotStreamer";
-import type { PipecatClient } from "../client/client";
 import type { A11ySnapshot } from "../rtvi/ui";
 
-type Emission = { msgType: string; data: unknown };
-
-function makeStubClient(emissions: Emission[]): PipecatClient {
-  // The streamer calls ``sendRTVIMessage`` to emit first-class
-  // ``ui-snapshot`` RTVI messages.
-  const sendRTVIMessage = jest.fn((msgType: string, data: unknown) => {
-    emissions.push({ msgType, data });
-  });
-  return { sendRTVIMessage } as unknown as PipecatClient;
-}
+type Emission = A11ySnapshot;
 
 describe("A11ySnapshotStreamer", () => {
   beforeEach(() => {
@@ -41,7 +31,9 @@ describe("A11ySnapshotStreamer", () => {
 
   it("primes an initial snapshot after start()", () => {
     const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
       debounceMs: 100,
     });
 
@@ -51,8 +43,7 @@ describe("A11ySnapshotStreamer", () => {
     jest.advanceTimersByTime(100);
 
     expect(emissions).toHaveLength(1);
-    expect(emissions[0].msgType).toBe("ui-snapshot");
-    const snap = (emissions[0].data as { tree: A11ySnapshot }).tree;
+    const snap = emissions[0];
     expect(snap.root).toBeDefined();
     expect(snap.captured_at).toBeGreaterThan(0);
     streamer.stop();
@@ -60,7 +51,9 @@ describe("A11ySnapshotStreamer", () => {
 
   it("coalesces rapid mutation notifications into one emission", async () => {
     const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
       debounceMs: 100,
     });
     streamer.start();
@@ -79,7 +72,9 @@ describe("A11ySnapshotStreamer", () => {
 
   it("stops observers and pending timers", async () => {
     const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
       debounceMs: 100,
     });
     streamer.start();
@@ -96,7 +91,9 @@ describe("A11ySnapshotStreamer", () => {
 
   it("restarts after stop()", () => {
     const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
       debounceMs: 100,
     });
 
@@ -110,7 +107,9 @@ describe("A11ySnapshotStreamer", () => {
 
   it("emits when scrollend and resize fire", () => {
     const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
       debounceMs: 100,
     });
     streamer.start();
@@ -133,7 +132,9 @@ describe("A11ySnapshotStreamer", () => {
       .mockImplementation(() => {});
     const log = jest.spyOn(console, "log").mockImplementation(() => {});
     const groupEnd = jest.spyOn(console, "groupEnd").mockImplementation(() => {});
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
       debounceMs: 100,
       logSnapshots: true,
     });

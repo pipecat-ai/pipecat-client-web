@@ -40,11 +40,13 @@ import {
 import * as RTVIErrors from "../rtvi/errors";
 import {
   type UICommandEnvelope,
-  type UICommandHandler,
   type UIEventEnvelope,
   type UITaskEnvelope,
-  type UITaskListener,
 } from "../rtvi/ui";
+import {
+  A11ySnapshotStreamer,
+  type A11ySnapshotStreamerOptions,
+} from "./a11ySnapshotStreamer";
 import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
@@ -111,6 +113,8 @@ export type RTVIEventCallbacks = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onServerMessage: (data: any) => void;
   onMessageError: (message: RTVIMessage) => void;
+  onUICommand: (data: UICommandEnvelope) => void;
+  onUITask: (data: UITaskEnvelope) => void;
 
   onParticipantJoined: (participant: Participant) => void;
   onParticipantLeft: (participant: Participant) => void;
@@ -214,6 +218,7 @@ export class PipecatClient extends RTVIEventEmitter {
   declare protected _messageDispatcher: MessageDispatcher;
   protected _functionCallCallbacks: Record<string, FunctionCallCallback> = {};
   protected _abortController: AbortController | undefined;
+  private _a11ySnapshotStreamer: A11ySnapshotStreamer | undefined;
 
   private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
@@ -659,6 +664,7 @@ export class PipecatClient extends RTVIEventEmitter {
    * Reset / reinitialize transport and abort any pending requests
    */
   public async disconnect(): Promise<void> {
+    this.stopA11ySnapshotStream();
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -945,71 +951,47 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Directly send a typed RTVI message to the bot via the transport.
-   *
-   * Unlike `sendClientMessage`, this does not wrap the payload in a
-   * `client-message` envelope: the message goes on the wire with the
-   * caller-supplied `type` as the top-level RTVI type. Use this for
-   * first-class RTVI message types (e.g. the UI Agent Protocol's
-   * `ui-event`, `ui-snapshot`, `ui-cancel-task`).
-   *
-   * @param msgType - The top-level RTVI message type, e.g. `"ui-event"`.
-   * @param data - The message payload sent as the `data` field.
-   */
-  @transportReady
-  public sendRTVIMessage(msgType: string, data?: unknown): void {
-    this._sendMessage(new RTVIMessage(msgType, data));
-  }
-
-  /**
    * Send a named UI event to the server as a first-class RTVI
    * `ui-event` message.
    *
    * @param event - App-defined event.
    * @param payload - App-defined payload. Optional.
    */
+  @transportReady
   public sendUIEvent<T = unknown>(event: string, payload?: T): void {
     const envelope: UIEventEnvelope<T | undefined> = {
       event,
       payload: payload as T | undefined,
     };
-    this.sendRTVIMessage(RTVIMessageType.UI_EVENT, envelope);
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_EVENT, envelope));
   }
 
   /**
-   * Register a handler for a named server-to-client UI command.
+   * Start streaming accessibility snapshots to the server as
+   * first-class `ui-snapshot` RTVI messages.
    *
-   * Returns an unsubscribe function that removes this exact listener.
+   * Calling this again replaces any existing managed streamer with
+   * the new options.
    */
-  public registerUICommandHandler<T = unknown>(
-    command: string,
-    handler: UICommandHandler<T>
-  ): () => void {
-    const listener = (data: unknown) => {
-      if (!data || typeof data !== "object") return;
-      const envelope = data as UICommandEnvelope;
-      if (envelope.command !== command) return;
-      void handler(envelope.payload as T);
-    };
-
-    this.on(RTVIEvent.UICommand, listener);
-    return () => this.off(RTVIEvent.UICommand, listener);
+  public startA11ySnapshotStream(
+    options: A11ySnapshotStreamerOptions = {}
+  ): void {
+    this.stopA11ySnapshotStream();
+    this._a11ySnapshotStreamer = new A11ySnapshotStreamer((snapshot) => {
+      if (this.state !== "ready") return;
+      this._sendMessage(
+        new RTVIMessage(RTVIMessageType.UI_SNAPSHOT, { tree: snapshot })
+      );
+    }, options);
+    this._a11ySnapshotStreamer.start();
   }
 
   /**
-   * Subscribe to every server-to-client UI task lifecycle envelope.
-   *
-   * Returns an unsubscribe function that removes this exact listener.
+   * Stop the managed accessibility snapshot stream, if one is active.
    */
-  public addUITaskListener(listener: UITaskListener): () => void {
-    const eventListener = (data: unknown) => {
-      if (!data || typeof data !== "object") return;
-      if (typeof (data as { kind?: unknown }).kind !== "string") return;
-      listener(data as UITaskEnvelope);
-    };
-
-    this.on(RTVIEvent.UITask, eventListener);
-    return () => this.off(RTVIEvent.UITask, eventListener);
+  public stopA11ySnapshotStream(): void {
+    this._a11ySnapshotStreamer?.stop();
+    this._a11ySnapshotStreamer = undefined;
   }
 
   /**
@@ -1018,10 +1000,11 @@ export class PipecatClient extends RTVIEventEmitter {
    * @param taskId - Shared task identifier of the group to cancel.
    * @param reason - Optional human-readable reason logged on the server.
    */
+  @transportReady
   public cancelUITask(taskId: string, reason?: string): void {
     const payload: { task_id: string; reason?: string } = { task_id: taskId };
     if (reason !== undefined) payload.reason = reason;
-    this.sendRTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload);
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload));
   }
 
   /**
@@ -1183,11 +1166,15 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       }
       case RTVIMessageType.UI_COMMAND: {
-        this.emit(RTVIEvent.UICommand, ev.data);
+        const data = ev.data as UICommandEnvelope;
+        this._options.callbacks?.onUICommand?.(data);
+        this.emit(RTVIEvent.UICommand, data);
         break;
       }
       case RTVIMessageType.UI_TASK: {
-        this.emit(RTVIEvent.UITask, ev.data);
+        const data = ev.data as UITaskEnvelope;
+        this._options.callbacks?.onUITask?.(data);
+        this.emit(RTVIEvent.UITask, data);
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {

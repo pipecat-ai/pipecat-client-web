@@ -4,7 +4,11 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import type { UICommandHandler } from "@pipecat-ai/client-js";
+import {
+  RTVIEvent,
+  type UICommandEnvelope,
+  type UICommandHandler,
+} from "@pipecat-ai/client-js";
 import { useEffect } from "react";
 
 import { usePipecatClient } from "./usePipecatClient";
@@ -28,6 +32,13 @@ export const useUICommandHandler = <T = unknown>(
   const client = usePipecatClient();
   useEffect(() => {
     if (!client) return;
-    return client.registerUICommandHandler(command, handler);
+    const listener = (data: UICommandEnvelope) => {
+      if (data.command !== command) return;
+      void handler(data.payload as T);
+    };
+    client.on(RTVIEvent.UICommand, listener);
+    return () => {
+      client.off(RTVIEvent.UICommand, listener);
+    };
   }, [client, command, handler]);
 };

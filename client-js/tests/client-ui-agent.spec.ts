@@ -4,20 +4,29 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { describe, expect, it, jest } from "@jest/globals";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 
 import { PipecatClient } from "./../client/client";
-import { RTVIEvent, RTVIMessageType } from "./../rtvi";
-import { type UITaskEnvelope } from "./../rtvi/ui";
+import { RTVIEvent, RTVIMessage, RTVIMessageType } from "./../rtvi";
+import { type UICommandEnvelope, type UITaskEnvelope } from "./../rtvi/ui";
+import { TransportStub } from "./stubs/transport";
 
 type Listener = (data: unknown) => void;
 
 interface MockPipecatClient extends PipecatClient {
-  sendRTVIMessage: jest.Mock;
   on: jest.Mock;
   off: jest.Mock;
   fire: (event: RTVIEvent, data: unknown) => void;
 }
+
+type MessageMockHolder = { _sendMessage: jest.Mock };
 
 function makeMockPipecatClient(): MockPipecatClient {
   const listeners: Map<RTVIEvent, Set<Listener>> = new Map();
@@ -31,7 +40,8 @@ function makeMockPipecatClient(): MockPipecatClient {
   };
 
   const mock = Object.create(PipecatClient.prototype) as MockPipecatClient;
-  mock.sendRTVIMessage = jest.fn();
+  (mock as unknown as MessageMockHolder)._sendMessage = jest.fn();
+  Object.assign(mock, { _transport: { state: "ready" } });
   mock.on = jest.fn((event: unknown, handler: unknown) => {
     get(event as RTVIEvent).add(handler as Listener);
     return mock;
@@ -46,14 +56,100 @@ function makeMockPipecatClient(): MockPipecatClient {
   return mock;
 }
 
+function sendMock(client: MockPipecatClient): jest.Mock {
+  return (client as unknown as MessageMockHolder)._sendMessage;
+}
+
+function expectSentMessage(
+  client: MockPipecatClient,
+  type: RTVIMessageType,
+  data: unknown
+): void {
+  expect(sendMock(client)).toHaveBeenCalledWith(
+    expect.objectContaining({ type, data })
+  );
+}
+
+describe("PipecatClient managed a11y snapshots", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    document.body.innerHTML = "<main><button>Go</button></main>";
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    document.body.innerHTML = "";
+  });
+
+  it("startA11ySnapshotStream emits ui-snapshot messages", () => {
+    const client = makeMockPipecatClient();
+
+    client.startA11ySnapshotStream({ debounceMs: 100 });
+    jest.advanceTimersByTime(100);
+
+    expectSentMessage(
+      client,
+      RTVIMessageType.UI_SNAPSHOT,
+      expect.objectContaining({ tree: expect.any(Object) }),
+    );
+  });
+
+  it("repeated startA11ySnapshotStream replaces the previous stream", async () => {
+    const client = makeMockPipecatClient();
+
+    client.startA11ySnapshotStream({ debounceMs: 100 });
+    jest.advanceTimersByTime(100);
+    expect(sendMock(client)).toHaveBeenCalledTimes(1);
+
+    client.startA11ySnapshotStream({ debounceMs: 200 });
+    document.querySelector("main")!.appendChild(document.createElement("button"));
+    await Promise.resolve();
+
+    jest.advanceTimersByTime(100);
+    expect(sendMock(client)).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(100);
+    expect(sendMock(client)).toHaveBeenCalledTimes(2);
+  });
+
+  it("stopA11ySnapshotStream stops emissions", async () => {
+    const client = makeMockPipecatClient();
+
+    client.startA11ySnapshotStream({ debounceMs: 100 });
+    client.stopA11ySnapshotStream();
+    jest.advanceTimersByTime(100);
+    expect(sendMock(client)).not.toHaveBeenCalled();
+
+    document.querySelector("main")!.appendChild(document.createElement("button"));
+    await Promise.resolve();
+    jest.advanceTimersByTime(100);
+    expect(sendMock(client)).not.toHaveBeenCalled();
+  });
+
+  it("disconnect stops the managed stream", async () => {
+    const client = makeMockPipecatClient();
+    Object.assign(client, {
+      _transport: { disconnect: jest.fn().mockResolvedValue(undefined) },
+      _messageDispatcher: { disconnect: jest.fn() },
+    });
+
+    client.startA11ySnapshotStream({ debounceMs: 100 });
+    await client.disconnect();
+
+    jest.advanceTimersByTime(100);
+    expect(sendMock(client)).not.toHaveBeenCalled();
+  });
+});
+
 describe("PipecatClient.sendUIEvent", () => {
   it("sends a first-class ui-event RTVI message with event + payload", () => {
     const client = makeMockPipecatClient();
 
     client.sendUIEvent("nav_click", { view: "home" });
 
-    expect(client.sendRTVIMessage).toHaveBeenCalledTimes(1);
-    expect(client.sendRTVIMessage).toHaveBeenCalledWith(
+    expect(sendMock(client)).toHaveBeenCalledTimes(1);
+    expectSentMessage(
+      client,
       RTVIMessageType.UI_EVENT,
       { event: "nav_click", payload: { view: "home" } },
     );
@@ -64,95 +160,19 @@ describe("PipecatClient.sendUIEvent", () => {
 
     client.sendUIEvent("hello");
 
-    expect(client.sendRTVIMessage).toHaveBeenCalledWith(
+    expectSentMessage(
+      client,
       RTVIMessageType.UI_EVENT,
       { event: "hello", payload: undefined },
     );
   });
 });
 
-describe("PipecatClient.registerUICommandHandler", () => {
-  function makeCommandData(command: string, payload: unknown = {}): unknown {
-    return { command, payload };
-  }
-
-  it("subscribes to RTVIEvent.UICommand", () => {
-    const client = makeMockPipecatClient();
-
-    client.registerUICommandHandler("toast", jest.fn());
-
-    expect(client.on).toHaveBeenCalledWith(
-      RTVIEvent.UICommand,
-      expect.any(Function),
-    );
-  });
-
-  it("invokes matching command handlers with the payload", () => {
-    const client = makeMockPipecatClient();
-    const handler = jest.fn();
-
-    client.registerUICommandHandler("toast", handler);
-    client.fire(RTVIEvent.UICommand, makeCommandData("toast", { title: "Hi" }));
-
-    expect(handler).toHaveBeenCalledTimes(1);
-    expect(handler).toHaveBeenCalledWith({ title: "Hi" });
-  });
-
-  it("does not dispatch when the command does not match", () => {
-    const client = makeMockPipecatClient();
-    const handler = jest.fn();
-
-    client.registerUICommandHandler("toast", handler);
-    client.fire(
-      RTVIEvent.UICommand,
-      makeCommandData("navigate", { view: "home" }),
-    );
-
-    expect(handler).not.toHaveBeenCalled();
-  });
-
-  it("ignores invalid ui-command payloads", () => {
-    const client = makeMockPipecatClient();
-    const handler = jest.fn();
-
-    client.registerUICommandHandler("toast", handler);
-    client.fire(RTVIEvent.UICommand, null);
-    client.fire(RTVIEvent.UICommand, "not an object");
-    client.fire(RTVIEvent.UICommand, { payload: {} });
-
-    expect(handler).not.toHaveBeenCalled();
-  });
-
-  it("returns an unsubscribe function for the exact listener", () => {
-    const client = makeMockPipecatClient();
-    const handler = jest.fn();
-
-    const unsubscribe = client.registerUICommandHandler("toast", handler);
-    unsubscribe();
-    client.fire(RTVIEvent.UICommand, makeCommandData("toast", { title: "Hi" }));
-
-    expect(handler).not.toHaveBeenCalled();
-    expect(client.off).toHaveBeenCalledWith(
-      RTVIEvent.UICommand,
-      expect.any(Function),
-    );
-  });
-
-  it("allows multiple handlers for the same command", () => {
-    const client = makeMockPipecatClient();
-    const first = jest.fn();
-    const second = jest.fn();
-
-    client.registerUICommandHandler("toast", first);
-    client.registerUICommandHandler("toast", second);
-    client.fire(RTVIEvent.UICommand, makeCommandData("toast", {}));
-
-    expect(first).toHaveBeenCalledTimes(1);
-    expect(second).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("PipecatClient.addUITaskListener", () => {
+describe("PipecatClient UI inbound events", () => {
+  const command: UICommandEnvelope = {
+    command: "toast",
+    payload: { title: "Hi" },
+  };
   const groupStarted: UITaskEnvelope = {
     kind: "group_started",
     task_id: "t1",
@@ -169,44 +189,52 @@ describe("PipecatClient.addUITaskListener", () => {
     at: 1701,
   };
 
-  it("invokes every task listener with typed envelopes", () => {
-    const client = makeMockPipecatClient();
-    const a = jest.fn();
-    const b = jest.fn();
+  it("fires onUICommand callbacks and RTVIEvent.UICommand events", () => {
+    const callback = jest.fn();
+    const event = jest.fn();
+    const client = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: { onUICommand: callback },
+    });
 
-    client.addUITaskListener(a);
-    client.addUITaskListener(b);
-    client.fire(RTVIEvent.UITask, groupStarted);
-    client.fire(RTVIEvent.UITask, taskUpdate);
+    client.on(RTVIEvent.UICommand, event);
+    (client.transport as TransportStub).handleMessage({
+      id: "123",
+      label: "rtvi-ai",
+      type: RTVIMessageType.UI_COMMAND,
+      data: command,
+    } as RTVIMessage);
 
-    expect(a.mock.calls.map((c) => c[0])).toEqual([groupStarted, taskUpdate]);
-    expect(b.mock.calls.map((c) => c[0])).toEqual([groupStarted, taskUpdate]);
+    expect(callback).toHaveBeenCalledWith(command);
+    expect(event).toHaveBeenCalledWith(command);
   });
 
-  it("ignores ui-task envelopes whose kind is not a string", () => {
-    const client = makeMockPipecatClient();
-    const listener = jest.fn();
+  it("fires onUITask callbacks and RTVIEvent.UITask events", () => {
+    const callback = jest.fn();
+    const event = jest.fn();
+    const client = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: { onUITask: callback },
+    });
 
-    client.addUITaskListener(listener);
-    client.fire(RTVIEvent.UITask, {});
-    client.fire(RTVIEvent.UITask, { kind: 42 });
+    client.on(RTVIEvent.UITask, event);
+    for (const data of [groupStarted, taskUpdate]) {
+      (client.transport as TransportStub).handleMessage({
+        id: "123",
+        label: "rtvi-ai",
+        type: RTVIMessageType.UI_TASK,
+        data,
+      } as RTVIMessage);
+    }
 
-    expect(listener).not.toHaveBeenCalled();
-  });
-
-  it("returns an unsubscribe function for the exact listener", () => {
-    const client = makeMockPipecatClient();
-    const listener = jest.fn();
-
-    const unsubscribe = client.addUITaskListener(listener);
-    unsubscribe();
-    client.fire(RTVIEvent.UITask, groupStarted);
-
-    expect(listener).not.toHaveBeenCalled();
-    expect(client.off).toHaveBeenCalledWith(
-      RTVIEvent.UITask,
-      expect.any(Function),
-    );
+    expect(callback.mock.calls.map((c) => c[0])).toEqual([
+      groupStarted,
+      taskUpdate,
+    ]);
+    expect(event.mock.calls.map((c) => c[0])).toEqual([
+      groupStarted,
+      taskUpdate,
+    ]);
   });
 });
 
@@ -216,7 +244,8 @@ describe("PipecatClient.cancelUITask", () => {
 
     client.cancelUITask("t1");
 
-    expect(client.sendRTVIMessage).toHaveBeenCalledWith(
+    expectSentMessage(
+      client,
       RTVIMessageType.UI_CANCEL_TASK,
       { task_id: "t1" },
     );
@@ -227,7 +256,8 @@ describe("PipecatClient.cancelUITask", () => {
 
     client.cancelUITask("t1", "user clicked cancel");
 
-    expect(client.sendRTVIMessage).toHaveBeenCalledWith(
+    expectSentMessage(
+      client,
       RTVIMessageType.UI_CANCEL_TASK,
       { task_id: "t1", reason: "user clicked cancel" },
     );

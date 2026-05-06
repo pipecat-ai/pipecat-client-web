@@ -13,9 +13,8 @@
  * or non-React apps instantiate the class directly.
  */
 
-import { RTVIMessageType } from "../rtvi";
 import { snapshotDocument } from "../rtvi/a11y_walker";
-import type { PipecatClient } from "./client";
+import type { A11ySnapshot } from "../rtvi/ui";
 
 /** Options for ``A11ySnapshotStreamer``. */
 export interface A11ySnapshotStreamerOptions {
@@ -46,13 +45,15 @@ export interface A11ySnapshotStreamerOptions {
 }
 
 /**
- * Stream accessibility snapshots to a ``PipecatClient`` on DOM
+ * Stream accessibility snapshots through an emit callback on DOM
  * mutations, focus changes, scroll-end, resize, and visibility
  * change. Fires an initial snapshot shortly after ``start()``.
  *
  * Usage (vanilla JS / any framework)::
  *
- *     const streamer = new A11ySnapshotStreamer(pipecatClient);
+ *     const streamer = new A11ySnapshotStreamer((snapshot) => {
+ *       // Send or persist the snapshot.
+ *     });
  *     streamer.start();
  *     // ...later
  *     streamer.stop();
@@ -62,8 +63,10 @@ export interface A11ySnapshotStreamerOptions {
  * Idempotent: calling ``start()`` twice is safe; ``stop()`` detaches
  * all observers/listeners and cancels pending timers.
  */
+export type A11ySnapshotEmitter = (snapshot: A11ySnapshot) => void;
+
 export class A11ySnapshotStreamer {
-  private client: PipecatClient;
+  private emitSnapshot: A11ySnapshotEmitter;
   private debounceMs: number;
   private trackViewport: boolean;
   private logSnapshots: boolean;
@@ -77,8 +80,11 @@ export class A11ySnapshotStreamer {
   private visibilityHandler?: () => void;
   private selectionHandler?: () => void;
 
-  constructor(client: PipecatClient, options: A11ySnapshotStreamerOptions = {}) {
-    this.client = client;
+  constructor(
+    emitSnapshot: A11ySnapshotEmitter,
+    options: A11ySnapshotStreamerOptions = {}
+  ) {
+    this.emitSnapshot = emitSnapshot;
     this.debounceMs = options.debounceMs ?? 300;
     this.trackViewport = options.trackViewport ?? true;
     this.logSnapshots = options.logSnapshots ?? false;
@@ -209,12 +215,7 @@ export class A11ySnapshotStreamer {
       const snapshot = snapshotDocument(undefined, {
         trackViewport: this.trackViewport,
       });
-      // ui-snapshot is a first-class RTVI top-level type; bypass the
-      // sendEvent path (which targets ui-event) and send the typed
-      // message directly. The server expects { tree: A11ySnapshot }.
-      this.client.sendRTVIMessage(RTVIMessageType.UI_SNAPSHOT, {
-        tree: snapshot,
-      });
+      this.emitSnapshot(snapshot);
       if (this.logSnapshots) {
         const nodeCount = countNodes(snapshot.root);
         const estTokens = Math.round(JSON.stringify(snapshot).length / 4);

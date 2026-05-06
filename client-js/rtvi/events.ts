@@ -20,6 +20,7 @@ import {
   RTVIMessage,
   TranscriptData,
 } from "./messages";
+import { UICommandEnvelope, UITaskEnvelope } from "./ui";
 
 export enum RTVIEvent {
   /** local connection state events */
@@ -126,10 +127,8 @@ export type RTVIEvents = Partial<{
   messageError: (message: RTVIMessage) => void;
 
   /** UI Agent Protocol */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  uiCommand: (data: any) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  uiTask: (data: any) => void;
+  uiCommand: (data: UICommandEnvelope) => void;
+  uiTask: (data: UITaskEnvelope) => void;
 
   /** service events */
   metrics: (data: PipecatMetricsData) => void;

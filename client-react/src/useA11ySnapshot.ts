@@ -4,10 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import {
-  A11ySnapshotStreamer,
-  type A11ySnapshotStreamerOptions,
-} from "@pipecat-ai/client-js";
+import type { A11ySnapshotStreamerOptions } from "@pipecat-ai/client-js";
 import { useEffect } from "react";
 
 import { usePipecatClient } from "./usePipecatClient";
@@ -40,10 +37,8 @@ export interface UseA11ySnapshotOptions extends A11ySnapshotStreamerOptions {
  * }
  * ```
  *
- * This hook is a thin lifecycle wrapper around the framework-agnostic
- * ``A11ySnapshotStreamer`` in ``@pipecat-ai/client-js``. Non-React
- * apps can instantiate the streamer directly; the behaviour and
- * options are identical.
+ * This hook is a thin lifecycle wrapper around
+ * ``PipecatClient.startA11ySnapshotStream``.
  *
  * Behaviour:
  *
@@ -65,12 +60,11 @@ export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
 
   useEffect(() => {
     if (!enabled || !client) return;
-    const streamer = new A11ySnapshotStreamer(client, {
+    client.startA11ySnapshotStream({
       debounceMs,
       trackViewport,
       logSnapshots,
     });
-    streamer.start();
-    return () => streamer.stop();
+    return () => client.stopA11ySnapshotStream();
   }, [enabled, client, debounceMs, trackViewport, logSnapshots]);
 }

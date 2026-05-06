@@ -12,10 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **UI Agent protocol (v1).** React idiom for the v1 UI Agent protocol
   shipped in `@pipecat-ai/client-js` and `pipecat-ai-subagents`.
   - Hooks bind directly to the ambient `PipecatClient`, using the UI
-    protocol helpers exposed by `@pipecat-ai/client-js`.
+    protocol methods and RTVI events exposed by `@pipecat-ai/client-js`.
   - New `useA11ySnapshot()` hook that streams accessibility snapshots
-    to the server. Thin lifecycle wrapper around `A11ySnapshotStreamer`
-    from `@pipecat-ai/client-js`. Options: `enabled`, `debounceMs`,
+    to the server. Thin lifecycle wrapper around
+    `PipecatClient.startA11ySnapshotStream(...)`. Options: `enabled`, `debounceMs`,
     `trackViewport`, `logSnapshots`.
   - New `useUIEventSender()` and `useUICommandHandler(command, handler)`
     hooks for the basics of the protocol.
@@ -29,8 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New typed-sugar hooks `useToastHandler(handler)` and
     `useNavigateHandler(handler)` for the `toast` and `navigate`
     commands; apps wire their own toast renderer / router.
-  - Re-exports `A11ySnapshotStreamer`, `findElementByRef`,
-    `snapshotDocument`, the wire-format constants, and the standard
+  - Re-exports `findElementByRef`, `snapshotDocument`, the wire-format
+    constants, and the standard
     payload / envelope / handler types from `@pipecat-ai/client-js` so
     React consumers don't need a second import.
 

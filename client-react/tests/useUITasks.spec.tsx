@@ -5,7 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { type UITaskEnvelope } from "@pipecat-ai/client-js";
+import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
@@ -31,14 +31,15 @@ function makeMockPipecatClient() {
   };
   return {
     cancelUITask: jest.fn(),
-    addUITaskListener: jest.fn((handler: unknown) => {
-      const listener = handler as (data: unknown) => void;
-      get("uiTask").add(listener);
-      return () => get("uiTask").delete(listener);
+    on: jest.fn((event: string, handler: unknown) => {
+      get(event).add(handler as (data: unknown) => void);
+    }),
+    off: jest.fn((event: string, handler: unknown) => {
+      get(event).delete(handler as (data: unknown) => void);
     }),
     /** Fire RTVIEvent.UITask with the given envelope. */
     emit: (data: unknown) => {
-      for (const l of get("uiTask")) l(data);
+      for (const l of get(RTVIEvent.UITask)) l(data);
     },
   };
 }

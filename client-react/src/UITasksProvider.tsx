@@ -4,10 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import type {
-  UITaskEnvelope,
-  UITaskListener,
-} from "@pipecat-ai/client-js";
+import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { UITasksContext } from "./UITasksContext";
@@ -112,8 +109,11 @@ export const UITasksProvider: React.FC<React.PropsWithChildren> = ({
 
   useEffect(() => {
     if (!client) return;
-    const listener: UITaskListener = (env) => dispatch(env);
-    return client.addUITaskListener(listener);
+    const listener = (env: UITaskEnvelope) => dispatch(env);
+    client.on(RTVIEvent.UITask, listener);
+    return () => {
+      client.off(RTVIEvent.UITask, listener);
+    };
   }, [client]);
 
   const cancelTask = useCallback(

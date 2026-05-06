@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
+import { RTVIEvent } from "@pipecat-ai/client-js";
 import { useStandardClickHandler } from "../src/standardHandlers";
 import { usePipecatClient } from "../src/usePipecatClient";
 
@@ -20,21 +21,15 @@ const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
   return {
-    sendRTVIMessage: jest.fn(),
-    registerUICommandHandler: jest.fn((command: string, handler: unknown) => {
-      const listener = (data: unknown) => {
-        if (
-          data &&
-          typeof data === "object" &&
-          (data as { command?: unknown }).command === command
-        ) {
-          (handler as (payload: unknown) => void)(
-            (data as { payload?: unknown }).payload,
-          );
-        }
-      };
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+    on: jest.fn((event: string, handler: unknown) => {
+      if (event === RTVIEvent.UICommand) {
+        listeners.add(handler as (data: unknown) => void);
+      }
+    }),
+    off: jest.fn((event: string, handler: unknown) => {
+      if (event === RTVIEvent.UICommand) {
+        listeners.delete(handler as (data: unknown) => void);
+      }
     }),
     emit: (data: unknown) => {
       for (const l of listeners) l(data);

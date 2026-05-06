@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
+import { RTVIEvent } from "@pipecat-ai/client-js";
 import { usePipecatClient } from "../src/usePipecatClient";
 import { useUICommandHandler } from "../src/useUICommandHandler";
 
@@ -18,16 +19,24 @@ jest.mock("../src/usePipecatClient", () => ({
 const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 
 function makeMockPipecatClient() {
-  const listeners: Set<(data: unknown) => void> = new Set();
+  const listeners: Map<string, Set<(data: unknown) => void>> = new Map();
+  const get = (event: string) => {
+    let set = listeners.get(event);
+    if (!set) {
+      set = new Set();
+      listeners.set(event, set);
+    }
+    return set;
+  };
   return {
-    sendRTVIMessage: jest.fn(),
-    registerUICommandHandler: jest.fn((_command: string, handler: unknown) => {
-      const listener = handler as (data: unknown) => void;
-      listeners.add(listener);
-      return () => listeners.delete(listener);
+    on: jest.fn((event: string, handler: unknown) => {
+      get(event).add(handler as (data: unknown) => void);
+    }),
+    off: jest.fn((event: string, handler: unknown) => {
+      get(event).delete(handler as (data: unknown) => void);
     }),
     emit: (data: unknown) => {
-      for (const l of listeners) l(data);
+      for (const l of get(RTVIEvent.UICommand)) l(data);
     },
   };
 }
@@ -52,8 +61,14 @@ describe("useUICommandHandler", () => {
 
     render(<Probe />);
 
+    expect(pipecat.on).toHaveBeenCalledWith(
+      RTVIEvent.UICommand,
+      expect.any(Function),
+    );
+
     act(() => {
-      pipecat.emit({ title: "Hi" });
+      pipecat.emit({ command: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ command: "navigate", payload: { view: "home" } });
     });
 
     expect(calls).toEqual([{ title: "Hi" }]);
@@ -76,8 +91,13 @@ describe("useUICommandHandler", () => {
 
     rendered.unmount();
 
+    expect(pipecat.off).toHaveBeenCalledWith(
+      RTVIEvent.UICommand,
+      expect.any(Function),
+    );
+
     act(() => {
-      pipecat.emit({ title: "Hi" });
+      pipecat.emit({ command: "toast", payload: { title: "Hi" } });
     });
 
     expect(calls).toEqual([]);

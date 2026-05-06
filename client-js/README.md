@@ -70,17 +70,31 @@ pcClient.on(RTVIEvent.Disconnected, () => {
 
 ## UI Agent Protocol (v1)
 
-`PipecatClient` and `A11ySnapshotStreamer` are the client-side primitives for the UI Agent Protocol, paired with the `UIAgent` class in [`pipecat-subagents`](https://github.com/pipecat-ai/pipecat-subagents) on the Python side. They let a server-side agent observe the page (via the streamed accessibility snapshot) and drive it (via named UI commands and structured events).
+`PipecatClient` is the primary client-side entry point for the UI Agent Protocol, paired with the `UIAgent` class in [`pipecat-subagents`](https://github.com/pipecat-ai/pipecat-subagents) on the Python side. It lets a server-side agent observe the page (via the streamed accessibility snapshot) and drive it (via named UI commands and structured events).
 
 ```ts
-import { PipecatClient, A11ySnapshotStreamer } from "@pipecat-ai/client-js";
+import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 
-const pcClient = new PipecatClient({ transport: ... });
+const pcClient = new PipecatClient({
+  transport: ...,
+  callbacks: {
+    onUICommand: (data) => {
+      if (data.command === "toast") showToast(data.payload);
+    },
+    onUITask: (data) => updateTaskProgress(data),
+  },
+});
 
 // Server-to-client commands (e.g. "scroll the user to this ref",
 // "highlight this element", or any app-defined command).
-const unsubscribeToast = pcClient.registerUICommandHandler("toast", (payload) => {
-  showToast(payload.title, payload.description);
+const onUICommand = (data) => {
+  if (data.command === "toast") showToast(data.payload);
+};
+pcClient.on(RTVIEvent.UICommand, onUICommand);
+
+// Server-to-client task lifecycle envelopes.
+pcClient.on(RTVIEvent.UITask, (data) => {
+  updateTaskProgress(data);
 });
 
 // Client-to-server events (e.g. a click that should bypass the LLM).
@@ -90,11 +104,10 @@ button.addEventListener("click", () => {
 
 // Stream accessibility snapshots so the server agent can see what's
 // on screen. Auto-fires on DOM mutations, focus, scroll, resize.
-const streamer = new A11ySnapshotStreamer(pcClient, { debounceMs: 200 });
-streamer.start();
+pcClient.startA11ySnapshotStream({ debounceMs: 200 });
 ```
 
-The wire format includes typed envelopes for the long-running task lifecycle (`group_started`, `task_update`, `task_completed`, `group_completed`); see `addUITaskListener(...)` and `cancelUITask(...)` on `PipecatClient`. See the package CHANGELOG for the full v1 entry.
+The wire format includes typed envelopes for the long-running task lifecycle (`group_started`, `task_update`, `task_completed`, `group_completed`); use `client.on(RTVIEvent.UITask, ...)` to observe them and `cancelUITask(...)` to cancel an in-flight task group. `A11ySnapshotStreamer` remains exported as a low-level implementation API. See the package CHANGELOG for the full v1 entry.
 
 ## API
 
