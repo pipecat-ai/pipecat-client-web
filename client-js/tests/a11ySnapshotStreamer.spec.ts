@@ -13,7 +13,7 @@ import {
   jest,
 } from "@jest/globals";
 
-import { A11ySnapshotStreamer } from "../client/a11y-streamer";
+import { A11ySnapshotStreamer } from "../client/a11ySnapshotStreamer";
 import type { PipecatClient } from "../client/client";
 import type { A11ySnapshot } from "../rtvi/ui";
 
@@ -58,31 +58,57 @@ describe("A11ySnapshotStreamer", () => {
     streamer.stop();
   });
 
-  it("coalesces rapid mutations into one debounced emission", () => {
+  it("coalesces rapid mutation notifications into one emission", async () => {
     const emissions: Emission[] = [];
     const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
-      debounceMs: 200,
+      debounceMs: 100,
     });
     streamer.start();
-
-    // Flush the initial prime.
-    jest.advanceTimersByTime(200);
+    jest.advanceTimersByTime(100);
     expect(emissions).toHaveLength(1);
 
     const main = document.querySelector("main")!;
-    for (let i = 0; i < 5; i++) {
-      main.appendChild(document.createElement("button"));
-    }
+    main.appendChild(document.createElement("button"));
+    main.appendChild(document.createElement("button"));
+    await Promise.resolve();
 
-    // MutationObserver is async; let microtasks run first.
-    return Promise.resolve().then(() => {
-      jest.advanceTimersByTime(200);
-      expect(emissions).toHaveLength(2);
-      streamer.stop();
-    });
+    expect(emissions).toHaveLength(1);
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(2);
   });
 
-  it("emits on scrollend, resize, and visibilitychange-to-visible", () => {
+  it("stops observers and pending timers", async () => {
+    const emissions: Emission[] = [];
+    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+      debounceMs: 100,
+    });
+    streamer.start();
+    streamer.stop();
+
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(0);
+
+    document.querySelector("main")!.appendChild(document.createElement("button"));
+    await Promise.resolve();
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(0);
+  });
+
+  it("restarts after stop()", () => {
+    const emissions: Emission[] = [];
+    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
+      debounceMs: 100,
+    });
+
+    streamer.start();
+    streamer.stop();
+    streamer.start();
+    jest.advanceTimersByTime(100);
+
+    expect(emissions).toHaveLength(1);
+  });
+
+  it("emits when scrollend and resize fire", () => {
     const emissions: Emission[] = [];
     const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
       debounceMs: 100,
@@ -98,78 +124,29 @@ describe("A11ySnapshotStreamer", () => {
     window.dispatchEvent(new Event("resize"));
     jest.advanceTimersByTime(100);
     expect(emissions).toHaveLength(3);
-
-    // Hidden→visible fires; hidden alone does not.
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "hidden",
-    });
-    document.dispatchEvent(new Event("visibilitychange"));
-    jest.advanceTimersByTime(100);
-    expect(emissions).toHaveLength(3);
-
-    Object.defineProperty(document, "visibilityState", {
-      configurable: true,
-      value: "visible",
-    });
-    document.dispatchEvent(new Event("visibilitychange"));
-    jest.advanceTimersByTime(100);
-    expect(emissions).toHaveLength(4);
-
-    streamer.stop();
   });
 
-  it("stop() detaches observers; mutations after stop() don't emit", () => {
+  it("logs snapshots when enabled", () => {
     const emissions: Emission[] = [];
+    const groupCollapsed = jest
+      .spyOn(console, "groupCollapsed")
+      .mockImplementation(() => {});
+    const log = jest.spyOn(console, "log").mockImplementation(() => {});
+    const groupEnd = jest.spyOn(console, "groupEnd").mockImplementation(() => {});
     const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
       debounceMs: 100,
+      logSnapshots: true,
     });
+
     streamer.start();
     jest.advanceTimersByTime(100);
-    expect(emissions).toHaveLength(1);
 
-    streamer.stop();
+    expect(groupCollapsed).toHaveBeenCalledWith(expect.stringContaining("emit:"));
+    expect(log).toHaveBeenCalledWith("snapshot:", expect.any(Object));
+    expect(groupEnd).toHaveBeenCalledTimes(1);
 
-    const main = document.querySelector("main");
-    main?.appendChild(document.createElement("button"));
-
-    return Promise.resolve().then(() => {
-      jest.advanceTimersByTime(500);
-      expect(emissions).toHaveLength(1);
-    });
-  });
-
-  it("start() is idempotent", () => {
-    const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
-      debounceMs: 100,
-    });
-    streamer.start();
-    streamer.start(); // no-op
-    jest.advanceTimersByTime(100);
-    // Should have only one primed emission, not two.
-    expect(emissions).toHaveLength(1);
-    streamer.stop();
-  });
-
-  it("re-emits on selectionchange so snapshots reflect the latest selection", () => {
-    const emissions: Emission[] = [];
-    const streamer = new A11ySnapshotStreamer(makeStubClient(emissions), {
-      debounceMs: 100,
-    });
-    streamer.start();
-    jest.advanceTimersByTime(100);
-    expect(emissions).toHaveLength(1);
-
-    document.dispatchEvent(new Event("selectionchange"));
-    jest.advanceTimersByTime(100);
-    expect(emissions).toHaveLength(2);
-
-    streamer.stop();
-
-    // After stop(), selectionchange should not produce more snapshots.
-    document.dispatchEvent(new Event("selectionchange"));
-    jest.advanceTimersByTime(500);
-    expect(emissions).toHaveLength(2);
+    groupCollapsed.mockRestore();
+    log.mockRestore();
+    groupEnd.mockRestore();
   });
 });

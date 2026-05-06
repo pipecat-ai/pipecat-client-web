@@ -14,7 +14,7 @@
  */
 
 import { RTVIMessageType } from "../rtvi";
-import { snapshotDocument } from "../rtvi/a11y-walker";
+import { snapshotDocument } from "../rtvi/a11y_walker";
 import type { PipecatClient } from "./client";
 
 /** Options for ``A11ySnapshotStreamer``. */
@@ -126,7 +126,7 @@ export class A11ySnapshotStreamer {
     document.addEventListener("focusin", this.focusHandler);
     document.addEventListener("focusout", this.focusHandler);
 
-    // Scrollend fires once when a scroll gesture settles — no
+    // Scrollend fires once when a scroll gesture settles - no
     // debounce needed, and firing at rest avoids fighting the
     // browser's animation frames. ``capture: true`` catches scroll
     // on any scrollable ancestor, not just the window.
