@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     from `@pipecat-ai/client-js`. Options: `enabled`, `debounceMs`,
     `trackViewport`, `logSnapshots`.
   - New `useUIAgentClient()`, `useUIEventSender()`, and
-    `useUICommandHandler(name, handler)` hooks for the basics of the
+    `useUICommandHandler(command, handler)` hooks for the basics of the
     protocol.
   - New opt-in standard command handlers:
     `useStandardScrollToHandler({ block, inline, container, offset, ... })`,

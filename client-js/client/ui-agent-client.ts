@@ -19,10 +19,10 @@ import type { PipecatClient } from "./client";
  *
  * Wraps an existing `PipecatClient` with:
  *
- * - `sendEvent(name, payload)` for client → server events. Sends as a
+ * - `sendEvent(event, payload)` for client → server events. Sends as a
  *   first-class `ui-event` RTVI message.
- * - `registerCommandHandler(name, handler)` for server → client
- *   commands; handlers dispatch on the command name extracted from
+ * - `registerCommandHandler(command, handler)` for server → client
+ *   commands; handlers dispatch on the command extracted from
  *   `RTVIEvent.UICommand` payloads.
  * - `addTaskListener(listener)` for server → client task lifecycle
  *   events; listeners receive every `ui-task` envelope in arrival
@@ -54,12 +54,12 @@ export class UIAgentClient {
   /**
    * Send a named UI event to the server.
    *
-   * @param name - App-defined event name.
+   * @param event - App-defined event.
    * @param payload - App-defined payload. Optional.
    */
-  sendEvent<T = unknown>(name: string, payload?: T): void {
+  sendEvent<T = unknown>(event: string, payload?: T): void {
     const envelope: UIEventEnvelope<T | undefined> = {
-      name,
+      event,
       payload: payload as T | undefined,
     };
     this._client.sendRTVIMessage(RTVIMessageType.UI_EVENT, envelope);
@@ -68,18 +68,18 @@ export class UIAgentClient {
   /**
    * Register a handler for a named UI command.
    *
-   * Overwrites any existing handler for the same name.
+   * Overwrites any existing handler for the same command.
    */
   registerCommandHandler<T = unknown>(
-    name: string,
+    command: string,
     handler: UICommandHandler<T>,
   ): void {
-    this._commandHandlers.set(name, handler as UICommandHandler);
+    this._commandHandlers.set(command, handler as UICommandHandler);
   }
 
-  /** Remove the handler previously registered for `name`, if any. */
-  unregisterCommandHandler(name: string): void {
-    this._commandHandlers.delete(name);
+  /** Remove the handler previously registered for `command`, if any. */
+  unregisterCommandHandler(command: string): void {
+    this._commandHandlers.delete(command);
   }
 
   /** Remove all registered command handlers. */
@@ -155,8 +155,8 @@ export class UIAgentClient {
   private _handleUICommand(data: unknown): void {
     if (!data || typeof data !== "object") return;
     const envelope = data as UICommandEnvelope;
-    if (typeof envelope.name !== "string") return;
-    const handler = this._commandHandlers.get(envelope.name);
+    if (typeof envelope.command !== "string") return;
+    const handler = this._commandHandlers.get(envelope.command);
     if (!handler) return;
     // Fire-and-forget. If the handler rejects, let it surface to the
     // host's unhandled-rejection channel rather than swallowing.

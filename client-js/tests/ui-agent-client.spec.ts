@@ -16,7 +16,7 @@ interface MockPipecatClient {
   sendRTVIMessage: jest.Mock;
   on: jest.Mock;
   off: jest.Mock;
-  /** Synthetically fire an RTVI event of the given name. */
+  /** Synthetically fire an RTVI event of the given type. */
   fire: (event: RTVIEvent, data: unknown) => void;
 }
 
@@ -46,7 +46,7 @@ function makeMockPipecatClient(): MockPipecatClient {
 }
 
 describe("UIAgentClient.sendEvent", () => {
-  it("sends a first-class ui-event RTVI message with name + payload", () => {
+  it("sends a first-class ui-event RTVI message with event + payload", () => {
     const pipecat = makeMockPipecatClient();
     const ui = new UIAgentClient(pipecat as never);
 
@@ -55,7 +55,7 @@ describe("UIAgentClient.sendEvent", () => {
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledTimes(1);
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
       RTVIMessageType.UI_EVENT,
-      { name: "nav_click", payload: { view: "home" } },
+      { event: "nav_click", payload: { view: "home" } },
     );
   });
 
@@ -67,7 +67,7 @@ describe("UIAgentClient.sendEvent", () => {
 
     expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
       RTVIMessageType.UI_EVENT,
-      { name: "hello", payload: undefined },
+      { event: "hello", payload: undefined },
     );
   });
 
@@ -80,9 +80,9 @@ describe("UIAgentClient.sendEvent", () => {
 });
 
 describe("UIAgentClient command dispatch", () => {
-  function makeCommandData(name: string, payload: unknown = {}): unknown {
-    // The data field of a ui-command RTVI message: { name, payload }.
-    return { name, payload };
+  function makeCommandData(command: string, payload: unknown = {}): unknown {
+    // The data field of a ui-command RTVI message: { command, payload }.
+    return { command, payload };
   }
 
   it("does not subscribe on construction", () => {
@@ -167,7 +167,7 @@ describe("UIAgentClient command dispatch", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores ui-command payloads without a string name", () => {
+  it("ignores ui-command payloads without a string command", () => {
     const pipecat = makeMockPipecatClient();
     const ui = new UIAgentClient(pipecat as never);
     const handler = jest.fn();
@@ -181,7 +181,7 @@ describe("UIAgentClient command dispatch", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("does not dispatch when no handler is registered for the name", () => {
+  it("does not dispatch when no handler is registered for the command", () => {
     const pipecat = makeMockPipecatClient();
     const ui = new UIAgentClient(pipecat as never);
     const handler = jest.fn();
@@ -196,7 +196,7 @@ describe("UIAgentClient command dispatch", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("unregisterCommandHandler stops dispatch for that name", () => {
+  it("unregisterCommandHandler stops dispatch for that command", () => {
     const pipecat = makeMockPipecatClient();
     const ui = new UIAgentClient(pipecat as never);
     const handler = jest.fn();
@@ -209,7 +209,7 @@ describe("UIAgentClient command dispatch", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("latest registration for a name replaces the prior handler", () => {
+  it("latest registration for a command replaces the prior handler", () => {
     const pipecat = makeMockPipecatClient();
     const ui = new UIAgentClient(pipecat as never);
     const first = jest.fn();

@@ -17,9 +17,9 @@ import { useUIAgentClient } from "./useUIAgentClient";
 export const useUIEventSender = () => {
   const client = useUIAgentClient();
   return useCallback(
-    <T = unknown>(name: string, payload?: T) => {
+    <T = unknown>(event: string, payload?: T) => {
       if (!client) return;
-      client.sendEvent(name, payload);
+      client.sendEvent(event, payload);
     },
     [client],
   );

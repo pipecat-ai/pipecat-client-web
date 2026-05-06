@@ -10,8 +10,8 @@
  * `data` field.
  */
 export interface UIEventEnvelope<T = unknown> {
-  /** App-defined event name. */
-  name: string;
+  /** App-defined event. */
+  event: string;
   /** App-defined payload. Schemaless by design. */
   payload: T;
 }
@@ -22,8 +22,8 @@ export interface UIEventEnvelope<T = unknown> {
  * object of this shape.
  */
 export interface UICommandEnvelope<T = unknown> {
-  /** App-defined command name. */
-  name: string;
+  /** App-defined command. */
+  command: string;
   /** App-defined payload. */
   payload: T;
 }

@@ -31,7 +31,7 @@ describe("useUIEventSender", () => {
       off: jest.fn(),
     });
 
-    let sender: (name: string, payload?: unknown) => void = () => {
+    let sender: (event: string, payload?: unknown) => void = () => {
       throw new Error("sender not yet bound");
     };
 
@@ -52,7 +52,7 @@ describe("useUIEventSender", () => {
 
     expect(sendRTVIMessage).toHaveBeenCalledTimes(1);
     expect(sendRTVIMessage).toHaveBeenCalledWith("ui-event", {
-      name: "nav_click",
+      event: "nav_click",
       payload: { view: "home" },
     });
   });
@@ -63,7 +63,7 @@ describe("useUIEventSender", () => {
     // Provider won't construct a UIAgentClient when pipecatClient is
     // undefined, so we don't need to stub on/off here.
 
-    let sender: (name: string, payload?: unknown) => void = () => {
+    let sender: (event: string, payload?: unknown) => void = () => {
       throw new Error("sender not yet bound");
     };
 
@@ -101,7 +101,7 @@ describe("useUIEventSender", () => {
       off: jest.fn(),
     };
 
-    let sender: (name: string, payload?: unknown) => void = () => {
+    let sender: (event: string, payload?: unknown) => void = () => {
       throw new Error("sender not yet bound");
     };
 
@@ -123,7 +123,7 @@ describe("useUIEventSender", () => {
 
     expect(propSendClientMessage).toHaveBeenCalledTimes(1);
     expect(propSendClientMessage).toHaveBeenCalledWith("ui-event", {
-      name: "nav_click",
+      event: "nav_click",
       payload: { view: "home" },
     });
     expect(contextSendClientMessage).not.toHaveBeenCalled();
@@ -142,7 +142,7 @@ describe("useUIEventSender", () => {
       off: jest.fn(),
     };
 
-    let sender: (name: string, payload?: unknown) => void = () => {
+    let sender: (event: string, payload?: unknown) => void = () => {
       throw new Error("sender not yet bound");
     };
 
@@ -164,7 +164,7 @@ describe("useUIEventSender", () => {
 
     expect(propSendClientMessage).toHaveBeenCalledTimes(1);
     expect(propSendClientMessage).toHaveBeenCalledWith("ui-event", {
-      name: "hello",
+      event: "hello",
       payload: undefined,
     });
   });

@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observe and drive a GUI app, paired with the `UIAgent` work in
   `pipecat-ai-subagents`.
   - New `UIAgentClient` class that wraps an existing `PipecatClient` and
-    exposes `sendEvent(name, payload)` for client-to-server UI events
-    plus `registerCommandHandler(name, handler)` for server-to-client
-    UI commands. Subscribes to `RTVIEvent.ServerMessage` via `attach()`,
+    exposes `sendEvent(event, payload)` for client-to-server UI events
+    plus `registerCommandHandler(command, handler)` for server-to-client
+    UI commands. Subscribes to `RTVIEvent.UICommand` via `attach()`,
     which returns a detach function for symmetric teardown.
   - New `A11ySnapshotStreamer` class that walks the document's
     accessibility tree and streams snapshots to the server on DOM

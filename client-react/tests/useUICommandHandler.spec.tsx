@@ -63,7 +63,7 @@ describe("useUICommandHandler", () => {
     );
 
     act(() => {
-      pipecat.emit({ name: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ command: "toast", payload: { title: "Hi" } });
     });
 
     expect(calls).toEqual([{ title: "Hi" }]);
@@ -91,7 +91,7 @@ describe("useUICommandHandler", () => {
     rendered.unmount();
 
     act(() => {
-      pipecat.emit({ name: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ command: "toast", payload: { title: "Hi" } });
     });
 
     expect(calls).toEqual([]);

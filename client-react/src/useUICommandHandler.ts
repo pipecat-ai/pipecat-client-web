@@ -17,20 +17,20 @@ import { useUIAgentClient } from "./useUIAgentClient";
  * refreshed. Pass a stable reference (via `useCallback`) to avoid
  * per-render churn.
  *
- * @param name - App-defined command name, matching what the server
+ * @param command - App-defined command, matching what the server
  *     emits via `UIAgent.send_command`.
  * @param handler - Callback invoked with the command payload.
  */
 export const useUICommandHandler = <T = unknown>(
-  name: string,
+  command: string,
   handler: UICommandHandler<T>,
 ): void => {
   const client = useUIAgentClient();
   useEffect(() => {
     if (!client) return;
-    client.registerCommandHandler(name, handler);
+    client.registerCommandHandler(command, handler);
     return () => {
-      client.unregisterCommandHandler(name);
+      client.unregisterCommandHandler(command);
     };
-  }, [client, name, handler]);
+  }, [client, command, handler]);
 };

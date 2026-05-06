@@ -43,7 +43,7 @@ function emit(
   payload: Record<string, unknown>,
 ) {
   act(() => {
-    pipecat.emit({ type: "ui.command", name: "select_text", payload });
+    pipecat.emit({ command: "select_text", payload });
   });
 }
 

@@ -78,13 +78,13 @@ import { PipecatClient, UIAgentClient, A11ySnapshotStreamer } from "@pipecat-ai/
 const pcClient = new PipecatClient({ transport: ... });
 
 // One UIAgentClient per PipecatClient. attach() subscribes to the
-// server-message channel; the returned detach is symmetric.
+// UI command/task channels; the returned detach is symmetric.
 const uiAgent = new UIAgentClient(pcClient);
 const detach = uiAgent.attach();
 
 // Server-to-client commands (e.g. "scroll the user to this ref",
-// "highlight this element", or any app-defined name).
-uiAgent.registerCommandHandler("toast", ({ payload }) => {
+// "highlight this element", or any app-defined command).
+uiAgent.registerCommandHandler("toast", (payload) => {
   showToast(payload.title, payload.description);
 });
 
