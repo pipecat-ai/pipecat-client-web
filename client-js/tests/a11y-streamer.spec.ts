@@ -14,21 +14,18 @@ import {
 } from "@jest/globals";
 
 import { A11ySnapshotStreamer } from "../client/a11y-streamer";
-import type { UIAgentClient } from "../client/ui-agent-client";
+import type { PipecatClient } from "../client/client";
 import type { A11ySnapshot } from "../rtvi/ui";
 
 type Emission = { msgType: string; data: unknown };
 
-function makeStubClient(emissions: Emission[]): UIAgentClient {
-  // The streamer calls ``pipecatClient.sendRTVIMessage`` to emit
-  // first-class ``ui-snapshot`` RTVI messages.
+function makeStubClient(emissions: Emission[]): PipecatClient {
+  // The streamer calls ``sendRTVIMessage`` to emit first-class
+  // ``ui-snapshot`` RTVI messages.
   const sendRTVIMessage = jest.fn((msgType: string, data: unknown) => {
     emissions.push({ msgType, data });
   });
-  const stub = {
-    pipecatClient: { sendRTVIMessage },
-  } as unknown as UIAgentClient;
-  return stub;
+  return { sendRTVIMessage } as unknown as PipecatClient;
 }
 
 describe("A11ySnapshotStreamer", () => {

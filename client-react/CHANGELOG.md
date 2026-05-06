@@ -11,17 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **UI Agent protocol (v1).** React idiom for the v1 UI Agent protocol
   shipped in `@pipecat-ai/client-js` and `pipecat-ai-subagents`.
-  - New `UIAgentProvider` that wraps children with a `UIAgentClient`
-    bound to the ambient (or explicit) `PipecatClient`. Subscription
-    lifecycle follows React mount/unmount, including `StrictMode`'s
-    double-invoke in development.
+  - Hooks bind directly to the ambient `PipecatClient`, using the UI
+    protocol helpers exposed by `@pipecat-ai/client-js`.
   - New `useA11ySnapshot()` hook that streams accessibility snapshots
     to the server. Thin lifecycle wrapper around `A11ySnapshotStreamer`
     from `@pipecat-ai/client-js`. Options: `enabled`, `debounceMs`,
     `trackViewport`, `logSnapshots`.
-  - New `useUIAgentClient()`, `useUIEventSender()`, and
-    `useUICommandHandler(command, handler)` hooks for the basics of the
-    protocol.
+  - New `useUIEventSender()` and `useUICommandHandler(command, handler)`
+    hooks for the basics of the protocol.
   - New opt-in standard command handlers:
     `useStandardScrollToHandler({ block, inline, container, offset, ... })`,
     `useStandardFocusHandler({ preventScroll })`,

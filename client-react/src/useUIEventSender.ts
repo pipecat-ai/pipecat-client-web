@@ -6,7 +6,7 @@
 
 import { useCallback } from "react";
 
-import { useUIAgentClient } from "./useUIAgentClient";
+import { usePipecatClient } from "./usePipecatClient";
 
 /**
  * Returns a callable that sends a named UI event to the server.
@@ -15,11 +15,11 @@ import { useUIAgentClient } from "./useUIAgentClient";
  * from the ambient `PipecatClientProvider`.
  */
 export const useUIEventSender = () => {
-  const client = useUIAgentClient();
+  const client = usePipecatClient();
   return useCallback(
     <T = unknown>(event: string, payload?: T) => {
       if (!client) return;
-      client.sendEvent(event, payload);
+      client.sendUIEvent(event, payload);
     },
     [client],
   );

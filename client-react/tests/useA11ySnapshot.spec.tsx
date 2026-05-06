@@ -8,20 +8,25 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { UIAgentProvider } from "../src/UIAgentProvider";
 import { useA11ySnapshot } from "../src/useA11ySnapshot";
+import { usePipecatClient } from "../src/usePipecatClient";
+
+jest.mock("../src/usePipecatClient", () => ({
+  usePipecatClient: jest.fn(),
+}));
+
+const mockUsePipecatClient = usePipecatClient as unknown as jest.Mock;
 
 function makeMockPipecatClient() {
   return {
     sendRTVIMessage: jest.fn(),
-    on: jest.fn(),
-    off: jest.fn(),
   };
 }
 
 describe("useA11ySnapshot", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockUsePipecatClient.mockReset();
   });
 
   afterEach(() => {
@@ -30,6 +35,7 @@ describe("useA11ySnapshot", () => {
 
   it("emits an initial snapshot after mount (debounced)", () => {
     const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
 
     document.body.innerHTML = '<main><button>Go</button></main>';
 
@@ -38,12 +44,7 @@ describe("useA11ySnapshot", () => {
       return null;
     };
 
-    render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <UIAgentProvider client={pipecat as any}>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     // No emission yet (before debounce elapses).
     expect(pipecat.sendRTVIMessage).not.toHaveBeenCalled();
@@ -65,6 +66,7 @@ describe("useA11ySnapshot", () => {
 
   it("coalesces rapid mutations into a single debounced snapshot", () => {
     const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
     document.body.innerHTML = "<main></main>";
 
     const Probe: React.FC = () => {
@@ -72,12 +74,7 @@ describe("useA11ySnapshot", () => {
       return null;
     };
 
-    render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <UIAgentProvider client={pipecat as any}>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     // Advance past initial emission.
     act(() => {
@@ -108,6 +105,7 @@ describe("useA11ySnapshot", () => {
 
   it("is a no-op when enabled is false", () => {
     const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
     document.body.innerHTML = "<main><button>X</button></main>";
 
     const Probe: React.FC = () => {
@@ -115,12 +113,7 @@ describe("useA11ySnapshot", () => {
       return null;
     };
 
-    render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <UIAgentProvider client={pipecat as any}>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -131,6 +124,7 @@ describe("useA11ySnapshot", () => {
 
   it("emits on scrollend", () => {
     const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
     document.body.innerHTML = "<main><button>X</button></main>";
 
     const Probe: React.FC = () => {
@@ -138,12 +132,7 @@ describe("useA11ySnapshot", () => {
       return null;
     };
 
-    render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <UIAgentProvider client={pipecat as any}>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     // Flush initial emission.
     act(() => {
@@ -161,6 +150,7 @@ describe("useA11ySnapshot", () => {
 
   it("emits on window resize and visibilitychange", () => {
     const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
     document.body.innerHTML = "<main><button>X</button></main>";
 
     const Probe: React.FC = () => {
@@ -168,12 +158,7 @@ describe("useA11ySnapshot", () => {
       return null;
     };
 
-    render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <UIAgentProvider client={pipecat as any}>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     act(() => {
       jest.advanceTimersByTime(100);
@@ -211,6 +196,7 @@ describe("useA11ySnapshot", () => {
 
   it("stops emitting after unmount", () => {
     const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
     document.body.innerHTML = "<main></main>";
 
     const Probe: React.FC = () => {
@@ -218,12 +204,7 @@ describe("useA11ySnapshot", () => {
       return null;
     };
 
-    const rendered = render(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <UIAgentProvider client={pipecat as any}>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    const rendered = render(<Probe />);
 
     act(() => {
       jest.advanceTimersByTime(100);

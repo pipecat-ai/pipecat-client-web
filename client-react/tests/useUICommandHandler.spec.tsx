@@ -8,7 +8,6 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { UIAgentProvider } from "../src/UIAgentProvider";
 import { usePipecatClient } from "../src/usePipecatClient";
 import { useUICommandHandler } from "../src/useUICommandHandler";
 
@@ -22,15 +21,10 @@ function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
   return {
     sendRTVIMessage: jest.fn(),
-    on: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "uiCommand") {
-        listeners.add(handler as (data: unknown) => void);
-      }
-    }),
-    off: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "uiCommand") {
-        listeners.delete(handler as (data: unknown) => void);
-      }
+    registerUICommandHandler: jest.fn((_command: string, handler: unknown) => {
+      const listener = handler as (data: unknown) => void;
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     }),
     emit: (data: unknown) => {
       for (const l of listeners) l(data);
@@ -56,14 +50,10 @@ describe("useUICommandHandler", () => {
       return null;
     };
 
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     act(() => {
-      pipecat.emit({ command: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ title: "Hi" });
     });
 
     expect(calls).toEqual([{ title: "Hi" }]);
@@ -82,16 +72,12 @@ describe("useUICommandHandler", () => {
       return null;
     };
 
-    const rendered = render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    const rendered = render(<Probe />);
 
     rendered.unmount();
 
     act(() => {
-      pipecat.emit({ command: "toast", payload: { title: "Hi" } });
+      pipecat.emit({ title: "Hi" });
     });
 
     expect(calls).toEqual([]);

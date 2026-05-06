@@ -15,7 +15,7 @@
 
 import { RTVIMessageType } from "../rtvi";
 import { snapshotDocument } from "../rtvi/a11y-walker";
-import type { UIAgentClient } from "./ui-agent-client";
+import type { PipecatClient } from "./client";
 
 /** Options for ``A11ySnapshotStreamer``. */
 export interface A11ySnapshotStreamerOptions {
@@ -46,15 +46,13 @@ export interface A11ySnapshotStreamerOptions {
 }
 
 /**
- * Stream accessibility snapshots to a ``UIAgentClient`` on DOM
+ * Stream accessibility snapshots to a ``PipecatClient`` on DOM
  * mutations, focus changes, scroll-end, resize, and visibility
  * change. Fires an initial snapshot shortly after ``start()``.
  *
  * Usage (vanilla JS / any framework)::
  *
- *     const ui = new UIAgentClient(pipecatClient);
- *     ui.attach();
- *     const streamer = new A11ySnapshotStreamer(ui);
+ *     const streamer = new A11ySnapshotStreamer(pipecatClient);
  *     streamer.start();
  *     // ...later
  *     streamer.stop();
@@ -65,7 +63,7 @@ export interface A11ySnapshotStreamerOptions {
  * all observers/listeners and cancels pending timers.
  */
 export class A11ySnapshotStreamer {
-  private client: UIAgentClient;
+  private client: PipecatClient;
   private debounceMs: number;
   private trackViewport: boolean;
   private logSnapshots: boolean;
@@ -79,7 +77,7 @@ export class A11ySnapshotStreamer {
   private visibilityHandler?: () => void;
   private selectionHandler?: () => void;
 
-  constructor(client: UIAgentClient, options: A11ySnapshotStreamerOptions = {}) {
+  constructor(client: PipecatClient, options: A11ySnapshotStreamerOptions = {}) {
     this.client = client;
     this.debounceMs = options.debounceMs ?? 300;
     this.trackViewport = options.trackViewport ?? true;
@@ -214,7 +212,7 @@ export class A11ySnapshotStreamer {
       // ui-snapshot is a first-class RTVI top-level type; bypass the
       // sendEvent path (which targets ui-event) and send the typed
       // message directly. The server expects { tree: A11ySnapshot }.
-      this.client.pipecatClient.sendRTVIMessage(RTVIMessageType.UI_SNAPSHOT, {
+      this.client.sendRTVIMessage(RTVIMessageType.UI_SNAPSHOT, {
         tree: snapshot,
       });
       if (this.logSnapshots) {

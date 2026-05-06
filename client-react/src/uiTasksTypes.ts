@@ -75,7 +75,7 @@ export interface UITasksAPI {
   groups: TaskGroup[];
   /**
    * Ask the server to cancel an in-flight group. No-op when no
-   * `UIAgentClient` is available, when the group is unknown to the
+   * `PipecatClient` is available, when the group is unknown to the
    * server, or when the group was registered with
    * `cancellable: false`.
    */

@@ -30,7 +30,7 @@ export interface UICommandEnvelope<T = unknown> {
 
 /**
  * Signature for a handler passed to
- * `UIAgentClient.registerCommandHandler`.
+ * `PipecatClient.registerUICommandHandler`.
  */
 export type UICommandHandler<T = unknown> = (
   payload: T,
@@ -222,7 +222,7 @@ export type UITaskEnvelope =
   | UITaskGroupCompletedEnvelope;
 
 /**
- * Signature for a listener passed to `UIAgentClient.addTaskListener`.
+ * Signature for a listener passed to `PipecatClient.addUITaskListener`.
  *
  * Receives every `ui.task` envelope in arrival order. Switch on
  * `envelope.kind` to react to specific lifecycle phases. The React

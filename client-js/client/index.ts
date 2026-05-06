@@ -10,5 +10,4 @@ export * from "./dispatcher";
 export * from "./logger";
 export * from "./rest_helpers";
 export * from "./transport";
-export * from "./ui-agent-client";
 export * from "./utils";

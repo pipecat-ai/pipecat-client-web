@@ -5,11 +5,10 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RTVIMessageType, type UITaskEnvelope } from "@pipecat-ai/client-js";
+import { type UITaskEnvelope } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { UIAgentProvider } from "../src/UIAgentProvider";
 import { UITasksProvider } from "../src/UITasksProvider";
 import { usePipecatClient } from "../src/usePipecatClient";
 import { useUITasks } from "../src/useUITasks";
@@ -31,12 +30,11 @@ function makeMockPipecatClient() {
     return s;
   };
   return {
-    sendRTVIMessage: jest.fn(),
-    on: jest.fn((event: unknown, handler: unknown) => {
-      get(event as string).add(handler as (data: unknown) => void);
-    }),
-    off: jest.fn((event: unknown, handler: unknown) => {
-      get(event as string).delete(handler as (data: unknown) => void);
+    cancelUITask: jest.fn(),
+    addUITaskListener: jest.fn((handler: unknown) => {
+      const listener = handler as (data: unknown) => void;
+      get("uiTask").add(listener);
+      return () => get("uiTask").delete(listener);
     }),
     /** Fire RTVIEvent.UITask with the given envelope. */
     emit: (data: unknown) => {
@@ -93,11 +91,9 @@ function renderWithProviders() {
     return null;
   };
   const result = render(
-    <UIAgentProvider>
-      <UITasksProvider>
-        <Probe />
-      </UITasksProvider>
-    </UIAgentProvider>,
+    <UITasksProvider>
+      <Probe />
+    </UITasksProvider>,
   );
   return {
     ...result,
@@ -255,9 +251,9 @@ describe("useUITasks reducer", () => {
       getApi().cancelTask("t1", "user clicked cancel");
     });
 
-    expect(pipecat.sendRTVIMessage).toHaveBeenCalledWith(
-      RTVIMessageType.UI_CANCEL_TASK,
-      { task_id: "t1", reason: "user clicked cancel" },
+    expect(pipecat.cancelUITask).toHaveBeenCalledWith(
+      "t1",
+      "user clicked cancel",
     );
   });
 

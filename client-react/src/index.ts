@@ -31,8 +31,6 @@ import {
   useStandardSetInputValueHandler,
   useToastHandler,
 } from "./standardHandlers";
-import { UIAgentContext } from "./UIAgentContext";
-import { UIAgentProvider } from "./UIAgentProvider";
 import { UITasksContext } from "./UITasksContext";
 import { UITasksProvider } from "./UITasksProvider";
 import { useA11ySnapshot } from "./useA11ySnapshot";
@@ -45,7 +43,6 @@ import { usePipecatClientScreenShareControl } from "./usePipecatClientScreenShar
 import { usePipecatClientTransportState } from "./usePipecatClientTransportState";
 import { usePipecatConversation } from "./usePipecatConversation";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
-import { useUIAgentClient } from "./useUIAgentClient";
 import { useUICommandHandler } from "./useUICommandHandler";
 import { useUIEventSender } from "./useUIEventSender";
 import { useUITasks } from "./useUITasks";
@@ -64,8 +61,6 @@ export {
   PipecatClientScreenShareToggle,
   PipecatClientVideo,
   sortByCreatedAt,
-  UIAgentContext,
-  UIAgentProvider,
   UITasksContext,
   UITasksProvider,
   useA11ySnapshot,
@@ -90,7 +85,6 @@ export {
   useStandardSelectTextHandler,
   useStandardSetInputValueHandler,
   useToastHandler,
-  useUIAgentClient,
   useUICommandHandler,
   useUIEventSender,
   useUITasks,

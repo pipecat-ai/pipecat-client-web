@@ -12,11 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **UI Agent protocol (v1).** Client-side support for AI agents that
   observe and drive a GUI app, paired with the `UIAgent` work in
   `pipecat-ai-subagents`.
-  - New `UIAgentClient` class that wraps an existing `PipecatClient` and
-    exposes `sendEvent(event, payload)` for client-to-server UI events
-    plus `registerCommandHandler(command, handler)` for server-to-client
-    UI commands. Subscribes to `RTVIEvent.UICommand` via `attach()`,
-    which returns a detach function for symmetric teardown.
+  - New `PipecatClient` helpers for the protocol:
+    `sendUIEvent(event, payload)`, `registerUICommandHandler(command, handler)`,
+    `addUITaskListener(listener)`, and `cancelUITask(taskId, reason?)`.
+    The listener registration helpers return unsubscribe functions for
+    symmetric teardown.
   - New `A11ySnapshotStreamer` class that walks the document's
     accessibility tree and streams snapshots to the server on DOM
     mutations, focus changes, scroll-end, resize, and tab visibility.
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New `RTVIMessageType` members for the protocol's UI types
     (`UI_EVENT`, `UI_COMMAND`, `UI_SNAPSHOT`, `UI_CANCEL_TASK`,
     `UI_TASK`); use these enum members with
-    `PipecatClient.sendRTVIMessage` if you bypass `UIAgentClient`.
+    `PipecatClient.sendRTVIMessage` if you need to bypass the typed helpers.
   - Bumped `RTVI_PROTOCOL_VERSION` from `1.2.0` to `1.3.0`, matching the
     server-side bump that introduces the `ui-*` message types. Purely
     additive: only new top-level RTVI message types are introduced and no

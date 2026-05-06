@@ -7,7 +7,7 @@
 import type { UICommandHandler } from "@pipecat-ai/client-js";
 import { useEffect } from "react";
 
-import { useUIAgentClient } from "./useUIAgentClient";
+import { usePipecatClient } from "./usePipecatClient";
 
 /**
  * Register a handler for a named UI command.
@@ -25,12 +25,9 @@ export const useUICommandHandler = <T = unknown>(
   command: string,
   handler: UICommandHandler<T>,
 ): void => {
-  const client = useUIAgentClient();
+  const client = usePipecatClient();
   useEffect(() => {
     if (!client) return;
-    client.registerCommandHandler(command, handler);
-    return () => {
-      client.unregisterCommandHandler(command);
-    };
+    return client.registerUICommandHandler(command, handler);
   }, [client, command, handler]);
 };

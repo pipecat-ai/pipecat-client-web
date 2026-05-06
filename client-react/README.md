@@ -50,7 +50,6 @@ React bindings for the UI Agent Protocol shipped in [`@pipecat-ai/client-js`](..
 import { PipecatClient } from "@pipecat-ai/client-js";
 import {
   PipecatClientProvider,
-  UIAgentProvider,
   UITasksProvider,
   useA11ySnapshot,
   useStandardScrollToHandler,
@@ -73,20 +72,17 @@ function App() {
 
 render(
   <PipecatClientProvider client={client}>
-    <UIAgentProvider>
-      <UITasksProvider>
-        <App />
-      </UITasksProvider>
-    </UIAgentProvider>
+    <UITasksProvider>
+      <App />
+    </UITasksProvider>
   </PipecatClientProvider>
 );
 ```
 
 What's exposed:
 
-- **`UIAgentProvider`**: holds a `UIAgentClient` bound to the ambient `PipecatClient`.
-- **`UITasksProvider`** + **`useUITasks()`**: subscribes to `ui.task` envelopes for long-running fan-out work; gives you per-task progress and cancel.
-- **Hooks**: `useUIAgentClient`, `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useA11ySnapshot`.
+- **`UITasksProvider`** + **`useUITasks()`**: subscribes to `ui-task` envelopes for long-running fan-out work; gives you per-task progress and cancel.
+- **Hooks**: `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useA11ySnapshot`.
 - **Standard handlers** (opt-in DOM defaults): `useStandardScrollToHandler`, `useStandardHighlightHandler`, `useStandardSelectTextHandler`, `useStandardSetInputValueHandler`, `useStandardClickHandler`, `useStandardFocusHandler`, plus the `useStandardCommandHandlers` bundle.
 
 See the package CHANGELOG for the full v1 entry.

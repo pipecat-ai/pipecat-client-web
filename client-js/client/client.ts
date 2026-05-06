@@ -38,6 +38,13 @@ import {
   TransportState,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
+import {
+  type UICommandEnvelope,
+  type UICommandHandler,
+  type UIEventEnvelope,
+  type UITaskEnvelope,
+  type UITaskListener,
+} from "../rtvi/ui";
 import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
@@ -952,6 +959,69 @@ export class PipecatClient extends RTVIEventEmitter {
   @transportReady
   public sendRTVIMessage(msgType: string, data?: unknown): void {
     this._sendMessage(new RTVIMessage(msgType, data));
+  }
+
+  /**
+   * Send a named UI event to the server as a first-class RTVI
+   * `ui-event` message.
+   *
+   * @param event - App-defined event.
+   * @param payload - App-defined payload. Optional.
+   */
+  public sendUIEvent<T = unknown>(event: string, payload?: T): void {
+    const envelope: UIEventEnvelope<T | undefined> = {
+      event,
+      payload: payload as T | undefined,
+    };
+    this.sendRTVIMessage(RTVIMessageType.UI_EVENT, envelope);
+  }
+
+  /**
+   * Register a handler for a named server-to-client UI command.
+   *
+   * Returns an unsubscribe function that removes this exact listener.
+   */
+  public registerUICommandHandler<T = unknown>(
+    command: string,
+    handler: UICommandHandler<T>
+  ): () => void {
+    const listener = (data: unknown) => {
+      if (!data || typeof data !== "object") return;
+      const envelope = data as UICommandEnvelope;
+      if (envelope.command !== command) return;
+      void handler(envelope.payload as T);
+    };
+
+    this.on(RTVIEvent.UICommand, listener);
+    return () => this.off(RTVIEvent.UICommand, listener);
+  }
+
+  /**
+   * Subscribe to every server-to-client UI task lifecycle envelope.
+   *
+   * Returns an unsubscribe function that removes this exact listener.
+   */
+  public addUITaskListener(listener: UITaskListener): () => void {
+    const eventListener = (data: unknown) => {
+      if (!data || typeof data !== "object") return;
+      if (typeof (data as { kind?: unknown }).kind !== "string") return;
+      listener(data as UITaskEnvelope);
+    };
+
+    this.on(RTVIEvent.UITask, eventListener);
+    return () => this.off(RTVIEvent.UITask, eventListener);
+  }
+
+  /**
+   * Ask the server to cancel an in-flight UI task group.
+   *
+   * @param taskId - Shared task identifier of the group to cancel.
+   * @param reason - Optional human-readable reason logged on the server.
+   */
+  public cancelUITask(taskId: string, reason?: string): void {
+    const payload: { task_id: string; reason?: string } = { task_id: taskId };
+    if (reason !== undefined) payload.reason = reason;
+    this.sendRTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload);
   }
 
   /**

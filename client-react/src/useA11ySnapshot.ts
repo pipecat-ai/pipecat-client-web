@@ -10,7 +10,7 @@ import {
 } from "@pipecat-ai/client-js";
 import { useEffect } from "react";
 
-import { useUIAgentClient } from "./useUIAgentClient";
+import { usePipecatClient } from "./usePipecatClient";
 
 /** Options for ``useA11ySnapshot``. */
 export interface UseA11ySnapshotOptions extends A11ySnapshotStreamerOptions {
@@ -25,13 +25,13 @@ export interface UseA11ySnapshotOptions extends A11ySnapshotStreamerOptions {
 
 /**
  * Capture a structured accessibility snapshot of the document and
- * send it to the server as a reserved UI event
- * (``__ui_snapshot``). The server-side ``UIAgent`` stores the latest
+ * send it to the server as a first-class ``ui-snapshot`` RTVI
+ * message. The server-side ``UIAgent`` stores the latest
  * snapshot and, on demand, renders it into the LLM's context as
  * ``<ui_state>`` so the agent can reason about what's on screen.
  *
  * Usage: call once near the root of your app, inside a
- * ``UIAgentProvider``.
+ * ``PipecatClientProvider``.
  *
  * ```tsx
  * function App() {
@@ -51,8 +51,8 @@ export interface UseA11ySnapshotOptions extends A11ySnapshotStreamerOptions {
  * - Re-emits on DOM mutations, ARIA attribute changes, focus
  *   changes, scroll-end, window resize, and tab visibility change,
  *   coalesced by ``debounceMs``.
- * - No-op until a ``UIAgentClient`` is available from the ambient
- *   ``UIAgentProvider`` (or the provider's Pipecat client is unset).
+ * - No-op until a ``PipecatClient`` is available from the ambient
+ *   ``PipecatClientProvider``.
  */
 export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
   const {
@@ -61,7 +61,7 @@ export function useA11ySnapshot(options: UseA11ySnapshotOptions = {}): void {
     trackViewport = true,
     logSnapshots = false,
   } = options;
-  const client = useUIAgentClient();
+  const client = usePipecatClient();
 
   useEffect(() => {
     if (!enabled || !client) return;

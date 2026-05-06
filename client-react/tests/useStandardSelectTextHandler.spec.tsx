@@ -9,7 +9,6 @@ import { act, render } from "@testing-library/react";
 import React from "react";
 
 import { useStandardSelectTextHandler } from "../src/standardHandlers";
-import { UIAgentProvider } from "../src/UIAgentProvider";
 import { usePipecatClient } from "../src/usePipecatClient";
 
 jest.mock("../src/usePipecatClient", () => ({
@@ -22,15 +21,20 @@ function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
   return {
     sendRTVIMessage: jest.fn(),
-    on: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "uiCommand") {
-        listeners.add(handler as (data: unknown) => void);
-      }
-    }),
-    off: jest.fn((event: unknown, handler: unknown) => {
-      if (event === "uiCommand") {
-        listeners.delete(handler as (data: unknown) => void);
-      }
+    registerUICommandHandler: jest.fn((command: string, handler: unknown) => {
+      const listener = (data: unknown) => {
+        if (
+          data &&
+          typeof data === "object" &&
+          (data as { command?: unknown }).command === command
+        ) {
+          (handler as (payload: unknown) => void)(
+            (data as { payload?: unknown }).payload,
+          );
+        }
+      };
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     }),
     emit: (data: unknown) => {
       for (const l of listeners) l(data);
@@ -68,11 +72,7 @@ describe("useStandardSelectTextHandler", () => {
     document.body.innerHTML = `<p id="p">First sentence here.</p>`;
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     emit(pipecat, { target_id: "p" });
 
@@ -86,11 +86,7 @@ describe("useStandardSelectTextHandler", () => {
     document.body.innerHTML = `<p id="p">First sentence here.</p>`;
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     emit(pipecat, { target_id: "p", start_offset: 6, end_offset: 14 });
 
@@ -107,11 +103,7 @@ describe("useStandardSelectTextHandler", () => {
     document.body.innerHTML = `<p id="p">Read <span>this part</span> please.</p>`;
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     emit(pipecat, { target_id: "p", start_offset: 5, end_offset: 14 });
 
@@ -125,11 +117,7 @@ describe("useStandardSelectTextHandler", () => {
     document.body.innerHTML = `<input id="i" value="hello world" />`;
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     emit(pipecat, { target_id: "i", start_offset: 6, end_offset: 11 });
 
@@ -144,11 +132,7 @@ describe("useStandardSelectTextHandler", () => {
     document.body.innerHTML = `<input id="i" value="hello world" />`;
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     const input = document.getElementById("i") as HTMLInputElement;
     const select = jest.spyOn(input, "select");
@@ -164,11 +148,7 @@ describe("useStandardSelectTextHandler", () => {
     document.body.innerHTML = `<p id="p">Short.</p>`;
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     emit(pipecat, { target_id: "p", start_offset: 1000, end_offset: 2000 });
 
@@ -192,11 +172,7 @@ describe("useStandardSelectTextHandler", () => {
     sel.addRange(range);
 
     const Probe = withHandler();
-    render(
-      <UIAgentProvider>
-        <Probe />
-      </UIAgentProvider>,
-    );
+    render(<Probe />);
 
     emit(pipecat, { target_id: "nope" });
 

@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { UITasksContext } from "./UITasksContext";
 import type { Task, TaskGroup, UITasksAPI } from "./uiTasksTypes";
-import { useUIAgentClient } from "./useUIAgentClient";
+import { usePipecatClient } from "./usePipecatClient";
 
 type State = TaskGroup[];
 
@@ -94,9 +94,9 @@ function reducer(state: State, env: UITaskEnvelope): State {
 
 /**
  * Provides a structured view of every user task group dispatched
- * by the server, derived from `ui.task` envelopes.
+ * by the server, derived from `ui-task` envelopes.
  *
- * Mount this somewhere under `UIAgentProvider`. Children call
+ * Mount this somewhere under `PipecatClientProvider`. Children call
  * `useUITasks()` to read the current groups and to issue
  * cancellation requests.
  *
@@ -107,21 +107,18 @@ function reducer(state: State, env: UITaskEnvelope): State {
 export const UITasksProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
-  const client = useUIAgentClient();
+  const client = usePipecatClient();
   const [groups, dispatch] = useReducer(reducer, [] as State);
 
   useEffect(() => {
     if (!client) return;
     const listener: UITaskListener = (env) => dispatch(env);
-    client.addTaskListener(listener);
-    return () => {
-      client.removeTaskListener(listener);
-    };
+    return client.addUITaskListener(listener);
   }, [client]);
 
   const cancelTask = useCallback(
     (taskId: string, reason?: string) => {
-      client?.cancelTask(taskId, reason);
+      client?.cancelUITask(taskId, reason);
     },
     [client],
   );
