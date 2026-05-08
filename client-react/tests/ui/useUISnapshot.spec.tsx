@@ -75,4 +75,23 @@ describe("useUISnapshot", () => {
 
     expect(pipecat.startUISnapshotStream).not.toHaveBeenCalled();
   });
+
+  it("stops and restarts when enabled toggles false then true", () => {
+    const pipecat = makeMockPipecatClient();
+    mockUsePipecatClient.mockReturnValue(pipecat);
+
+    const Probe: React.FC<{ enabled: boolean }> = ({ enabled }) => {
+      useUISnapshot({ enabled, debounceMs: 100 });
+      return null;
+    };
+
+    const rendered = render(<Probe enabled={true} />);
+    expect(pipecat.startUISnapshotStream).toHaveBeenCalledTimes(1);
+
+    rendered.rerender(<Probe enabled={false} />);
+    expect(pipecat.stopUISnapshotStream).toHaveBeenCalledTimes(1);
+
+    rendered.rerender(<Probe enabled={true} />);
+    expect(pipecat.startUISnapshotStream).toHaveBeenCalledTimes(2);
+  });
 });

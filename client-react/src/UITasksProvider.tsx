@@ -5,7 +5,7 @@
  */
 
 import { RTVIEvent, type UITaskData } from "@pipecat-ai/client-js";
-import React, { useCallback, useMemo, useReducer } from "react";
+import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
 import { UITasksContext } from "./UITasksContext";
 import type { Task, TaskGroup, UITasksAPI } from "./uiTasksTypes";
@@ -14,14 +14,47 @@ import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
 type State = TaskGroup[];
 
+type Action =
+  | { type: "ui_task"; env: UITaskData; maxGroups?: number }
+  | { type: "dismiss_task"; taskId: string }
+  | { type: "clear_completed" }
+  | { type: "prune"; maxGroups?: number };
+
+export interface UITasksProviderProps extends React.PropsWithChildren {
+  /**
+   * Maximum number of groups to retain. When exceeded, oldest
+   * non-running groups are dropped first; running groups are never
+   * dropped. Omitted means unbounded.
+   */
+  maxGroups?: number;
+}
+
 function aggregateStatus(tasks: Task[]): TaskGroup["status"] {
   if (tasks.some((t) => t.status === "error" || t.status === "failed"))
     return "error";
   if (tasks.some((t) => t.status === "cancelled")) return "cancelled";
+  if (tasks.some((t) => t.status === "running")) return "running";
   return "completed";
 }
 
-function reducer(state: State, env: UITaskData): State {
+function applyMaxGroups(state: State, maxGroups?: number): State {
+  if (maxGroups === undefined || maxGroups < 0 || state.length <= maxGroups) {
+    return state;
+  }
+
+  let overflow = state.length - maxGroups;
+  const next: State = [];
+  for (const group of state) {
+    if (overflow > 0 && group.status !== "running") {
+      overflow -= 1;
+      continue;
+    }
+    next.push(group);
+  }
+  return next;
+}
+
+function uiTaskReducer(state: State, env: UITaskData): State {
   switch (env.kind) {
     case "group_started":
       // Defensive: replace any prior group with the same task_id.
@@ -90,6 +123,22 @@ function reducer(state: State, env: UITaskData): State {
   }
 }
 
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "ui_task":
+      return applyMaxGroups(uiTaskReducer(state, action.env), action.maxGroups);
+    case "dismiss_task":
+      return state.filter(
+        (group) =>
+          group.taskId !== action.taskId || group.status === "running",
+      );
+    case "clear_completed":
+      return state.filter((group) => group.status === "running");
+    case "prune":
+      return applyMaxGroups(state, action.maxGroups);
+  }
+}
+
 /**
  * Provides a structured view of every user task group dispatched
  * by the server, derived from `ui-task` envelopes.
@@ -102,15 +151,23 @@ function reducer(state: State, env: UITaskData): State {
  * pay the reducer cost. The provider holds a single reducer; its
  * cost scales with the number of `ui.task` envelopes received.
  */
-export const UITasksProvider: React.FC<React.PropsWithChildren> = ({
+export const UITasksProvider: React.FC<UITasksProviderProps> = ({
   children,
+  maxGroups,
 }) => {
   const client = usePipecatClient();
-  const [groups, dispatch] = useReducer(reducer, [] as State);
+  const [groups, dispatch] = useReducer(reducer, []);
+
+  useEffect(() => {
+    dispatch({ type: "prune", maxGroups });
+  }, [maxGroups]);
 
   useRTVIClientEvent(
     RTVIEvent.UITask,
-    useCallback((env: UITaskData) => dispatch(env), []),
+    useCallback(
+      (env: UITaskData) => dispatch({ type: "ui_task", env, maxGroups }),
+      [maxGroups],
+    ),
   );
 
   const cancelTask = useCallback(
@@ -120,9 +177,22 @@ export const UITasksProvider: React.FC<React.PropsWithChildren> = ({
     [client],
   );
 
+  const dismissTask = useCallback((taskId: string) => {
+    dispatch({ type: "dismiss_task", taskId });
+  }, []);
+
+  const clearCompleted = useCallback(() => {
+    dispatch({ type: "clear_completed" });
+  }, []);
+
   const value = useMemo<UITasksAPI>(
-    () => ({ groups, cancelTask }),
-    [groups, cancelTask],
+    () => ({
+      groups,
+      cancelTask,
+      dismissTask,
+      clearCompleted,
+    }),
+    [groups, cancelTask, dismissTask, clearCompleted],
   );
 
   return (

@@ -85,6 +85,8 @@ What's exposed:
 - **Hooks**: `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useUISnapshot`.
 - **Default UI command handlers** (opt-in DOM defaults): `useDefaultScrollToHandler`, `useDefaultHighlightHandler`, `useDefaultSelectTextHandler`, `useDefaultSetInputValueHandler`, `useDefaultClickHandler`, `useDefaultFocusHandler`, plus the `useDefaultUICommandHandlers` bundle.
 
+Form controls follow browser interaction semantics: text inputs, textareas, and native `<select>` elements use `set_input_value`; checkboxes and radios use `click`.
+
 See the package CHANGELOG for the full v1 entry.
 
 ## Components

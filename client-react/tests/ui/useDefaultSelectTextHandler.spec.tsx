@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
@@ -64,8 +64,13 @@ function setup(html: string) {
 describe("useDefaultSelectTextHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "debug").mockImplementation(() => {});
     document.body.innerHTML = "";
     window.getSelection()?.removeAllRanges();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("selects all text in a document element when no offsets are given", () => {
@@ -117,6 +122,17 @@ describe("useDefaultSelectTextHandler", () => {
     const select = jest.spyOn(input, "select");
 
     emit(pipecat, { target_id: "i" });
+
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to el.select() on input/textarea when offsets are inverted", () => {
+    const pipecat = setup(`<input id="i" value="hello world" />`);
+
+    const input = document.getElementById("i") as HTMLInputElement;
+    const select = jest.spyOn(input, "select");
+
+    emit(pipecat, { target_id: "i", start_offset: 9, end_offset: 2 });
 
     expect(select).toHaveBeenCalledTimes(1);
   });

@@ -26,7 +26,10 @@ export type UICommandHandler<T = unknown> = (
  *
  * @param command - App-defined command, matching what the server
  *     emits via `UIAgent.send_command`.
- * @param handler - Callback invoked with the command payload.
+ * @param handler - Callback invoked with the command payload. The
+ *     payload is cast to `T` because command payloads are schemaless
+ *     at the protocol layer; validate inside the handler when the
+ *     payload source is untrusted.
  */
 export const useUICommandHandler = <T = unknown>(
   command: string,

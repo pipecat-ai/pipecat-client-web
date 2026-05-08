@@ -79,15 +79,23 @@ const groupCompleted: UITaskData = {
 
 type TasksAPI = ReturnType<typeof useUITasks>;
 
-function renderWithProviders(pipecat = makeMockPipecatClient()) {
-  let api: TasksAPI = { groups: [], cancelTask: () => {} };
+function renderWithProviders(
+  pipecat = makeMockPipecatClient(),
+  options: { maxGroups?: number } = {},
+) {
+  let api: TasksAPI = {
+    groups: [],
+    cancelTask: () => {},
+    dismissTask: () => {},
+    clearCompleted: () => {},
+  };
   const Probe: React.FC = () => {
     api = useUITasks();
     return null;
   };
   const result = render(
     <PipecatClientProvider client={pipecat as never}>
-      <UITasksProvider>
+      <UITasksProvider maxGroups={options.maxGroups}>
         <Probe />
       </UITasksProvider>
     </PipecatClientProvider>,
@@ -190,6 +198,22 @@ describe("useUITasks reducer", () => {
     expect(g.completedAt).toBe(1704);
   });
 
+  it("keeps the group running when group_completed arrives before all workers finish", () => {
+    const pipecat = makeMockPipecatClient();
+
+    const { getApi } = renderWithProviders(pipecat);
+    act(() => {
+      pipecat.emit(groupStarted);
+      pipecat.emit(w1Completed);
+      pipecat.emit(groupCompleted);
+    });
+
+    const g = getApi().groups[0];
+    expect(g.status).toBe("running");
+    expect(g.completedAt).toBe(1704);
+    expect(g.tasks.find((t) => t.agentName === "w2")!.status).toBe("running");
+  });
+
   it("aggregates to error when any worker errored", () => {
     const pipecat = makeMockPipecatClient();
 
@@ -245,8 +269,73 @@ describe("useUITasks reducer", () => {
     );
   });
 
+  it("dismissTask refuses running groups and removes completed groups", () => {
+    const pipecat = makeMockPipecatClient();
+
+    const { getApi } = renderWithProviders(pipecat);
+    act(() => {
+      pipecat.emit(groupStarted);
+      pipecat.emit({ ...groupStarted, task_id: "t2", at: 1800 });
+      pipecat.emit({ ...w1Completed, task_id: "t2" });
+      pipecat.emit({ ...w2Completed, task_id: "t2" });
+      pipecat.emit({ ...groupCompleted, task_id: "t2" });
+    });
+
+    act(() => {
+      getApi().dismissTask("t1");
+      getApi().dismissTask("t2");
+    });
+
+    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1"]);
+  });
+
+  it("clearCompleted removes terminal groups and keeps running groups", () => {
+    const pipecat = makeMockPipecatClient();
+
+    const { getApi } = renderWithProviders(pipecat);
+    act(() => {
+      pipecat.emit(groupStarted);
+      pipecat.emit({ ...groupStarted, task_id: "t2", at: 1800 });
+      pipecat.emit({ ...w1Completed, task_id: "t2" });
+      pipecat.emit({ ...w2Completed, task_id: "t2", status: "error" });
+      pipecat.emit({ ...groupCompleted, task_id: "t2" });
+      pipecat.emit({ ...groupStarted, task_id: "t3", at: 1900 });
+      pipecat.emit({ ...w1Completed, task_id: "t3" });
+      pipecat.emit({ ...w2Completed, task_id: "t3", status: "cancelled" });
+      pipecat.emit({ ...groupCompleted, task_id: "t3" });
+    });
+
+    act(() => {
+      getApi().clearCompleted();
+    });
+
+    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1"]);
+  });
+
+  it("maxGroups drops oldest terminal groups but keeps running groups", () => {
+    const pipecat = makeMockPipecatClient();
+
+    const { getApi } = renderWithProviders(pipecat, { maxGroups: 2 });
+    act(() => {
+      pipecat.emit(groupStarted);
+      for (const taskId of ["t2", "t3", "t4"]) {
+        pipecat.emit({ ...groupStarted, task_id: taskId });
+        pipecat.emit({ ...w1Completed, task_id: taskId });
+        pipecat.emit({ ...w2Completed, task_id: taskId });
+        pipecat.emit({ ...groupCompleted, task_id: taskId });
+      }
+    });
+
+    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1", "t4"]);
+  });
+
   it("default API is a no-op when no provider is mounted", () => {
-    let api: TasksAPI = { groups: [], cancelTask: () => {} };
+    let api: TasksAPI = {
+      groups: [],
+      cancelTask: () => {},
+      dismissTask: () => {},
+      clearCompleted: () => {},
+    };
     const Probe: React.FC = () => {
       api = useUITasks();
       return null;
@@ -256,5 +345,7 @@ describe("useUITasks reducer", () => {
 
     expect(api.groups).toEqual([]);
     expect(() => api.cancelTask("t1")).not.toThrow();
+    expect(() => api.dismissTask("t1")).not.toThrow();
+    expect(() => api.clearCompleted()).not.toThrow();
   });
 });

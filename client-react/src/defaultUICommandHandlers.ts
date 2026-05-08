@@ -36,12 +36,26 @@ import type {
   ToastPayload,
 } from "@pipecat-ai/client-js";
 import { findElementByRef } from "@pipecat-ai/client-js";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   type UICommandHandler,
   useUICommandHandler,
 } from "./useUICommandHandler";
+
+type ProcessGlobal = typeof globalThis & {
+  process?: { env?: { NODE_ENV?: string } };
+};
+
+function debugRefusal(
+  command: string,
+  reason: string,
+  payload: unknown,
+): void {
+  const env = (globalThis as ProcessGlobal).process?.env?.NODE_ENV;
+  if (env === "production") return;
+  console.debug(`[Pipecat UI] ${command} refused: ${reason}`, payload);
+}
 
 /**
  * Resolve a command payload's target element. Prefers the snapshot
@@ -58,25 +72,26 @@ function resolveTarget(payload: {
     if (el) return el;
   }
   if (payload.target_id) {
+    if (typeof document === "undefined") return null;
     return document.getElementById(payload.target_id);
   }
   return null;
 }
 
-type ScrollBehavior = "auto" | "instant" | "smooth";
-type ScrollLogicalPosition = "start" | "center" | "end" | "nearest";
+type ScrollBehaviorOption = "auto" | "instant" | "smooth";
+type ScrollLogicalPositionOption = "start" | "center" | "end" | "nearest";
 
 /** Options accepted by `useDefaultScrollToHandler`. */
 export interface DefaultScrollToOptions {
   /** `scrollIntoView` block position. @default "start" */
-  block?: ScrollLogicalPosition;
+  block?: ScrollLogicalPositionOption;
   /** `scrollIntoView` inline position. @default "nearest" */
-  inline?: ScrollLogicalPosition;
+  inline?: ScrollLogicalPositionOption;
   /**
    * Fallback scroll behavior when the incoming `payload.behavior`
    * is unset. @default "smooth"
    */
-  defaultBehavior?: ScrollBehavior;
+  defaultBehavior?: ScrollBehaviorOption;
   /**
    * When set, scroll *inside* this element instead of relying on
    * `scrollIntoView` walking to the nearest scrollable ancestor.
@@ -115,10 +130,13 @@ export const useDefaultScrollToHandler = (
   const handler = useCallback(
     (payload: ScrollToPayload) => {
       const el = resolveTarget(payload);
-      if (!el) return;
-      const behavior: ScrollBehavior =
+      if (!el) {
+        debugRefusal("scroll_to", "target not found", payload);
+        return;
+      }
+      const behavior: ScrollBehaviorOption =
         payload.behavior === "instant" || payload.behavior === "smooth"
-          ? (payload.behavior as ScrollBehavior)
+          ? (payload.behavior as ScrollBehaviorOption)
           : defaultBehavior;
 
       const root = resolveContainer();
@@ -158,7 +176,11 @@ export const useDefaultFocusHandler = (
   const handler = useCallback(
     (payload: FocusPayload) => {
       const el = resolveTarget(payload);
-      if (el instanceof HTMLElement) el.focus({ preventScroll });
+      if (!(el instanceof HTMLElement)) {
+        debugRefusal("focus", "target not found or not focusable", payload);
+        return;
+      }
+      el.focus({ preventScroll });
     },
     [preventScroll],
   );
@@ -196,20 +218,49 @@ export const useDefaultHighlightHandler = (
     defaultDurationMs = 1500,
     scrollIntoViewFirst = false,
   } = options;
+  const activeEl = useRef<Element | null>(null);
+  const activeClassName = useRef<string | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+
+  const clearHighlight = useCallback(() => {
+    if (timer.current !== undefined) {
+      window.clearTimeout(timer.current);
+      timer.current = undefined;
+    }
+    if (activeEl.current && activeClassName.current) {
+      activeEl.current.classList.remove(activeClassName.current);
+    }
+    activeEl.current = null;
+    activeClassName.current = null;
+  }, []);
+
+  useEffect(() => clearHighlight, [clearHighlight]);
+
   const handler = useCallback(
     (payload: HighlightPayload) => {
       const el = resolveTarget(payload);
-      if (!el) return;
+      if (!el) {
+        debugRefusal("highlight", "target not found", payload);
+        return;
+      }
+      clearHighlight();
       if (scrollIntoViewFirst) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
       el.classList.add(className);
+      activeEl.current = el;
+      activeClassName.current = className;
       const duration = payload.duration_ms ?? defaultDurationMs;
-      window.setTimeout(() => {
+      timer.current = window.setTimeout(() => {
         el.classList.remove(className);
+        if (activeEl.current === el && activeClassName.current === className) {
+          activeEl.current = null;
+          activeClassName.current = null;
+          timer.current = undefined;
+        }
       }, duration);
     },
-    [className, defaultDurationMs, scrollIntoViewFirst],
+    [className, clearHighlight, defaultDurationMs, scrollIntoViewFirst],
   );
   useUICommandHandler<HighlightPayload>("highlight", handler);
 };
@@ -222,7 +273,7 @@ export interface DefaultSelectTextOptions {
    */
   scrollIntoViewFirst?: boolean;
   /** `scrollIntoView` block position when scrolling first. @default "center" */
-  block?: ScrollLogicalPosition;
+  block?: ScrollLogicalPositionOption;
 }
 
 /**
@@ -282,7 +333,10 @@ export const useDefaultSelectTextHandler = (
   const handler = useCallback(
     (payload: SelectTextPayload) => {
       const el = resolveTarget(payload);
-      if (!el) return;
+      if (!el) {
+        debugRefusal("select_text", "target not found", payload);
+        return;
+      }
       if (scrollIntoViewFirst) {
         el.scrollIntoView({ behavior: "smooth", block });
       }
@@ -292,8 +346,15 @@ export const useDefaultSelectTextHandler = (
 
       if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
         if (start !== null && end !== null) {
-          el.focus({ preventScroll: true });
-          el.setSelectionRange(start, end);
+          const inRange =
+            start >= 0 && end >= 0 && start <= end && end <= el.value.length;
+          if (inRange) {
+            el.focus({ preventScroll: true });
+            el.setSelectionRange(start, end);
+          } else {
+            debugRefusal("select_text", "invalid input offsets", payload);
+            el.select();
+          }
         } else {
           el.select();
         }
@@ -373,7 +434,10 @@ export const useDefaultSetInputValueHandler = (
       const el = resolveTarget(payload);
 
       if (el instanceof HTMLSelectElement) {
-        if (el.disabled) return;
+        if (el.disabled) {
+          debugRefusal("set_input_value", "select is disabled", payload);
+          return;
+        }
         el.value = payload.value;
         el.dispatchEvent(new Event("change", { bubbles: true }));
         return;
@@ -383,11 +447,22 @@ export const useDefaultSetInputValueHandler = (
         !(el instanceof HTMLInputElement) &&
         !(el instanceof HTMLTextAreaElement)
       ) {
+        debugRefusal("set_input_value", "target not found or not editable", payload);
         return;
       }
       // Refuse on fields the user can't edit themselves.
-      if (el.disabled || el.readOnly) return;
-      if (el instanceof HTMLInputElement && el.type === "hidden") return;
+      if (el.disabled) {
+        debugRefusal("set_input_value", "field is disabled", payload);
+        return;
+      }
+      if (el.readOnly) {
+        debugRefusal("set_input_value", "field is readonly", payload);
+        return;
+      }
+      if (el instanceof HTMLInputElement && el.type === "hidden") {
+        debugRefusal("set_input_value", "input is hidden", payload);
+        return;
+      }
 
       const next =
         payload.replace === false ? (el.value ?? "") + payload.value : payload.value;
@@ -413,18 +488,28 @@ export const useDefaultSetInputValueHandler = (
  *
  * Use for checkboxes, radios, submit buttons, links, and any
  * app-specific clickable element. For native `<select>`, prefer
- * `set_input_value`.
+ * `set_input_value`. Text inputs, textareas, and selects use
+ * `set_input_value`; checkboxes and radios use `click`.
  */
 export const useDefaultClickHandler = (): void => {
   const handler = useCallback((payload: ClickPayload) => {
     const el = resolveTarget(payload);
-    if (!(el instanceof HTMLElement)) return;
+    if (!(el instanceof HTMLElement)) {
+      debugRefusal("click", "target not found or not clickable", payload);
+      return;
+    }
     // Form controls and buttons expose a `disabled` property
     // directly. `<a>` and arbitrary elements with role="button"
     // can carry `aria-disabled`; honor that too.
     const disabledProp = (el as { disabled?: unknown }).disabled;
-    if (disabledProp === true) return;
-    if (el.getAttribute("aria-disabled") === "true") return;
+    if (disabledProp === true) {
+      debugRefusal("click", "target is disabled", payload);
+      return;
+    }
+    if (el.getAttribute("aria-disabled") === "true") {
+      debugRefusal("click", "target is aria-disabled", payload);
+      return;
+    }
     el.click();
   }, []);
   useUICommandHandler<ClickPayload>("click", handler);

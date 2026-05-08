@@ -6,11 +6,13 @@
 
 import { createContext } from "react";
 
-import type { TaskGroup, UITasksAPI } from "./uiTasksTypes";
+import type { UITasksAPI } from "./uiTasksTypes";
 
 const NO_OP_API: UITasksAPI = {
-  groups: [] as TaskGroup[],
+  groups: [],
   cancelTask: () => {},
+  dismissTask: () => {},
+  clearCompleted: () => {},
 };
 
 /**

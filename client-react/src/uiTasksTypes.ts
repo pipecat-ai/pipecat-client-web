@@ -69,8 +69,10 @@ export interface TaskGroup {
 export interface UITasksAPI {
   /**
    * Every task group the provider has seen, in arrival order
-   * (oldest first). Apps that want newest-first can reverse this in
-   * their render path.
+   * (oldest first). By default this list is unbounded for the
+   * lifetime of the provider; apps can call `dismissTask`,
+   * `clearCompleted`, or configure `UITasksProvider.maxGroups` to
+   * keep long-lived sessions bounded.
    */
   groups: TaskGroup[];
   /**
@@ -80,4 +82,11 @@ export interface UITasksAPI {
    * `cancellable: false`.
    */
   cancelTask: (taskId: string, reason?: string) => void;
+  /**
+   * Remove a non-running group from local UI state. Running groups
+   * are kept so in-flight work cannot disappear from the UI.
+   */
+  dismissTask: (taskId: string) => void;
+  /** Remove every non-running group from local UI state. */
+  clearCompleted: () => void;
 }

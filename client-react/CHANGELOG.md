@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New typed-sugar hooks `useToastHandler(handler)` and
     `useNavigateHandler(handler)` for the `toast` and `navigate`
     commands; apps wire their own toast renderer / router.
+  - `UITasksProvider` accepts optional `maxGroups`; `useUITasks()`
+    exposes `dismissTask(taskId)` and `clearCompleted()` for pruning
+    completed task groups in long-lived sessions.
 
 ## [1.4.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.3.0...client-react-v1.4.0) (2026-05-05)
 

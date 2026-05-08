@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
@@ -59,7 +59,12 @@ function setup(html: string) {
 describe("useDefaultSetInputValueHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, "debug").mockImplementation(() => {});
     document.body.innerHTML = "";
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("writes value into an input and dispatches input + change events", () => {

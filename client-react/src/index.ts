@@ -118,5 +118,6 @@ export type {
   DefaultSetInputValueOptions,
   DefaultUICommandHandlerOptions,
 } from "./defaultUICommandHandlers";
+export type { UITasksProviderProps } from "./UITasksProvider";
 export type { UICommandHandler } from "./useUICommandHandler";
 export type { UseUISnapshotOptions } from "./useUISnapshot";
