@@ -19,6 +19,8 @@ import {
   PipecatMetricsData,
   RTVIMessage,
   TranscriptData,
+  UICommandData,
+  UITaskData,
 } from "./messages";
 
 export enum RTVIEvent {
@@ -38,6 +40,10 @@ export enum RTVIEvent {
   ServerMessage = "serverMessage",
   ServerResponse = "serverResponse",
   MessageError = "messageError",
+
+  /** UI Agent Protocol */
+  UICommand = "uiCommand",
+  UITask = "uiTask",
 
   /** service events */
   Metrics = "metrics",
@@ -120,6 +126,10 @@ export type RTVIEvents = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serverResponse: (data: any) => void;
   messageError: (message: RTVIMessage) => void;
+
+  /** UI Agent Protocol */
+  uiCommand: (data: UICommandData) => void;
+  uiTask: (data: UITaskData) => void;
 
   /** service events */
   metrics: (data: PipecatMetricsData) => void;

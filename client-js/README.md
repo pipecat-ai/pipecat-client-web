@@ -68,6 +68,10 @@ pcClient.on(RTVIEvent.Disconnected, () => {
 });
 ```
 
+## UI Agent Protocol (v1)
+
+`PipecatClient` includes the client-side UI Agent Protocol primitives for sending UI events, streaming UI snapshots, receiving UI commands, observing UI task lifecycle events, and cancelling in-flight UI task groups. See the package CHANGELOG for the full v1 API entry and the generated docs for API details.
+
 ## API
 
 Please see API reference [here](https://docs.pipecat.ai/client/reference/js/introduction).

@@ -9,6 +9,7 @@ import TypedEmitter from "typed-emitter";
 
 import packageJson from "../package.json";
 import {
+  A11ySnapshot,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -36,8 +37,17 @@ import {
   setAboutClient,
   TranscriptData,
   TransportState,
+  UICancelTaskData,
+  UICommandData,
+  UIEventData,
+  UISnapshotData,
+  UITaskData,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
+import {
+  A11ySnapshotStreamer,
+  type A11ySnapshotStreamerOptions,
+} from "./A11ySnapshotStreamer";
 import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
@@ -104,6 +114,8 @@ export type RTVIEventCallbacks = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onServerMessage: (data: any) => void;
   onMessageError: (message: RTVIMessage) => void;
+  onUICommand: (data: UICommandData) => void;
+  onUITask: (data: UITaskData) => void;
 
   onParticipantJoined: (participant: Participant) => void;
   onParticipantLeft: (participant: Participant) => void;
@@ -207,6 +219,8 @@ export class PipecatClient extends RTVIEventEmitter {
   declare protected _messageDispatcher: MessageDispatcher;
   protected _functionCallCallbacks: Record<string, FunctionCallCallback> = {};
   protected _abortController: AbortController | undefined;
+  private _uiSnapshotStreamer: A11ySnapshotStreamer | undefined;
+  private _pendingUISnapshot: A11ySnapshot | undefined;
 
   private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
@@ -270,6 +284,7 @@ export class PipecatClient extends RTVIEventEmitter {
       onTransportStateChanged: (state: TransportState) => {
         options?.callbacks?.onTransportStateChanged?.(state);
         this.emit(RTVIEvent.TransportStateChanged, state);
+        if (state === "ready") this._flushPendingUISnapshot();
       },
       onParticipantJoined: (p) => {
         options?.callbacks?.onParticipantJoined?.(p);
@@ -652,6 +667,7 @@ export class PipecatClient extends RTVIEventEmitter {
    * Reset / reinitialize transport and abort any pending requests
    */
   public async disconnect(): Promise<void> {
+    this.stopUISnapshotStream();
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -938,6 +954,74 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
+   * Send a named UI event to the server as a first-class RTVI
+   * `ui-event` message.
+   *
+   * @param event - App-defined event.
+   * @param payload - App-defined payload. Optional.
+   */
+  @transportReady
+  public sendUIEvent(event: string, payload?: unknown): void {
+    const data: UIEventData = { event, payload };
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_EVENT, data));
+  }
+
+  /**
+   * Start streaming UI snapshots to the server as
+   * first-class `ui-snapshot` RTVI messages.
+   *
+   * Calling this again replaces any existing managed streamer with
+   * the new options.
+   */
+  public startUISnapshotStream(
+    options: A11ySnapshotStreamerOptions = {}
+  ): void {
+    this.stopUISnapshotStream();
+    this._uiSnapshotStreamer = new A11ySnapshotStreamer((snapshot) => {
+      if (this.state !== "ready") {
+        this._pendingUISnapshot = snapshot;
+        return;
+      }
+      this._sendUISnapshot(snapshot);
+    }, options);
+    this._uiSnapshotStreamer.start();
+  }
+
+  /**
+   * Stop the managed UI snapshot stream, if one is active.
+   */
+  public stopUISnapshotStream(): void {
+    this._uiSnapshotStreamer?.stop();
+    this._uiSnapshotStreamer = undefined;
+    this._pendingUISnapshot = undefined;
+  }
+
+  private _sendUISnapshot(snapshot: A11ySnapshot): void {
+    const data: UISnapshotData = { tree: snapshot };
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_SNAPSHOT, data));
+  }
+
+  private _flushPendingUISnapshot(): void {
+    if (!this._pendingUISnapshot || this.state !== "ready") return;
+    const snapshot = this._pendingUISnapshot;
+    this._pendingUISnapshot = undefined;
+    this._sendUISnapshot(snapshot);
+  }
+
+  /**
+   * Ask the server to cancel an in-flight UI task group.
+   *
+   * @param taskId - Shared task identifier of the group to cancel.
+   * @param reason - Optional human-readable reason logged on the server.
+   */
+  @transportReady
+  public cancelUITask(taskId: string, reason?: string): void {
+    const payload: UICancelTaskData = { task_id: taskId };
+    if (reason !== undefined) payload.reason = reason;
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload));
+  }
+
+  /**
    * Directly send a message to the bot via the transport.
    * Wait for and return the response.
    * @param msgType - a string representing the message type
@@ -1093,6 +1177,18 @@ export class PipecatClient extends RTVIEventEmitter {
       case RTVIMessageType.SERVER_MESSAGE: {
         this._options.callbacks?.onServerMessage?.(ev.data);
         this.emit(RTVIEvent.ServerMessage, ev.data);
+        break;
+      }
+      case RTVIMessageType.UI_COMMAND: {
+        const data = ev.data as UICommandData;
+        this._options.callbacks?.onUICommand?.(data);
+        this.emit(RTVIEvent.UICommand, data);
+        break;
+      }
+      case RTVIMessageType.UI_TASK: {
+        const data = ev.data as UITaskData;
+        this._options.callbacks?.onUITask?.(data);
+        this.emit(RTVIEvent.UITask, data);
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {

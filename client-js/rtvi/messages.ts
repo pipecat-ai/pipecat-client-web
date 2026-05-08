@@ -10,8 +10,9 @@ import {
   name as packageName,
   version as packageVersion,
 } from "../package.json";
+import type { A11ySnapshot, UITaskEnvelope } from "./ui";
 
-export const RTVI_PROTOCOL_VERSION = "1.2.0";
+export const RTVI_PROTOCOL_VERSION = "1.3.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -25,6 +26,10 @@ export enum RTVIMessageType {
   // Client-to-server messages
   CLIENT_MESSAGE = "client-message",
   SEND_TEXT = "send-text",
+  // UI Agent Protocol (client-to-server)
+  UI_EVENT = "ui-event",
+  UI_SNAPSHOT = "ui-snapshot",
+  UI_CANCEL_TASK = "ui-cancel-task",
   // DEPRECATED
   APPEND_TO_CONTEXT = "append-to-context",
 
@@ -40,6 +45,9 @@ export enum RTVIMessageType {
   SERVER_RESPONSE = "server-response", // Server response to client message
   ERROR_RESPONSE = "error-response", // Error message in response to an outbound message
   APPEND_TO_CONTEXT_RESULT = "append-to-context-result", // Result of appending to context
+  // UI Agent Protocol (server-to-client)
+  UI_COMMAND = "ui-command",
+  UI_TASK = "ui-task",
 
   /** Speaking and Transcription Messages */
   USER_STARTED_SPEAKING = "user-started-speaking", // User started speaking
@@ -158,6 +166,27 @@ export type ClientMessageData = {
   t: string;
   d?: unknown;
 };
+
+export type UIEventData = {
+  event: string;
+  payload?: unknown;
+};
+
+export type UISnapshotData = {
+  tree: A11ySnapshot;
+};
+
+export type UICancelTaskData = {
+  task_id: string;
+  reason?: string;
+};
+
+export type UICommandData = {
+  command: string;
+  payload: unknown;
+};
+
+export type UITaskData = UITaskEnvelope;
 
 export type LLMSearchResult = {
   text: string;

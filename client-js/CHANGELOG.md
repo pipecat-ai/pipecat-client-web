@@ -5,6 +5,48 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+
+- **UI Agent protocol (v1).** Client-side support for AI agents that
+  observe and drive a GUI app, paired with the `UIAgent` work in
+  `pipecat-ai-subagents`.
+  - New `PipecatClient` helpers for the protocol:
+    `sendUIEvent(event, payload)`, `startUISnapshotStream(options?)`,
+    `stopUISnapshotStream()`, and `cancelUITask(taskId, reason?)`.
+    Incoming `ui-command` and `ui-task` messages are available through
+    constructor callbacks (`onUICommand`, `onUITask`) and normal
+    `RTVIEvent.UICommand` / `RTVIEvent.UITask` subscriptions.
+  - New `A11ySnapshotStreamer` class that walks the document's
+    accessibility tree and streams snapshots to the server on DOM
+    mutations, focus changes, scroll-end, resize, and tab visibility.
+    Managed by `PipecatClient.startUISnapshotStream(...)`; still
+    exported as a low-level escape hatch for advanced use.
+  - New `snapshotDocument(root?, options?)` for one-off snapshots and
+    `findElementByRef(ref)` for resolving a server-supplied snapshot
+    ref (e.g. `"e42"`) back to a live DOM element. Refs are stable
+    across snapshots while the DOM node is mounted.
+  - New `A11yNode` and `A11ySnapshot` types describing the wire shape,
+    plus `SnapshotOptions` and `A11ySnapshotStreamerOptions`. The walker
+    supports per-node viewport tracking via `trackViewport` (default
+    on) and PII opt-out via the `data-a11y-exclude` attribute on any
+    element.
+  - New built-in command payload types (`ToastPayload`, `NavigatePayload`,
+    `ScrollToPayload`, `HighlightPayload`, `FocusPayload`) matching the
+    server's command vocabulary, plus `UIEventData`, `UICommandData`,
+    `UISnapshotData`, `UICancelTaskData`, and `UITaskData`.
+  - New `RTVIMessageType` members for the protocol's UI types
+    (`UI_EVENT`, `UI_COMMAND`, `UI_SNAPSHOT`, `UI_CANCEL_TASK`,
+    `UI_TASK`).
+  - Bumped `RTVI_PROTOCOL_VERSION` from `1.2.0` to `1.3.0`, matching the
+    server-side bump that introduces the `ui-*` message types. Purely
+    additive: only new top-level RTVI message types are introduced and no
+    existing wire shapes changed. The server's major-version compatibility
+    check on `client-ready` still passes for older 1.x clients/servers, so
+    cross-version connections continue to work; older endpoints simply do
+    not exercise the new types.
+
 ## [1.8.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.7.0...client-js-v1.8.0) (2026-04-30)
 
 

@@ -5,6 +5,37 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Features
+
+- **UI Agent protocol (v1).** React idiom for the v1 UI Agent protocol
+  shipped in `@pipecat-ai/client-js` and `pipecat-ai-subagents`.
+  - Hooks bind directly to the ambient `PipecatClient`, using the UI
+    protocol methods and RTVI events exposed by `@pipecat-ai/client-js`.
+  - New `useUISnapshot()` hook that streams accessibility snapshots
+    to the server. Thin lifecycle wrapper around
+    `PipecatClient.startUISnapshotStream(...)`. Options: `enabled`, `debounceMs`,
+    `trackViewport`, `logSnapshots`.
+  - New `useUIEventSender()` and `useUICommandHandler(command, handler)`
+    hooks for the basics of the protocol.
+  - New opt-in default UI command handlers:
+    `useDefaultScrollToHandler({ block, inline, container, offset, ... })`,
+    `useDefaultFocusHandler({ preventScroll })`,
+    `useDefaultHighlightHandler({ className, defaultDurationMs, scrollIntoViewFirst })`,
+    `useDefaultSelectTextHandler({ scrollIntoViewFirst, block })`,
+    `useDefaultSetInputValueHandler({ focusFirst })`, and
+    `useDefaultClickHandler()`, plus `useDefaultUICommandHandlers(...)`
+    to install all six at once. Each resolves the target element by
+    snapshot `ref` first, then falls back to
+    `document.getElementById(target_id)`.
+  - New typed-sugar hooks `useToastHandler(handler)` and
+    `useNavigateHandler(handler)` for the `toast` and `navigate`
+    commands; apps wire their own toast renderer / router.
+  - `UITasksProvider` accepts optional `maxGroups`; `useUITasks()`
+    exposes `dismissTask(taskId)` and `clearCompleted()` for pruning
+    completed task groups in long-lived sessions.
+
 ## [1.4.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.3.0...client-react-v1.4.0) (2026-05-05)
 
 
