@@ -6,17 +6,17 @@
 
 /**
  * Framework-agnostic helper that drives accessibility-snapshot
- * streaming. Wraps the walker, a ``MutationObserver``, and the other
+ * streaming. Wraps the walker, a `MutationObserver`, and the other
  * triggers (scrollend, resize, focus, visibilitychange) into a single
- * object with ``start()`` / ``stop()``. React apps use
- * ``useUISnapshot`` which is a thin wrapper around this; vanilla JS
+ * object with `start()` / `stop()`. React apps use
+ * `useUISnapshot` which is a thin wrapper around this; vanilla JS
  * or non-React apps instantiate the class directly.
  */
 
 import { snapshotDocument } from "../rtvi/a11y_walker";
 import type { A11ySnapshot } from "../rtvi/ui";
 
-/** Options for ``A11ySnapshotStreamer``. */
+/** Options for `A11ySnapshotStreamer`. */
 export interface A11ySnapshotStreamerOptions {
   /**
    * Minimum interval between snapshot emissions, in milliseconds.
@@ -26,18 +26,18 @@ export interface A11ySnapshotStreamerOptions {
    */
   debounceMs?: number;
   /**
-   * When ``true`` (default), annotate every emitted node with
-   * ``"offscreen"`` in its state list if its bounding rect sits
-   * entirely outside the viewport. Set to ``false`` to skip the
+   * When `true` (default), annotate every emitted node with
+   * `"offscreen"` in its state list if its bounding rect sits
+   * entirely outside the viewport. Set to `false` to skip the
    * per-node layout measurement.
    *
    * @default true
    */
   trackViewport?: boolean;
   /**
-   * When ``true``, log each emitted snapshot to the browser console
+   * When `true`, log each emitted snapshot to the browser console
    * (node count, rough token estimate, raw tree). Mirrors the
-   * server's ``log_snapshots`` flag on ``UIAgent``.
+   * server's `log_snapshots` flag on `UIAgent`.
    *
    * @default false
    */
@@ -47,7 +47,7 @@ export interface A11ySnapshotStreamerOptions {
 /**
  * Stream accessibility snapshots through an emit callback on DOM
  * mutations, focus changes, scroll-end, resize, and visibility
- * change. Fires an initial snapshot shortly after ``start()``.
+ * change. Fires an initial snapshot shortly after `start()`.
  *
  * Usage (vanilla JS / any framework)::
  *
@@ -58,9 +58,9 @@ export interface A11ySnapshotStreamerOptions {
  *     // ...later
  *     streamer.stop();
  *
- * In React, ``useUISnapshot`` handles lifecycle for you.
+ * In React, `useUISnapshot` handles lifecycle for you.
  *
- * Idempotent: calling ``start()`` twice is safe; ``stop()`` detaches
+ * Idempotent: calling `start()` twice is safe; `stop()` detaches
  * all observers/listeners and cancels pending timers.
  */
 export type A11ySnapshotEmitter = (snapshot: A11ySnapshot) => void;
@@ -92,7 +92,7 @@ export class A11ySnapshotStreamer {
 
   /**
    * Begin streaming. Safe to call multiple times; subsequent calls
-   * are no-ops until ``stop()`` runs.
+   * are no-ops until `stop()` runs.
    */
   start(): void {
     if (this.running) return;
@@ -134,25 +134,25 @@ export class A11ySnapshotStreamer {
 
     // Scrollend fires once when a scroll gesture settles - no
     // debounce needed, and firing at rest avoids fighting the
-    // browser's animation frames. ``capture: true`` catches scroll
+    // browser's animation frames. `capture: true` catches scroll
     // on any scrollable ancestor, not just the window.
     this.scrollEndHandler = () => this.schedule();
     window.addEventListener("scrollend", this.scrollEndHandler, { capture: true });
 
     // Resize changes the viewport rect, which shifts which nodes are
-    // ``[offscreen]``. Debounced via ``schedule`` so a drag-resize
+    // `[offscreen]`. Debounced via `schedule` so a drag-resize
     // doesn't thrash.
     this.resizeHandler = () => this.schedule();
     window.addEventListener("resize", this.resizeHandler);
 
     // Refresh state when the tab becomes visible again; ignore the
-    // transition into ``hidden``.
+    // transition into `hidden`.
     this.visibilityHandler = () => {
       if (document.visibilityState === "visible") this.schedule();
     };
     document.addEventListener("visibilitychange", this.visibilityHandler);
 
-    // ``selectionchange`` fires throughout a drag-select; the existing
+    // `selectionchange` fires throughout a drag-select; the existing
     // debounce coalesces the burst into a single snapshot once the
     // user stops moving. Snapshots end up carrying the latest
     // selection alongside the rest of the screen state.
@@ -160,7 +160,7 @@ export class A11ySnapshotStreamer {
     document.addEventListener("selectionchange", this.selectionHandler);
   }
 
-  /** Stop streaming. Safe to call before ``start()`` or multiple times. */
+  /** Stop streaming. Safe to call before `start()` or multiple times. */
   stop(): void {
     if (!this.running) return;
     this.running = false;

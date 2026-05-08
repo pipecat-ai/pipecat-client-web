@@ -406,9 +406,9 @@ describe("snapshotDocument: wrapper text children", () => {
 });
 
 describe("snapshotDocument: viewport tracking", () => {
-  // jsdom doesn't do layout, so ``getBoundingClientRect`` returns
+  // jsdom doesn't do layout, so `getBoundingClientRect` returns
   // zeros by default and every element would be classified
-  // ``offscreen``. Mock per element for viewport tests.
+  // `offscreen`. Mock per element for viewport tests.
   function mockRect(el: Element, rect: Partial<DOMRect>): void {
     const full: DOMRect = {
       x: rect.x ?? rect.left ?? 0,

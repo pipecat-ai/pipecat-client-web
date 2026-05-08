@@ -8,19 +8,19 @@
  * Framework-agnostic walker that produces an accessibility snapshot
  * from a DOM subtree. Pure browser APIs (no React, no framework
  * dependencies), so it works from any vanilla-JS runtime that has a
- * ``document``.
+ * `document`.
  *
  * Shape and filtering inspired by Playwright's accessibility snapshot
  * and the Playwright MCP server's LLM-facing format. The goal is a
  * compact, semantically meaningful tree the server can render as
- * ``<ui_state>`` for LLM context, not a raw DOM dump.
+ * `<ui_state>` for LLM context, not a raw DOM dump.
  *
- * Viewport awareness: when ``trackViewport`` is enabled (default),
+ * Viewport awareness: when `trackViewport` is enabled (default),
  * every emitted node that's fully outside the viewport rect gets
- * ``"offscreen"`` in its ``state`` list. The agent reads this to
+ * `"offscreen"` in its `state` list. The agent reads this to
  * distinguish "on the page" from "what the user is currently
- * looking at" and can decide whether to ``ScrollTo`` before acting.
- * Computing this calls ``getBoundingClientRect`` per node, which
+ * looking at" and can decide whether to `ScrollTo` before acting.
+ * Computing this calls `getBoundingClientRect` per node, which
  * forces layout once for the walk (~1ms for typical pages).
  */
 
@@ -34,25 +34,25 @@ const MAX_DEPTH = 10;
 const MAX_NODES = 200;
 const MAX_CHILDREN_PER_NODE = 50;
 const NAME_MAX = 100;
-// Tighter cap on emitted ``<option>`` children. Country / state pickers
+// Tighter cap on emitted `<option>` children. Country / state pickers
 // can have hundreds of entries; truncating at 20 keeps the snapshot
 // useful without ballooning LLM context.
 const MAX_SELECT_OPTIONS = 20;
 // Selections benefit from preserving paragraph structure, but the agent
 // only needs enough text to disambiguate the referent. 2000 chars is
 // roughly 500 tokens — meaningful context without dominating the
-// ``<ui_state>`` injection.
+// `<ui_state>` injection.
 const SELECTION_TEXT_MAX = 2000;
 
 // ---------------------------------------------------------------------------
-// Ref registry: stable ``e{N}`` IDs per DOM node, persist as long as the
+// Ref registry: stable `e{N}` IDs per DOM node, persist as long as the
 // node is mounted. WeakMap keeps us from leaking detached nodes.
 // ---------------------------------------------------------------------------
 
 const refMap = new WeakMap<Element, string>();
 // Reverse index from ref string back to element, so command handlers
-// (e.g. ``scroll_to``) can resolve a server-supplied ref like
-// ``"e42"`` back to a live DOM node. Prefer ``WeakRef`` so entries
+// (e.g. `scroll_to`) can resolve a server-supplied ref like
+// `"e42"` back to a live DOM node. Prefer `WeakRef` so entries
 // can become stale after unmount, but fall back to a strong reference
 // in older browsers / embedded webviews that do not implement it.
 type RefEntry = WeakRef<Element> | Element;
@@ -71,8 +71,8 @@ function getRef(el: Element): string {
 }
 
 /**
- * Resolve a ref string like ``"e42"`` back to a live DOM element.
- * Returns ``null`` if the ref was never assigned or the element has
+ * Resolve a ref string like `"e42"` back to a live DOM element.
+ * Returns `null` if the ref was never assigned or the element has
  * since been garbage-collected. Command handlers use this to
  * act on nodes the server referenced from a snapshot.
  */
@@ -92,15 +92,15 @@ export function findElementByRef(ref: string): Element | null {
 }
 
 /**
- * Inverse of ``findElementByRef``: return the snapshot ref the walker
- * has assigned to ``el``, if any. Returns ``null`` for elements the
+ * Inverse of `findElementByRef`: return the snapshot ref the walker
+ * has assigned to `el`, if any. Returns `null` for elements the
  * walker has not yet visited (refs are assigned during snapshot
  * walking; an element only has a ref if it appeared in a previous
  * snapshot).
  *
  * Useful when an app needs to associate a user interaction (e.g.
  * the current text selection, a click on a non-tracked element) with
- * a snapshot-known node. Walk up ``el.parentElement`` looking for the
+ * a snapshot-known node. Walk up `el.parentElement` looking for the
  * first ancestor that has a ref to find the closest snapshot-known
  * container.
  */
@@ -176,7 +176,7 @@ function hasAccessibleName(el: Element): boolean {
 }
 
 /**
- * Derive an ARIA-style role for an element. Returns ``null`` if the
+ * Derive an ARIA-style role for an element. Returns `null` if the
  * element is a "pure wrapper" (no semantic value on its own); the
  * walker will flatten its children into the parent's list rather than
  * emitting a node.
@@ -289,11 +289,11 @@ function resolveLabelledBy(el: Element): string | undefined {
  * Collect the accessible text content of an element by walking its
  * descendant text nodes and joining them with a single space across
  * element boundaries. This fixes the common case where a button
- * contains multiple ``<span>`` children whose text would otherwise
- * concatenate without a separator (``textContent`` returns
- * ``"FooBar"`` for ``<span>Foo</span><span>Bar</span>``).
+ * contains multiple `<span>` children whose text would otherwise
+ * concatenate without a separator (`textContent` returns
+ * `"FooBar"` for `<span>Foo</span><span>Bar</span>`).
  *
- * Skips aria-hidden and ``EXCLUDED_TAGS`` descendants.
+ * Skips aria-hidden and `EXCLUDED_TAGS` descendants.
  */
 function collectAccessibleText(el: Element): string {
   const parts: string[] = [];
@@ -353,9 +353,9 @@ function getName(el: Element, role: string): string | undefined {
   // text from descendants. Paragraphs aren't leaves (they may carry
   // nested links / emphasis) but we want the prose preview as the
   // node's name so the LLM has the gist without expanding text
-  // children. ``collectAccessibleText`` joins sibling children with
-  // spaces so ``<span>Foo</span><span>Bar</span>`` yields ``"Foo Bar"``
-  // rather than ``"FooBar"``.
+  // children. `collectAccessibleText` joins sibling children with
+  // spaces so `<span>Foo</span><span>Bar</span>` yields `"Foo Bar"`
+  // rather than `"FooBar"`.
   if (LEAF_ROLES.has(role) || role === "paragraph") {
     const text = collectAccessibleText(el);
     return text ? truncate(text) : undefined;
@@ -374,7 +374,7 @@ function getValue(el: Element): string | undefined {
     return el.value || undefined;
   }
   if (el instanceof HTMLSelectElement) {
-    // Prefer the selected option's visible text; the raw ``value`` is
+    // Prefer the selected option's visible text; the raw `value` is
     // often a numeric id or sentinel that means nothing to a reader.
     const selected = el.selectedOptions[0];
     const text = selected?.text?.trim();
@@ -403,10 +403,10 @@ function getState(el: Element): string[] {
 }
 
 /**
- * Return ``true`` when the element's bounding rect does not
+ * Return `true` when the element's bounding rect does not
  * intersect the current viewport at all. Any intersection, even
  * partial, counts as visible (matches user intuition). Elements
- * with zero-size rects (``width === 0 && height === 0``) are
+ * with zero-size rects (`width === 0 && height === 0`) are
  * treated as offscreen.
  */
 function isOffscreen(el: Element): boolean {
@@ -505,8 +505,8 @@ function walk(
 
   if (!LEAF_ROLES.has(role)) {
     // For paragraphs the text content is already in the node's
-    // ``name``. Skip raw text-node children so the same prose
-    // doesn't appear twice in ``<ui_state>``.
+    // `name`. Skip raw text-node children so the same prose
+    // doesn't appear twice in `<ui_state>`.
     const skipTextNodes = role === "paragraph";
     const children = walkChildren(el, depth + 1, budget, opts, { skipTextNodes });
     if (children.length > 0) {
@@ -523,8 +523,8 @@ function walk(
       }
     }
   } else if (el instanceof HTMLSelectElement) {
-    // Combobox is a leaf role, but for native ``<select>`` we synthesize
-    // ``option`` children so the agent can see all available choices,
+    // Combobox is a leaf role, but for native `<select>` we synthesize
+    // `option` children so the agent can see all available choices,
     // not just the one currently selected. Without this, an LLM has no
     // way to know what other values it could ask the user to pick.
     const options = collectSelectOptions(el, budget, node.ref);
@@ -575,10 +575,10 @@ function collectSelectOptions(
 
 interface WalkChildrenOptions {
   /**
-   * When ``true``, raw text-node children are not emitted. Used by
-   * ``paragraph`` whose ``name`` already carries the prose; emitting
-   * the same text again as ``- text "..."`` children would duplicate
-   * it in ``<ui_state>``.
+   * When `true`, raw text-node children are not emitted. Used by
+   * `paragraph` whose `name` already carries the prose; emitting
+   * the same text again as `- text "..."` children would duplicate
+   * it in `<ui_state>`.
    */
   skipTextNodes?: boolean;
 }
@@ -591,9 +591,9 @@ function walkChildren(
   childOpts: WalkChildrenOptions = {},
 ): A11yNode[] {
   const out: A11yNode[] = [];
-  // Iterate ``childNodes`` rather than ``children`` so we pick up
+  // Iterate `childNodes` rather than `children` so we pick up
   // direct text nodes too (e.g. track titles sitting in a pure-wrapper
-  // ``<div>`` next to a Play button). Without this, wrapper divs that
+  // `<div>` next to a Play button). Without this, wrapper divs that
   // carry meaningful text lose it entirely when they get flattened.
   for (let i = 0; i < el.childNodes.length; i++) {
     const child = el.childNodes[i];
@@ -625,15 +625,15 @@ function walkChildren(
 // ---------------------------------------------------------------------------
 
 /**
- * Look up a ref for ``el`` without assigning a new one.
+ * Look up a ref for `el` without assigning a new one.
  *
  * Selections frequently land on text nodes whose closest element
- * ancestor is a structural tag like ``<p>`` or ``<span>`` that the
+ * ancestor is a structural tag like `<p>` or `<span>` that the
  * walker treats as a pure wrapper and so doesn't ref. Climb the
  * ancestor chain until we find a walked element.
  *
- * Returns ``null`` when an ``aria-hidden="true"`` or
- * ``data-a11y-exclude`` ancestor is encountered before any
+ * Returns `null` when an `aria-hidden="true"` or
+ * `data-a11y-exclude` ancestor is encountered before any
  * ref-bearing element, so selections inside subtrees the app has
  * explicitly hidden from accessibility don't leak into the snapshot.
  */
@@ -658,24 +658,24 @@ function clampSelectionText(text: string): string {
 }
 
 /**
- * Capture the user's current text selection as an ``A11ySelection``.
+ * Capture the user's current text selection as an `A11ySelection`.
  *
- * Returns ``null`` when nothing is selected, the selection is
+ * Returns `null` when nothing is selected, the selection is
  * collapsed (a bare cursor position), or no ancestor of the
  * selection has been assigned a ref by the walker (e.g. selection
- * landed entirely inside an ``aria-hidden`` subtree).
+ * landed entirely inside an `aria-hidden` subtree).
  *
  * Input/textarea takes precedence over the document selection
- * because ``window.getSelection().toString()`` is empty for those
- * elements; we read ``selectionStart`` / ``selectionEnd`` directly
- * and surface them as offsets so a round-trip ``select_text``
+ * because `window.getSelection().toString()` is empty for those
+ * elements; we read `selectionStart` / `selectionEnd` directly
+ * and surface them as offsets so a round-trip `select_text`
  * command can reproduce the range.
  */
 export function serializeSelection(): A11ySelection | null {
   if (typeof document === "undefined") return null;
 
   // Input / textarea: own selection model, distinct from
-  // ``window.getSelection()``.
+  // `window.getSelection()`.
   const active = document.activeElement;
   if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
     const start = active.selectionStart;
@@ -723,9 +723,9 @@ export function serializeSelection(): A11ySelection | null {
 
 export interface SnapshotOptions {
   /**
-   * When ``true`` (default), each emitted node gets ``"offscreen"``
+   * When `true` (default), each emitted node gets `"offscreen"`
    * in its state list if its bounding rect sits entirely outside the
-   * viewport. Set to ``false`` to skip the per-node layout
+   * viewport. Set to `false` to skip the per-node layout
    * measurement (e.g. on very large pages where layout cost
    * outweighs the viewport signal).
    */
@@ -735,9 +735,9 @@ export interface SnapshotOptions {
 /**
  * Produce an accessibility snapshot of a DOM subtree.
  *
- * @param root - Element to walk. Defaults to ``document.body``.
- * @param options - Snapshot options; see ``SnapshotOptions``.
- * @returns Snapshot with a ``generic`` root containing the walked
+ * @param root - Element to walk. Defaults to `document.body`.
+ * @param options - Snapshot options; see `SnapshotOptions`.
+ * @returns Snapshot with a `generic` root containing the walked
  *     children, plus a client-side capture timestamp.
  */
 export function snapshotDocument(

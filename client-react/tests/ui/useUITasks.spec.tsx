@@ -38,7 +38,7 @@ function makeMockPipecatClient() {
   };
 }
 
-// ui-task envelopes are now the inner ``data`` of a ``ui-task`` RTVI
+// ui-task envelopes are now the inner `data` of a `ui-task` RTVI
 // message; no top-level type field.
 const groupStarted: UITaskData = {
   kind: "group_started",

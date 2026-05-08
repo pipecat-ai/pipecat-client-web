@@ -45,9 +45,9 @@ import {
 
 /**
  * Resolve a command payload's target element. Prefers the snapshot
- * ``ref`` (so the server can reference nodes it saw in
- * ``<ui_state>``), then falls back to ``document.getElementById`` on
- * ``target_id``.
+ * `ref` (so the server can reference nodes it saw in
+ * `<ui_state>`), then falls back to `document.getElementById` on
+ * `target_id`.
  */
 function resolveTarget(payload: {
   ref?: string | null;
@@ -66,30 +66,30 @@ function resolveTarget(payload: {
 type ScrollBehavior = "auto" | "instant" | "smooth";
 type ScrollLogicalPosition = "start" | "center" | "end" | "nearest";
 
-/** Options accepted by ``useDefaultScrollToHandler``. */
+/** Options accepted by `useDefaultScrollToHandler`. */
 export interface DefaultScrollToOptions {
-  /** ``scrollIntoView`` block position. @default "start" */
+  /** `scrollIntoView` block position. @default "start" */
   block?: ScrollLogicalPosition;
-  /** ``scrollIntoView`` inline position. @default "nearest" */
+  /** `scrollIntoView` inline position. @default "nearest" */
   inline?: ScrollLogicalPosition;
   /**
-   * Fallback scroll behavior when the incoming ``payload.behavior``
+   * Fallback scroll behavior when the incoming `payload.behavior`
    * is unset. @default "smooth"
    */
   defaultBehavior?: ScrollBehavior;
   /**
    * When set, scroll *inside* this element instead of relying on
-   * ``scrollIntoView`` walking to the nearest scrollable ancestor.
+   * `scrollIntoView` walking to the nearest scrollable ancestor.
    * Function form is evaluated on each scroll so it can account for
    * containers mounted after the hook.
    */
   container?: Element | null | (() => Element | null | undefined);
   /**
    * Pixel offsets applied after scrolling, typically to clear a
-   * sticky header. Positive ``top`` scrolls *up* by that amount so
+   * sticky header. Positive `top` scrolls *up* by that amount so
    * the target isn't hidden by a fixed header. Only applied when
-   * ``container`` is set (since window-level offsets are usually
-   * better solved with ``scroll-margin-top`` CSS).
+   * `container` is set (since window-level offsets are usually
+   * better solved with `scroll-margin-top` CSS).
    */
   offset?: { top?: number; left?: number };
 }
@@ -140,12 +140,12 @@ export const useDefaultScrollToHandler = (
   useUICommandHandler<ScrollToPayload>("scroll_to", handler);
 };
 
-/** Options accepted by ``useDefaultFocusHandler``. */
+/** Options accepted by `useDefaultFocusHandler`. */
 export interface DefaultFocusOptions {
   /**
-   * Pass ``{ preventScroll: true }`` to ``element.focus()`` so the
+   * Pass `{ preventScroll: true }` to `element.focus()` so the
    * focus change doesn't also pan the viewport. Useful when focus
-   * happens alongside an explicit ``scroll_to``. @default false
+   * happens alongside an explicit `scroll_to`. @default false
    */
   preventScroll?: boolean;
 }
@@ -165,12 +165,12 @@ export const useDefaultFocusHandler = (
   useUICommandHandler<FocusPayload>("focus", handler);
 };
 
-/** Options accepted by ``useDefaultHighlightHandler``. */
+/** Options accepted by `useDefaultHighlightHandler`. */
 export interface DefaultHighlightOptions {
-  /** CSS class toggled on the target for ``duration_ms``. @default "ui-highlight" */
+  /** CSS class toggled on the target for `duration_ms`. @default "ui-highlight" */
   className?: string;
   /**
-   * Fallback duration when ``payload.duration_ms`` is missing.
+   * Fallback duration when `payload.duration_ms` is missing.
    * @default 1500
    */
   defaultDurationMs?: number;
@@ -214,24 +214,24 @@ export const useDefaultHighlightHandler = (
   useUICommandHandler<HighlightPayload>("highlight", handler);
 };
 
-/** Options accepted by ``useDefaultSelectTextHandler``. */
+/** Options accepted by `useDefaultSelectTextHandler`. */
 export interface DefaultSelectTextOptions {
   /**
    * When true, the target is scrolled into view before the selection
    * is applied so the user actually sees what was selected. @default true
    */
   scrollIntoViewFirst?: boolean;
-  /** ``scrollIntoView`` block position when scrolling first. @default "center" */
+  /** `scrollIntoView` block position when scrolling first. @default "center" */
   block?: ScrollLogicalPosition;
 }
 
 /**
- * Walk descendant text nodes of ``el`` in document order and locate
- * the ``(textNode, offsetInNode)`` position that corresponds to
- * character offset ``charOffset`` over the concatenated text content.
+ * Walk descendant text nodes of `el` in document order and locate
+ * the `(textNode, offsetInNode)` position that corresponds to
+ * character offset `charOffset` over the concatenated text content.
  *
- * Callers are expected to pre-validate ``charOffset`` against
- * ``el.textContent.length``; this helper returns ``null`` if no text
+ * Callers are expected to pre-validate `charOffset` against
+ * `el.textContent.length`; this helper returns `null` if no text
  * node covers the offset.
  */
 function findTextNodePosition(
@@ -266,14 +266,14 @@ function findTextNodePosition(
 }
 
 /**
- * Enable the default ``select_text`` handler.
+ * Enable the default `select_text` handler.
  *
  * Resolves the target by ref / target_id (same as the other
- * handlers). For ``<input>`` and ``<textarea>``, calls
- * ``setSelectionRange(start, end)``, or ``el.select()`` when offsets
- * are not provided. For document elements, builds a ``Range`` from
+ * handlers). For `<input>` and `<textarea>`, calls
+ * `setSelectionRange(start, end)`, or `el.select()` when offsets
+ * are not provided. For document elements, builds a `Range` from
  * the descendant text nodes; with offsets absent, uses
- * ``Range.selectNodeContents(el)``.
+ * `Range.selectNodeContents(el)`.
  */
 export const useDefaultSelectTextHandler = (
   options: DefaultSelectTextOptions = {},
@@ -332,10 +332,10 @@ export const useDefaultSelectTextHandler = (
   useUICommandHandler<SelectTextPayload>("select_text", handler);
 };
 
-/** Options accepted by ``useDefaultSetInputValueHandler``. */
+/** Options accepted by `useDefaultSetInputValueHandler`. */
 export interface DefaultSetInputValueOptions {
   /**
-   * When true, fire ``focus()`` on the target before writing so the
+   * When true, fire `focus()` on the target before writing so the
    * user sees the cursor land in the field. The element is blurred
    * after the change events fire to avoid stealing keyboard focus
    * from the user mid-conversation. @default false
@@ -344,23 +344,23 @@ export interface DefaultSetInputValueOptions {
 }
 
 /**
- * Enable the default ``set_input_value`` handler.
+ * Enable the default `set_input_value` handler.
  *
  * Resolves the target by ref / target_id, refuses on
- * ``disabled``, ``readonly``, or ``<input type="hidden">`` (silent
+ * `disabled`, `readonly`, or `<input type="hidden">` (silent
  * no-op so the agent can't bypass UI affordances the user is meant
- * to control), then assigns ``el.value`` and dispatches single-shot
- * ``input`` and ``change`` events so React-controlled inputs and
- * vanilla ``onChange`` listeners pick up the new value naturally.
+ * to control), then assigns `el.value` and dispatches single-shot
+ * `input` and `change` events so React-controlled inputs and
+ * vanilla `onChange` listeners pick up the new value naturally.
  *
- * With ``replace: false`` the new text is appended to the current
+ * With `replace: false` the new text is appended to the current
  * value; the default replaces. The flag is ignored for native
- * ``<select>`` since a select either has the value or doesn't.
+ * `<select>` since a select either has the value or doesn't.
  *
- * Native ``<select>`` is supported in addition to text inputs and
- * textareas: programmatic ``option.click()`` doesn't reliably change
- * the selection, so the handler sets ``el.value`` and dispatches a
- * ``change`` event (selects don't fire ``input`` on programmatic
+ * Native `<select>` is supported in addition to text inputs and
+ * textareas: programmatic `option.click()` doesn't reliably change
+ * the selection, so the handler sets `el.value` and dispatches a
+ * `change` event (selects don't fire `input` on programmatic
  * change). For custom comboboxes (ARIA listbox + popup), apps wire
  * their own command matching the library's interaction model.
  */
@@ -403,25 +403,25 @@ export const useDefaultSetInputValueHandler = (
 };
 
 /**
- * Enable the default ``click`` handler.
+ * Enable the default `click` handler.
  *
  * Resolves the target by ref / target_id and calls
- * ``el.click()``. Refuses on elements that expose a ``disabled``
- * property in the truthy state (form controls, ``<button>``,
- * ``<a>`` with ``aria-disabled="true"``) so the agent can't bypass
+ * `el.click()`. Refuses on elements that expose a `disabled`
+ * property in the truthy state (form controls, `<button>`,
+ * `<a>` with `aria-disabled="true"`) so the agent can't bypass
  * UI affordances the user is meant to control.
  *
  * Use for checkboxes, radios, submit buttons, links, and any
- * app-specific clickable element. For native ``<select>``, prefer
- * ``set_input_value``.
+ * app-specific clickable element. For native `<select>`, prefer
+ * `set_input_value`.
  */
 export const useDefaultClickHandler = (): void => {
   const handler = useCallback((payload: ClickPayload) => {
     const el = resolveTarget(payload);
     if (!(el instanceof HTMLElement)) return;
-    // Form controls and buttons expose a ``disabled`` property
-    // directly. ``<a>`` and arbitrary elements with role="button"
-    // can carry ``aria-disabled``; honor that too.
+    // Form controls and buttons expose a `disabled` property
+    // directly. `<a>` and arbitrary elements with role="button"
+    // can carry `aria-disabled`; honor that too.
     const disabledProp = (el as { disabled?: unknown }).disabled;
     if (disabledProp === true) return;
     if (el.getAttribute("aria-disabled") === "true") return;
@@ -430,7 +430,7 @@ export const useDefaultClickHandler = (): void => {
   useUICommandHandler<ClickPayload>("click", handler);
 };
 
-/** Options accepted by ``useDefaultUICommandHandlers`` (one object per handler). */
+/** Options accepted by `useDefaultUICommandHandlers` (one object per handler). */
 export interface DefaultUICommandHandlerOptions {
   scrollTo?: DefaultScrollToOptions;
   focus?: DefaultFocusOptions;

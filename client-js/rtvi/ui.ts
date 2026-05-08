@@ -26,14 +26,14 @@ export interface NavigatePayload {
 /** Payload for the built-in `scroll_to` command. */
 export interface ScrollToPayload {
   /**
-   * Snapshot ref (e.g. ``"e42"``) assigned by the a11y walker. When
+   * Snapshot ref (e.g. `"e42"`) assigned by the a11y walker. When
    * set, the default handler resolves this first; use when the server
-   * is referencing an element it saw in ``<ui_state>``.
+   * is referencing an element it saw in `<ui_state>`.
    */
   ref?: string | null;
   /**
-   * Element id (``document.getElementById``). Used as a fallback when
-   * ``ref`` is not set or no longer resolves.
+   * Element id (`document.getElementById`). Used as a fallback when
+   * `ref` is not set or no longer resolves.
    */
   target_id?: string | null;
   /** Typically `"smooth"` or `"instant"`. Clients may ignore. */
@@ -214,7 +214,7 @@ export type UITaskListener = (envelope: UITaskEnvelope) => void;
  */
 export interface A11yNode {
   /**
-   * Stable reference id of the form ``e{N}``. The same DOM node keeps
+   * Stable reference id of the form `e{N}`. The same DOM node keeps
    * the same ref across snapshots for as long as it is mounted. Lets
    * the LLM cross-reference elements between turns ("the button I
    * mentioned earlier").
@@ -227,23 +227,23 @@ export interface A11yNode {
   /** Current value for inputs (omitted for passwords), progress, etc. */
   value?: string;
   /**
-   * Short state tags. Known values: ``"focused"``, ``"selected"``,
-   * ``"expanded"``, ``"checked"``, ``"disabled"``, ``"offscreen"``.
+   * Short state tags. Known values: `"focused"`, `"selected"`,
+   * `"expanded"`, `"checked"`, `"disabled"`, `"offscreen"`.
    * Apps may add their own, but should stick to single lowercase
-   * words so they render cleanly as ``[tag]`` in ``<ui_state>``.
+   * words so they render cleanly as `[tag]` in `<ui_state>`.
    */
   state?: string[];
   /** Heading level, 1-6. */
   level?: number;
   /**
    * Column count for grid-like containers. Populated from
-   * ``aria-colcount`` on the element. Lets the LLM compute
+   * `aria-colcount` on the element. Lets the LLM compute
    * row/column positions from the flat reading order of children.
    */
   colcount?: number;
   /**
    * Row count for grid-like containers. Populated from
-   * ``aria-rowcount`` on the element.
+   * `aria-rowcount` on the element.
    */
   rowcount?: number;
   /** Child nodes. */
@@ -258,15 +258,15 @@ export interface A11yNode {
  * content rather than re-asking the user to repeat it.
  *
  * Document selections (selecting text across paragraphs, headings,
- * etc.) carry the closest common-ancestor element's ``ref`` plus the
+ * etc.) carry the closest common-ancestor element's `ref` plus the
  * full selected text. Offsets are not provided for document
  * selections because they would require walking text-node positions
- * inside the ancestor; the agent reasons over the ``text`` field.
+ * inside the ancestor; the agent reasons over the `text` field.
  *
- * Input/textarea selections do carry ``start_offset`` and
- * ``end_offset`` (taken straight from
- * ``HTMLInputElement.selectionStart`` / ``selectionEnd``) so a
- * round-trip ``select_text`` command can reproduce the exact range.
+ * Input/textarea selections do carry `start_offset` and
+ * `end_offset` (taken straight from
+ * `HTMLInputElement.selectionStart` / `selectionEnd`) so a
+ * round-trip `select_text` command can reproduce the exact range.
  */
 export interface A11ySelection {
   /**
@@ -277,17 +277,17 @@ export interface A11ySelection {
   ref: string;
   /**
    * The selected text. Truncated at 2000 characters with a trailing
-   * ellipsis to keep ``<ui_state>`` injections bounded.
+   * ellipsis to keep `<ui_state>` injections bounded.
    */
   text: string;
   /**
-   * Character offset within the input's ``value`` where the
-   * selection starts. Only set for ``<input>`` and ``<textarea>``.
+   * Character offset within the input's `value` where the
+   * selection starts. Only set for `<input>` and `<textarea>`.
    */
   start_offset?: number;
   /**
-   * Character offset within the input's ``value`` where the
-   * selection ends. Only set for ``<input>`` and ``<textarea>``.
+   * Character offset within the input's `value` where the
+   * selection ends. Only set for `<input>` and `<textarea>`.
    */
   end_offset?: number;
 }
@@ -310,8 +310,8 @@ export interface A11ySnapshot {
    * The user's current text selection, when one exists. Omitted when
    * nothing is selected (or the selection is collapsed to a single
    * cursor position with no characters in between). The server
-   * renders this as a ``<selection ref="...">...</selection>`` block
-   * inside ``<ui_state>``.
+   * renders this as a `<selection ref="...">...</selection>` block
+   * inside `<ui_state>`.
    */
   selection?: A11ySelection;
 }
