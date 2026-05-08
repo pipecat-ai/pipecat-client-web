@@ -13,15 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   observe and drive a GUI app, paired with the `UIAgent` work in
   `pipecat-ai-subagents`.
   - New `PipecatClient` helpers for the protocol:
-    `sendUIEvent(event, payload)`, `startA11ySnapshotStream(options?)`,
-    `stopA11ySnapshotStream()`, and `cancelUITask(taskId, reason?)`.
+    `sendUIEvent(event, payload)`, `startUISnapshotStream(options?)`,
+    `stopUISnapshotStream()`, and `cancelUITask(taskId, reason?)`.
     Incoming `ui-command` and `ui-task` messages are available through
     constructor callbacks (`onUICommand`, `onUITask`) and normal
     `RTVIEvent.UICommand` / `RTVIEvent.UITask` subscriptions.
   - New `A11ySnapshotStreamer` class that walks the document's
     accessibility tree and streams snapshots to the server on DOM
     mutations, focus changes, scroll-end, resize, and tab visibility.
-    Managed by `PipecatClient.startA11ySnapshotStream(...)`; still
+    Managed by `PipecatClient.startUISnapshotStream(...)`; still
     exported as a low-level escape hatch for advanced use.
   - New `snapshotDocument(root?, options?)` for one-off snapshots and
     `findElementByRef(ref)` for resolving a server-supplied snapshot

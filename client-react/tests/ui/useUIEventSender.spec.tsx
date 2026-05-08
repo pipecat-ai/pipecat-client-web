@@ -8,10 +8,10 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { usePipecatClient } from "../src/usePipecatClient";
-import { useUIEventSender } from "../src/useUIEventSender";
+import { usePipecatClient } from "../../src/usePipecatClient";
+import { useUIEventSender } from "../../src/useUIEventSender";
 
-jest.mock("../src/usePipecatClient", () => ({
+jest.mock("../../src/usePipecatClient", () => ({
   usePipecatClient: jest.fn(),
 }));
 

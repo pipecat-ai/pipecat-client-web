@@ -322,10 +322,13 @@ export interface A11ySelection {
 }
 
 /**
- * Shape of the payload inside a `__ui_snapshot` UI event.
+ * Accessibility tree carried inside a first-class `ui-snapshot` RTVI
+ * message.
  *
- * A full tree is sent on each update; the server keeps the latest and
- * renders it into `<ui_state>...</ui_state>` when an agent injects it.
+ * `PipecatClient.startUISnapshotStream(...)` sends snapshots with the
+ * message data shape `{ tree: A11ySnapshot }`. A full tree is sent on
+ * each update; the server keeps the latest and renders it into
+ * `<ui_state>...</ui_state>` when an agent injects it.
  */
 export interface A11ySnapshot {
   /** The root of the accessibility tree (usually `document.body`'s node). */

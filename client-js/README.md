@@ -104,7 +104,7 @@ button.addEventListener("click", () => {
 
 // Stream accessibility snapshots so the server agent can see what's
 // on screen. Auto-fires on DOM mutations, focus, scroll, resize.
-pcClient.startA11ySnapshotStream({ debounceMs: 200 });
+pcClient.startUISnapshotStream({ debounceMs: 200 });
 ```
 
 The wire format includes typed envelopes for the long-running task lifecycle (`group_started`, `task_update`, `task_completed`, `group_completed`); use `client.on(RTVIEvent.UITask, ...)` to observe them and `cancelUITask(...)` to cancel an in-flight task group. `A11ySnapshotStreamer` remains exported as a low-level implementation API. See the package CHANGELOG for the full v1 entry.

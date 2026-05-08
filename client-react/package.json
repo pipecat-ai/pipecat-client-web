@@ -32,7 +32,8 @@
     "preset": "ts-jest",
     "testEnvironment": "jsdom",
     "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/src/$1"
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@pipecat-ai/client-js$": "<rootDir>/../client-js/index.ts"
     },
     "transform": {
       "^.+\\.tsx?$": [

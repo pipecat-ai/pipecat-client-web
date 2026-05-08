@@ -33,7 +33,6 @@ import {
 } from "./standardHandlers";
 import { UITasksContext } from "./UITasksContext";
 import { UITasksProvider } from "./UITasksProvider";
-import { useA11ySnapshot } from "./useA11ySnapshot";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
@@ -45,6 +44,7 @@ import { usePipecatConversation } from "./usePipecatConversation";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 import { useUICommandHandler } from "./useUICommandHandler";
 import { useUIEventSender } from "./useUIEventSender";
+import { useUISnapshot } from "./useUISnapshot";
 import { useUITasks } from "./useUITasks";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 
@@ -63,7 +63,6 @@ export {
   sortByCreatedAt,
   UITasksContext,
   UITasksProvider,
-  useA11ySnapshot,
   // Conversation
   useConversationContext,
   useMediaState,
@@ -87,6 +86,7 @@ export {
   useToastHandler,
   useUICommandHandler,
   useUIEventSender,
+  useUISnapshot,
   useUITasks,
   VoiceVisualizer,
 };

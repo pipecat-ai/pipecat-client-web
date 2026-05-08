@@ -81,10 +81,10 @@ describe("PipecatClient managed a11y snapshots", () => {
     document.body.innerHTML = "";
   });
 
-  it("startA11ySnapshotStream emits ui-snapshot messages", () => {
+  it("startUISnapshotStream emits ui-snapshot messages", () => {
     const client = makeMockPipecatClient();
 
-    client.startA11ySnapshotStream({ debounceMs: 100 });
+    client.startUISnapshotStream({ debounceMs: 100 });
     jest.advanceTimersByTime(100);
 
     expectSentMessage(
@@ -94,14 +94,35 @@ describe("PipecatClient managed a11y snapshots", () => {
     );
   });
 
-  it("repeated startA11ySnapshotStream replaces the previous stream", async () => {
+  it("buffers the latest snapshot until the transport becomes ready", async () => {
+    const transport = new TransportStub();
+    const client = new PipecatClient({ transport });
+    const send = jest
+      .spyOn(client as unknown as MessageMockHolder, "_sendMessage")
+      .mockImplementation(() => undefined);
+
+    client.startUISnapshotStream({ debounceMs: 100 });
+    jest.advanceTimersByTime(100);
+
+    expect(send).not.toHaveBeenCalled();
+
+    await transport.sendReadyMessage();
+
+    expectSentMessage(
+      client as unknown as MockPipecatClient,
+      RTVIMessageType.UI_SNAPSHOT,
+      expect.objectContaining({ tree: expect.any(Object) }),
+    );
+  });
+
+  it("repeated startUISnapshotStream replaces the previous stream", async () => {
     const client = makeMockPipecatClient();
 
-    client.startA11ySnapshotStream({ debounceMs: 100 });
+    client.startUISnapshotStream({ debounceMs: 100 });
     jest.advanceTimersByTime(100);
     expect(sendMock(client)).toHaveBeenCalledTimes(1);
 
-    client.startA11ySnapshotStream({ debounceMs: 200 });
+    client.startUISnapshotStream({ debounceMs: 200 });
     document.querySelector("main")!.appendChild(document.createElement("button"));
     await Promise.resolve();
 
@@ -112,11 +133,11 @@ describe("PipecatClient managed a11y snapshots", () => {
     expect(sendMock(client)).toHaveBeenCalledTimes(2);
   });
 
-  it("stopA11ySnapshotStream stops emissions", async () => {
+  it("stopUISnapshotStream stops emissions", async () => {
     const client = makeMockPipecatClient();
 
-    client.startA11ySnapshotStream({ debounceMs: 100 });
-    client.stopA11ySnapshotStream();
+    client.startUISnapshotStream({ debounceMs: 100 });
+    client.stopUISnapshotStream();
     jest.advanceTimersByTime(100);
     expect(sendMock(client)).not.toHaveBeenCalled();
 
@@ -133,7 +154,7 @@ describe("PipecatClient managed a11y snapshots", () => {
       _messageDispatcher: { disconnect: jest.fn() },
     });
 
-    client.startA11ySnapshotStream({ debounceMs: 100 });
+    client.startUISnapshotStream({ debounceMs: 100 });
     await client.disconnect();
 
     jest.advanceTimersByTime(100);

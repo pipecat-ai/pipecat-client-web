@@ -5,12 +5,12 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { RTVIEvent } from "@pipecat-ai/client-js";
-import { PipecatClientProvider } from "../src/PipecatClientProvider";
-import { useUICommandHandler } from "../src/useUICommandHandler";
+import { PipecatClientProvider } from "../../src/PipecatClientProvider";
+import { useUICommandHandler } from "../../src/useUICommandHandler";
 
 function makeMockPipecatClient() {
   const listeners: Map<string, Set<(data: unknown) => void>> = new Map();

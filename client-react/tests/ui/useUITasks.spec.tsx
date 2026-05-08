@@ -9,9 +9,9 @@ import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { PipecatClientProvider } from "../src/PipecatClientProvider";
-import { UITasksProvider } from "../src/UITasksProvider";
-import { useUITasks } from "../src/useUITasks";
+import { PipecatClientProvider } from "../../src/PipecatClientProvider";
+import { UITasksProvider } from "../../src/UITasksProvider";
+import { useUITasks } from "../../src/useUITasks";
 
 function makeMockPipecatClient() {
   const listeners: Map<string, Set<(data: unknown) => void>> = new Map();

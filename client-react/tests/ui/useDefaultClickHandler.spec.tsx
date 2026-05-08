@@ -5,12 +5,12 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
-import { RTVIEvent } from "@pipecat-ai/client-js";
-import { PipecatClientProvider } from "../src/PipecatClientProvider";
-import { useStandardClickHandler } from "../src/standardHandlers";
+import { useDefaultClickHandler } from "../../src/defaultUICommandHandlers";
+import { PipecatClientProvider } from "../../src/PipecatClientProvider";
 
 function makeMockPipecatClient() {
   const listeners: Set<(data: unknown) => void> = new Set();
@@ -41,7 +41,7 @@ function emit(
 }
 
 const Probe: React.FC = () => {
-  useStandardClickHandler();
+  useDefaultClickHandler();
   return null;
 };
 
@@ -56,7 +56,7 @@ function setup(html: string) {
   return pipecat;
 }
 
-describe("useStandardClickHandler", () => {
+describe("useDefaultClickHandler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     document.body.innerHTML = "";

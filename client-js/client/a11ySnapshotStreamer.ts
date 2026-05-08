@@ -9,7 +9,7 @@
  * streaming. Wraps the walker, a ``MutationObserver``, and the other
  * triggers (scrollend, resize, focus, visibilitychange) into a single
  * object with ``start()`` / ``stop()``. React apps use
- * ``useA11ySnapshot`` which is a thin wrapper around this; vanilla JS
+ * ``useUISnapshot`` which is a thin wrapper around this; vanilla JS
  * or non-React apps instantiate the class directly.
  */
 
@@ -58,7 +58,7 @@ export interface A11ySnapshotStreamerOptions {
  *     // ...later
  *     streamer.stop();
  *
- * In React, ``useA11ySnapshot`` handles lifecycle for you.
+ * In React, ``useUISnapshot`` handles lifecycle for you.
  *
  * Idempotent: calling ``start()`` twice is safe; ``stop()`` detaches
  * all observers/listeners and cancels pending timers.

@@ -13,9 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shipped in `@pipecat-ai/client-js` and `pipecat-ai-subagents`.
   - Hooks bind directly to the ambient `PipecatClient`, using the UI
     protocol methods and RTVI events exposed by `@pipecat-ai/client-js`.
-  - New `useA11ySnapshot()` hook that streams accessibility snapshots
+  - New `useUISnapshot()` hook that streams accessibility snapshots
     to the server. Thin lifecycle wrapper around
-    `PipecatClient.startA11ySnapshotStream(...)`. Options: `enabled`, `debounceMs`,
+    `PipecatClient.startUISnapshotStream(...)`. Options: `enabled`, `debounceMs`,
     `trackViewport`, `logSnapshots`.
   - New `useUIEventSender()` and `useUICommandHandler(command, handler)`
     hooks for the basics of the protocol.
@@ -23,9 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `useStandardScrollToHandler({ block, inline, container, offset, ... })`,
     `useStandardFocusHandler({ preventScroll })`,
     `useStandardHighlightHandler({ className, defaultDurationMs, scrollIntoViewFirst })`,
-    plus `useStandardCommandHandlers(...)` to install all three at
-    once. Each resolves the target element by snapshot `ref` first,
-    then falls back to `document.getElementById(target_id)`.
+    `useStandardSelectTextHandler({ scrollIntoViewFirst, block })`,
+    `useStandardSetInputValueHandler({ focusFirst })`, and
+    `useStandardClickHandler()`, plus `useStandardCommandHandlers(...)`
+    to install all six at once. Each resolves the target element by
+    snapshot `ref` first, then falls back to
+    `document.getElementById(target_id)`.
   - New typed-sugar hooks `useToastHandler(handler)` and
     `useNavigateHandler(handler)` for the `toast` and `navigate`
     commands; apps wire their own toast renderer / router.

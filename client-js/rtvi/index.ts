@@ -4,7 +4,13 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-export * from "./a11y_walker";
+export {
+  findElementByRef,
+  findRefForElement,
+  serializeSelection,
+  snapshotDocument,
+  type SnapshotOptions,
+} from "./a11y_walker";
 export * from "./common_types";
 export * from "./errors";
 export * from "./events";

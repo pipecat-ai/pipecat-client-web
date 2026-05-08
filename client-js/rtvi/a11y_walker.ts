@@ -52,9 +52,13 @@ const SELECTION_TEXT_MAX = 2000;
 const refMap = new WeakMap<Element, string>();
 // Reverse index from ref string back to element, so command handlers
 // (e.g. ``scroll_to``) can resolve a server-supplied ref like
-// ``"e42"`` back to a live DOM node. ``WeakRef`` lets the entry
-// become stale when the element unmounts; lookups check liveness.
-const refToElement = new Map<string, WeakRef<Element>>();
+// ``"e42"`` back to a live DOM node. Prefer ``WeakRef`` so entries
+// can become stale after unmount, but fall back to a strong reference
+// in older browsers / embedded webviews that do not implement it.
+type RefEntry = WeakRef<Element> | Element;
+const WeakRefCtor: (new (target: Element) => WeakRef<Element>) | undefined =
+  typeof WeakRef === "undefined" ? undefined : WeakRef;
+const refToElement = new Map<string, RefEntry>();
 let refCounter = 0;
 
 function getRef(el: Element): string {
@@ -62,7 +66,7 @@ function getRef(el: Element): string {
   if (existing) return existing;
   const ref = `e${++refCounter}`;
   refMap.set(el, ref);
-  refToElement.set(ref, new WeakRef(el));
+  refToElement.set(ref, WeakRefCtor ? new WeakRefCtor(el) : el);
   return ref;
 }
 
@@ -73,9 +77,9 @@ function getRef(el: Element): string {
  * act on nodes the server referenced from a snapshot.
  */
 export function findElementByRef(ref: string): Element | null {
-  const weakRef = refToElement.get(ref);
-  if (!weakRef) return null;
-  const el = weakRef.deref();
+  const entry = refToElement.get(ref);
+  if (!entry) return null;
+  const el = "deref" in entry ? entry.deref() : entry;
   if (!el) {
     refToElement.delete(ref);
     return null;

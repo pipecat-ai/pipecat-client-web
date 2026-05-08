@@ -51,7 +51,7 @@ import { PipecatClient } from "@pipecat-ai/client-js";
 import {
   PipecatClientProvider,
   UITasksProvider,
-  useA11ySnapshot,
+  useUISnapshot,
   useStandardScrollToHandler,
   useStandardHighlightHandler,
   useUICommandHandler,
@@ -61,7 +61,7 @@ const client = new PipecatClient({ transport: myTransport });
 
 function App() {
   // Stream accessibility snapshots so the server agent sees what's on screen.
-  useA11ySnapshot();
+  useUISnapshot();
   // Wire the standard handlers for "scroll to" and "highlight" commands.
   useStandardScrollToHandler();
   useStandardHighlightHandler();
@@ -82,7 +82,7 @@ render(
 What's exposed:
 
 - **`UITasksProvider`** + **`useUITasks()`**: subscribes to `ui-task` envelopes for long-running fan-out work; gives you per-task progress and cancel.
-- **Hooks**: `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useA11ySnapshot`.
+- **Hooks**: `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useUISnapshot`.
 - **Standard handlers** (opt-in DOM defaults): `useStandardScrollToHandler`, `useStandardHighlightHandler`, `useStandardSelectTextHandler`, `useStandardSetInputValueHandler`, `useStandardClickHandler`, `useStandardFocusHandler`, plus the `useStandardCommandHandlers` bundle.
 
 See the package CHANGELOG for the full v1 entry.

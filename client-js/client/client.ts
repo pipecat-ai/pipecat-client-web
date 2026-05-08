@@ -39,6 +39,7 @@ import {
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
 import {
+  type A11ySnapshot,
   type UICommandEnvelope,
   type UIEventEnvelope,
   type UITaskEnvelope,
@@ -219,6 +220,7 @@ export class PipecatClient extends RTVIEventEmitter {
   protected _functionCallCallbacks: Record<string, FunctionCallCallback> = {};
   protected _abortController: AbortController | undefined;
   private _a11ySnapshotStreamer: A11ySnapshotStreamer | undefined;
+  private _pendingUISnapshot: A11ySnapshot | undefined;
 
   private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
@@ -282,6 +284,7 @@ export class PipecatClient extends RTVIEventEmitter {
       onTransportStateChanged: (state: TransportState) => {
         options?.callbacks?.onTransportStateChanged?.(state);
         this.emit(RTVIEvent.TransportStateChanged, state);
+        if (state === "ready") this._flushPendingUISnapshot();
       },
       onParticipantJoined: (p) => {
         options?.callbacks?.onParticipantJoined?.(p);
@@ -664,7 +667,7 @@ export class PipecatClient extends RTVIEventEmitter {
    * Reset / reinitialize transport and abort any pending requests
    */
   public async disconnect(): Promise<void> {
-    this.stopA11ySnapshotStream();
+    this.stopUISnapshotStream();
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -967,31 +970,58 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Start streaming accessibility snapshots to the server as
+   * Start streaming UI snapshots to the server as
    * first-class `ui-snapshot` RTVI messages.
    *
    * Calling this again replaces any existing managed streamer with
    * the new options.
    */
-  public startA11ySnapshotStream(
+  public startUISnapshotStream(
     options: A11ySnapshotStreamerOptions = {}
   ): void {
-    this.stopA11ySnapshotStream();
+    this.stopUISnapshotStream();
     this._a11ySnapshotStreamer = new A11ySnapshotStreamer((snapshot) => {
-      if (this.state !== "ready") return;
-      this._sendMessage(
-        new RTVIMessage(RTVIMessageType.UI_SNAPSHOT, { tree: snapshot })
-      );
+      if (this.state !== "ready") {
+        this._pendingUISnapshot = snapshot;
+        return;
+      }
+      this._sendUISnapshot(snapshot);
     }, options);
     this._a11ySnapshotStreamer.start();
   }
 
   /**
-   * Stop the managed accessibility snapshot stream, if one is active.
+   * Stop the managed UI snapshot stream, if one is active.
    */
-  public stopA11ySnapshotStream(): void {
+  public stopUISnapshotStream(): void {
     this._a11ySnapshotStreamer?.stop();
     this._a11ySnapshotStreamer = undefined;
+    this._pendingUISnapshot = undefined;
+  }
+
+  /** @deprecated Use `startUISnapshotStream` instead. */
+  public startA11ySnapshotStream(
+    options: A11ySnapshotStreamerOptions = {}
+  ): void {
+    this.startUISnapshotStream(options);
+  }
+
+  /** @deprecated Use `stopUISnapshotStream` instead. */
+  public stopA11ySnapshotStream(): void {
+    this.stopUISnapshotStream();
+  }
+
+  private _sendUISnapshot(snapshot: A11ySnapshot): void {
+    this._sendMessage(
+      new RTVIMessage(RTVIMessageType.UI_SNAPSHOT, { tree: snapshot })
+    );
+  }
+
+  private _flushPendingUISnapshot(): void {
+    if (!this._pendingUISnapshot || this.state !== "ready") return;
+    const snapshot = this._pendingUISnapshot;
+    this._pendingUISnapshot = undefined;
+    this._sendUISnapshot(snapshot);
   }
 
   /**
