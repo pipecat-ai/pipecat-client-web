@@ -14,8 +14,13 @@ import {
 } from "@jest/globals";
 
 import { PipecatClient } from "./../client/client";
-import { RTVIEvent, RTVIMessage, RTVIMessageType } from "./../rtvi";
-import { type UICommandEnvelope, type UITaskEnvelope } from "./../rtvi/ui";
+import {
+  RTVIEvent,
+  RTVIMessage,
+  RTVIMessageType,
+  type UICommandData,
+  type UITaskData,
+} from "./../rtvi";
 import { TransportStub } from "./stubs/transport";
 
 type Listener = (data: unknown) => void;
@@ -190,11 +195,11 @@ describe("PipecatClient.sendUIEvent", () => {
 });
 
 describe("PipecatClient UI inbound events", () => {
-  const command: UICommandEnvelope = {
+  const command: UICommandData = {
     command: "toast",
     payload: { title: "Hi" },
   };
-  const groupStarted: UITaskEnvelope = {
+  const groupStarted: UITaskData = {
     kind: "group_started",
     task_id: "t1",
     agents: ["w1", "w2"],
@@ -202,7 +207,7 @@ describe("PipecatClient UI inbound events", () => {
     cancellable: true,
     at: 1700,
   };
-  const taskUpdate: UITaskEnvelope = {
+  const taskUpdate: UITaskData = {
     kind: "task_update",
     task_id: "t1",
     agent_name: "w1",

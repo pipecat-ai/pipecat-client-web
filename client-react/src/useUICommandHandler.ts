@@ -6,12 +6,15 @@
 
 import {
   RTVIEvent,
-  type UICommandEnvelope,
-  type UICommandHandler,
+  type UICommandData,
 } from "@pipecat-ai/client-js";
 import { useCallback } from "react";
 
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
+
+export type UICommandHandler<T = unknown> = (
+  payload: T,
+) => void | Promise<void>;
 
 /**
  * Register a handler for a named UI command.
@@ -32,7 +35,7 @@ export const useUICommandHandler = <T = unknown>(
   useRTVIClientEvent(
     RTVIEvent.UICommand,
     useCallback(
-      (data: UICommandEnvelope) => {
+      (data: UICommandData) => {
         if (data.command !== command) return;
         void handler(data.payload as T);
       },

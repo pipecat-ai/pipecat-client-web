@@ -10,6 +10,7 @@ import {
   name as packageName,
   version as packageVersion,
 } from "../package.json";
+import type { A11ySnapshot, UITaskEnvelope } from "./ui";
 
 export const RTVI_PROTOCOL_VERSION = "1.3.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
@@ -165,6 +166,27 @@ export type ClientMessageData = {
   t: string;
   d?: unknown;
 };
+
+export type UIEventData = {
+  event: string;
+  payload?: unknown;
+};
+
+export type UISnapshotData = {
+  tree: A11ySnapshot;
+};
+
+export type UICancelTaskData = {
+  task_id: string;
+  reason?: string;
+};
+
+export type UICommandData = {
+  command: string;
+  payload: unknown;
+};
+
+export type UITaskData = UITaskEnvelope;
 
 export type LLMSearchResult = {
   text: string;

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
+import { RTVIEvent, type UITaskData } from "@pipecat-ai/client-js";
 import React, { useCallback, useMemo, useReducer } from "react";
 
 import { UITasksContext } from "./UITasksContext";
@@ -21,7 +21,7 @@ function aggregateStatus(tasks: Task[]): TaskGroup["status"] {
   return "completed";
 }
 
-function reducer(state: State, env: UITaskEnvelope): State {
+function reducer(state: State, env: UITaskData): State {
   switch (env.kind) {
     case "group_started":
       // Defensive: replace any prior group with the same task_id.
@@ -110,7 +110,7 @@ export const UITasksProvider: React.FC<React.PropsWithChildren> = ({
 
   useRTVIClientEvent(
     RTVIEvent.UITask,
-    useCallback((env: UITaskEnvelope) => dispatch(env), []),
+    useCallback((env: UITaskData) => dispatch(env), []),
   );
 
   const cancelTask = useCallback(

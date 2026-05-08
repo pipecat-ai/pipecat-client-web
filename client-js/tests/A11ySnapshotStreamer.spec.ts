@@ -13,7 +13,7 @@ import {
   jest,
 } from "@jest/globals";
 
-import { A11ySnapshotStreamer } from "../client/a11ySnapshotStreamer";
+import { A11ySnapshotStreamer } from "../client/A11ySnapshotStreamer";
 import type { A11ySnapshot } from "../rtvi/ui";
 
 type Emission = A11ySnapshot;

@@ -70,44 +70,7 @@ pcClient.on(RTVIEvent.Disconnected, () => {
 
 ## UI Agent Protocol (v1)
 
-`PipecatClient` is the primary client-side entry point for the UI Agent Protocol, paired with the `UIAgent` class in [`pipecat-subagents`](https://github.com/pipecat-ai/pipecat-subagents) on the Python side. It lets a server-side agent observe the page (via the streamed accessibility snapshot) and drive it (via named UI commands and structured events).
-
-```ts
-import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
-
-const pcClient = new PipecatClient({
-  transport: ...,
-  callbacks: {
-    onUICommand: (data) => {
-      if (data.command === "toast") showToast(data.payload);
-    },
-    onUITask: (data) => updateTaskProgress(data),
-  },
-});
-
-// Server-to-client commands (e.g. "scroll the user to this ref",
-// "highlight this element", or any app-defined command).
-const onUICommand = (data) => {
-  if (data.command === "toast") showToast(data.payload);
-};
-pcClient.on(RTVIEvent.UICommand, onUICommand);
-
-// Server-to-client task lifecycle envelopes.
-pcClient.on(RTVIEvent.UITask, (data) => {
-  updateTaskProgress(data);
-});
-
-// Client-to-server events (e.g. a click that should bypass the LLM).
-button.addEventListener("click", () => {
-  pcClient.sendUIEvent("nav_click", { view: "home" });
-});
-
-// Stream accessibility snapshots so the server agent can see what's
-// on screen. Auto-fires on DOM mutations, focus, scroll, resize.
-pcClient.startUISnapshotStream({ debounceMs: 200 });
-```
-
-The wire format includes typed envelopes for the long-running task lifecycle (`group_started`, `task_update`, `task_completed`, `group_completed`); use `client.on(RTVIEvent.UITask, ...)` to observe them and `cancelUITask(...)` to cancel an in-flight task group. `A11ySnapshotStreamer` remains exported as a low-level implementation API. See the package CHANGELOG for the full v1 entry.
+`PipecatClient` includes the client-side UI Agent Protocol primitives for sending UI events, streaming UI snapshots, receiving UI commands, observing UI task lifecycle events, and cancelling in-flight UI task groups. See the package CHANGELOG for the full v1 API entry and the generated docs for API details.
 
 ## API
 

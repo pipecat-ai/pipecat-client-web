@@ -5,7 +5,7 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RTVIEvent, type UITaskEnvelope } from "@pipecat-ai/client-js";
+import { RTVIEvent, type UITaskData } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
@@ -40,7 +40,7 @@ function makeMockPipecatClient() {
 
 // ui-task envelopes are now the inner ``data`` of a ``ui-task`` RTVI
 // message; no top-level type field.
-const groupStarted: UITaskEnvelope = {
+const groupStarted: UITaskData = {
   kind: "group_started",
   task_id: "t1",
   agents: ["w1", "w2"],
@@ -48,14 +48,14 @@ const groupStarted: UITaskEnvelope = {
   cancellable: true,
   at: 1700,
 };
-const w1Update: UITaskEnvelope = {
+const w1Update: UITaskData = {
   kind: "task_update",
   task_id: "t1",
   agent_name: "w1",
   data: { kind: "tool_call", tool: "WebSearch" },
   at: 1701,
 };
-const w1Completed: UITaskEnvelope = {
+const w1Completed: UITaskData = {
   kind: "task_completed",
   task_id: "t1",
   agent_name: "w1",
@@ -63,7 +63,7 @@ const w1Completed: UITaskEnvelope = {
   response: { ok: true },
   at: 1702,
 };
-const w2Completed: UITaskEnvelope = {
+const w2Completed: UITaskData = {
   kind: "task_completed",
   task_id: "t1",
   agent_name: "w2",
@@ -71,7 +71,7 @@ const w2Completed: UITaskEnvelope = {
   response: { ok: true },
   at: 1703,
 };
-const groupCompleted: UITaskEnvelope = {
+const groupCompleted: UITaskData = {
   kind: "group_completed",
   task_id: "t1",
   at: 1704,

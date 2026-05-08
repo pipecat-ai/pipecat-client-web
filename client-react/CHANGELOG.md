@@ -19,23 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `trackViewport`, `logSnapshots`.
   - New `useUIEventSender()` and `useUICommandHandler(command, handler)`
     hooks for the basics of the protocol.
-  - New opt-in standard command handlers:
-    `useStandardScrollToHandler({ block, inline, container, offset, ... })`,
-    `useStandardFocusHandler({ preventScroll })`,
-    `useStandardHighlightHandler({ className, defaultDurationMs, scrollIntoViewFirst })`,
-    `useStandardSelectTextHandler({ scrollIntoViewFirst, block })`,
-    `useStandardSetInputValueHandler({ focusFirst })`, and
-    `useStandardClickHandler()`, plus `useStandardCommandHandlers(...)`
+  - New opt-in default UI command handlers:
+    `useDefaultScrollToHandler({ block, inline, container, offset, ... })`,
+    `useDefaultFocusHandler({ preventScroll })`,
+    `useDefaultHighlightHandler({ className, defaultDurationMs, scrollIntoViewFirst })`,
+    `useDefaultSelectTextHandler({ scrollIntoViewFirst, block })`,
+    `useDefaultSetInputValueHandler({ focusFirst })`, and
+    `useDefaultClickHandler()`, plus `useDefaultUICommandHandlers(...)`
     to install all six at once. Each resolves the target element by
     snapshot `ref` first, then falls back to
     `document.getElementById(target_id)`.
   - New typed-sugar hooks `useToastHandler(handler)` and
     `useNavigateHandler(handler)` for the `toast` and `navigate`
     commands; apps wire their own toast renderer / router.
-  - Re-exports `findElementByRef`, `snapshotDocument`, the wire-format
-    constants, and the standard
-    payload / envelope / handler types from `@pipecat-ai/client-js` so
-    React consumers don't need a second import.
 
 ## [1.4.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.3.0...client-react-v1.4.0) (2026-05-05)
 

@@ -13,6 +13,17 @@ import {
 } from "./conversation/conversationActions";
 import { filterBotOutputText } from "./conversation/filterBotOutputText";
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
+import {
+  useDefaultClickHandler,
+  useDefaultFocusHandler,
+  useDefaultHighlightHandler,
+  useDefaultScrollToHandler,
+  useDefaultSelectTextHandler,
+  useDefaultSetInputValueHandler,
+  useDefaultUICommandHandlers,
+  useNavigateHandler,
+  useToastHandler,
+} from "./defaultUICommandHandlers";
 import { PipecatClientAudio } from "./PipecatClientAudio";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
 import { useMediaState } from "./PipecatClientMediaState";
@@ -20,17 +31,6 @@ import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
 import { PipecatClientProvider } from "./PipecatClientProvider";
 import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle";
 import { PipecatClientVideo } from "./PipecatClientVideo";
-import {
-  useNavigateHandler,
-  useStandardClickHandler,
-  useStandardCommandHandlers,
-  useStandardFocusHandler,
-  useStandardHighlightHandler,
-  useStandardScrollToHandler,
-  useStandardSelectTextHandler,
-  useStandardSetInputValueHandler,
-  useToastHandler,
-} from "./standardHandlers";
 import { UITasksContext } from "./UITasksContext";
 import { UITasksProvider } from "./UITasksProvider";
 import { usePipecatClient } from "./usePipecatClient";
@@ -65,6 +65,13 @@ export {
   UITasksProvider,
   // Conversation
   useConversationContext,
+  useDefaultClickHandler,
+  useDefaultFocusHandler,
+  useDefaultHighlightHandler,
+  useDefaultScrollToHandler,
+  useDefaultSelectTextHandler,
+  useDefaultSetInputValueHandler,
+  useDefaultUICommandHandlers,
   useMediaState,
   useNavigateHandler,
   usePipecatClient,
@@ -76,13 +83,6 @@ export {
   usePipecatClientTransportState,
   usePipecatConversation,
   useRTVIClientEvent,
-  useStandardClickHandler,
-  useStandardCommandHandlers,
-  useStandardFocusHandler,
-  useStandardHighlightHandler,
-  useStandardScrollToHandler,
-  useStandardSelectTextHandler,
-  useStandardSetInputValueHandler,
   useToastHandler,
   useUICommandHandler,
   useUIEventSender,
@@ -110,33 +110,13 @@ export type {
   FunctionCallData,
   FunctionCallRenderer,
 } from "./conversation/types";
-
-// UI agent protocol re-exports from @pipecat-ai/client-js so React
-// consumers don't need a second import.
 export type {
-  A11yNode,
-  A11ySnapshot,
-  ClickPayload,
-  FocusPayload,
-  HighlightPayload,
-  NavigatePayload,
-  ScrollToPayload,
-  SelectTextPayload,
-  SetInputValuePayload,
-  TaskStatus,
-  ToastPayload,
-  UICommandEnvelope,
-  UICommandHandler,
-  UIEventEnvelope,
-  UITaskCompletedEnvelope,
-  UITaskEnvelope,
-  UITaskGroupCompletedEnvelope,
-  UITaskGroupStartedEnvelope,
-  UITaskListener,
-  UITaskUpdateEnvelope,
-} from "@pipecat-ai/client-js";
-export type { A11ySnapshotStreamerOptions } from "@pipecat-ai/client-js";
-export {
-  findElementByRef,
-  snapshotDocument,
-} from "@pipecat-ai/client-js";
+  DefaultFocusOptions,
+  DefaultHighlightOptions,
+  DefaultScrollToOptions,
+  DefaultSelectTextOptions,
+  DefaultSetInputValueOptions,
+  DefaultUICommandHandlerOptions,
+} from "./defaultUICommandHandlers";
+export type { UICommandHandler } from "./useUICommandHandler";
+export type { UseUISnapshotOptions } from "./useUISnapshot";

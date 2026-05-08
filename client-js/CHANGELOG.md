@@ -32,10 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     supports per-node viewport tracking via `trackViewport` (default
     on) and PII opt-out via the `data-a11y-exclude` attribute on any
     element.
-  - New standard command payload types (`ToastPayload`, `NavigatePayload`,
+  - New built-in command payload types (`ToastPayload`, `NavigatePayload`,
     `ScrollToPayload`, `HighlightPayload`, `FocusPayload`) matching the
-    server's command vocabulary, plus `UICommandHandler`,
-    `UIEventEnvelope`, and `UICommandEnvelope`.
+    server's command vocabulary, plus `UIEventData`, `UICommandData`,
+    `UISnapshotData`, `UICancelTaskData`, and `UITaskData`.
   - New `RTVIMessageType` members for the protocol's UI types
     (`UI_EVENT`, `UI_COMMAND`, `UI_SNAPSHOT`, `UI_CANCEL_TASK`,
     `UI_TASK`).

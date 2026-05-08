@@ -34,12 +34,14 @@ import type {
   SelectTextPayload,
   SetInputValuePayload,
   ToastPayload,
-  UICommandHandler,
 } from "@pipecat-ai/client-js";
 import { findElementByRef } from "@pipecat-ai/client-js";
 import { useCallback, useMemo } from "react";
 
-import { useUICommandHandler } from "./useUICommandHandler";
+import {
+  type UICommandHandler,
+  useUICommandHandler,
+} from "./useUICommandHandler";
 
 /**
  * Resolve a command payload's target element. Prefers the snapshot

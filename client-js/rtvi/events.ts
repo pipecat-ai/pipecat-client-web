@@ -19,8 +19,9 @@ import {
   PipecatMetricsData,
   RTVIMessage,
   TranscriptData,
+  UICommandData,
+  UITaskData,
 } from "./messages";
-import { UICommandEnvelope, UITaskEnvelope } from "./ui";
 
 export enum RTVIEvent {
   /** local connection state events */
@@ -127,8 +128,8 @@ export type RTVIEvents = Partial<{
   messageError: (message: RTVIMessage) => void;
 
   /** UI Agent Protocol */
-  uiCommand: (data: UICommandEnvelope) => void;
-  uiTask: (data: UITaskEnvelope) => void;
+  uiCommand: (data: UICommandData) => void;
+  uiTask: (data: UITaskData) => void;
 
   /** service events */
   metrics: (data: PipecatMetricsData) => void;

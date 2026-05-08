@@ -142,7 +142,7 @@ The client side provides:
 
 - **`PipecatClient`** (`client-js`): sends `ui-event` messages, exposes `RTVIEvent.UICommand` / `RTVIEvent.UITask` subscriptions and matching constructor callbacks, manages accessibility snapshot streaming with `startUISnapshotStream(...)`, and can cancel UI task groups.
 - **`A11ySnapshotStreamer`** (`client-js`): low-level snapshot streaming implementation for advanced users.
-- **React bindings** (`client-react`): `UITasksProvider`, hooks (`useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useUISnapshot`), and opt-in DOM defaults (`useStandardScrollToHandler`, `useStandardHighlightHandler`, `useStandardSelectTextHandler`, `useStandardSetInputValueHandler`, `useStandardClickHandler`, `useStandardFocusHandler`).
+- **React bindings** (`client-react`): `UITasksProvider`, hooks (`useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useUISnapshot`), and opt-in DOM defaults (`useDefaultScrollToHandler`, `useDefaultHighlightHandler`, `useDefaultSelectTextHandler`, `useDefaultSetInputValueHandler`, `useDefaultClickHandler`, `useDefaultFocusHandler`).
 
 See each package README for usage, and the package CHANGELOGs for the full v1 entry.
 

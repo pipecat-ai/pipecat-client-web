@@ -4,37 +4,8 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-/**
- * Shape of the `data` field of a `ui-event` RTVI message
- * (client → server). `UIEventEnvelope` is what travels in the
- * `data` field.
- */
-export interface UIEventEnvelope<T = unknown> {
-  /** App-defined event. */
-  event: string;
-  /** App-defined payload. Schemaless by design. */
-  payload: T;
-}
-
-/**
- * Shape of the `data` field of a `ui-command` RTVI message
- * (server → client). The `RTVIEvent.UICommand` handler receives an
- * object of this shape.
- */
-export interface UICommandEnvelope<T = unknown> {
-  /** App-defined command. */
-  command: string;
-  /** App-defined payload. */
-  payload: T;
-}
-
-/** Signature for a named UI command payload handler. */
-export type UICommandHandler<T = unknown> = (
-  payload: T,
-) => void | Promise<void>;
-
 // ---------------------------------------------------------------------------
-// Standard command payload types (mirror pipecat_subagents.agents.ui_commands)
+// Built-in command payload types (mirror pipecat_subagents.agents.ui_commands)
 // ---------------------------------------------------------------------------
 
 /** Payload for the built-in `toast` command. */
@@ -56,7 +27,7 @@ export interface NavigatePayload {
 export interface ScrollToPayload {
   /**
    * Snapshot ref (e.g. ``"e42"``) assigned by the a11y walker. When
-   * set, the standard handler resolves this first; use when the server
+   * set, the default handler resolves this first; use when the server
    * is referencing an element it saw in ``<ui_state>``.
    */
   ref?: string | null;
@@ -104,7 +75,7 @@ export interface ClickPayload {
  * Payload for the built-in `set_input_value` command.
  *
  * Asks the client to write `value` into a text input, textarea, or
- * native `<select>`. The standard handler refuses to write into
+ * native `<select>`. The default handler refuses to write into
  * `disabled`, `readonly`, or `<input type="hidden">` targets so the
  * agent can't bypass UI affordances the user is meant to control.
  *
@@ -130,7 +101,7 @@ export interface SetInputValuePayload {
  * `end_offset` omitted, the entire target's text is selected.
  *
  * Document elements use a `Range` over descendant text nodes and the
- * standard handler walks them to convert character offsets into
+ * default handler walks them to convert character offsets into
  * `(textNode, offsetInNode)` pairs. `<input>` and `<textarea>`
  * targets use `setSelectionRange(start, end)` (or `el.select()` when
  * offsets are absent).
