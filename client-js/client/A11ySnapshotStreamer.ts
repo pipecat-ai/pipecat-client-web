@@ -79,6 +79,7 @@ export class A11ySnapshotStreamer {
   private resizeHandler?: () => void;
   private visibilityHandler?: () => void;
   private selectionHandler?: () => void;
+  private formHandler?: () => void;
 
   constructor(
     emitSnapshot: A11ySnapshotEmitter,
@@ -158,6 +159,17 @@ export class A11ySnapshotStreamer {
     // selection alongside the rest of the screen state.
     this.selectionHandler = () => this.schedule();
     document.addEventListener("selectionchange", this.selectionHandler);
+
+    // Native form controls (checkbox/radio toggles, text and select edits)
+    // change via element PROPERTIES, which a MutationObserver can't see - the
+    // attributeFilter above only catches them when an app mirrors state into
+    // aria-*. Listen for `input`/`change` in the capture phase so a user edit
+    // (or a programmatic change that dispatches these events) refreshes the
+    // snapshot. Debounced via `schedule`, so a burst of typing coalesces into
+    // a single snapshot at rest.
+    this.formHandler = () => this.schedule();
+    document.addEventListener("input", this.formHandler, { capture: true });
+    document.addEventListener("change", this.formHandler, { capture: true });
   }
 
   /** Stop streaming. Safe to call before `start()` or multiple times. */
@@ -184,6 +196,14 @@ export class A11ySnapshotStreamer {
       if (this.selectionHandler) {
         document.removeEventListener("selectionchange", this.selectionHandler);
       }
+      if (this.formHandler) {
+        document.removeEventListener("input", this.formHandler, {
+          capture: true,
+        });
+        document.removeEventListener("change", this.formHandler, {
+          capture: true,
+        });
+      }
     }
     if (typeof window !== "undefined") {
       if (this.scrollEndHandler) {
@@ -200,6 +220,7 @@ export class A11ySnapshotStreamer {
     this.resizeHandler = undefined;
     this.visibilityHandler = undefined;
     this.selectionHandler = undefined;
+    this.formHandler = undefined;
   }
 
   private schedule(): void {
