@@ -125,6 +125,53 @@ describe("A11ySnapshotStreamer", () => {
     expect(emissions).toHaveLength(3);
   });
 
+  it("emits when a form control fires input or change", () => {
+    document.body.innerHTML =
+      '<main><input type="checkbox" aria-label="Milk" /></main>';
+    const emissions: Emission[] = [];
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
+      debounceMs: 100,
+    });
+    streamer.start();
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(1);
+
+    // A checkbox toggle changes the .checked PROPERTY (no DOM mutation),
+    // so the snapshot only refreshes because we listen for `change`.
+    const checkbox = document.querySelector("input")!;
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(2);
+
+    // Typing fires `input`.
+    checkbox.dispatchEvent(new Event("input", { bubbles: true }));
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(3);
+
+    streamer.stop();
+  });
+
+  it("stops listening for form events after stop()", () => {
+    document.body.innerHTML =
+      '<main><input type="checkbox" aria-label="Milk" /></main>';
+    const emissions: Emission[] = [];
+    const streamer = new A11ySnapshotStreamer((snapshot) => {
+      emissions.push(snapshot);
+    }, {
+      debounceMs: 100,
+    });
+    const checkbox = document.querySelector("input")!;
+    streamer.start();
+    streamer.stop();
+
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    jest.advanceTimersByTime(100);
+    expect(emissions).toHaveLength(0);
+  });
+
   it("logs snapshots when enabled", () => {
     const emissions: Emission[] = [];
     const groupCollapsed = jest
