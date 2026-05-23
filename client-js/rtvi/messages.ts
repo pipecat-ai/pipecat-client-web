@@ -10,7 +10,7 @@ import {
   name as packageName,
   version as packageVersion,
 } from "../package.json";
-import type { A11ySnapshot, UITaskEnvelope } from "./ui";
+import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 export const RTVI_PROTOCOL_VERSION = "1.3.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
@@ -29,7 +29,7 @@ export enum RTVIMessageType {
   // UI Agent Protocol (client-to-server)
   UI_EVENT = "ui-event",
   UI_SNAPSHOT = "ui-snapshot",
-  UI_CANCEL_TASK = "ui-cancel-task",
+  UI_CANCEL_JOB_GROUP = "ui-cancel-job-group",
   // DEPRECATED
   APPEND_TO_CONTEXT = "append-to-context",
 
@@ -47,7 +47,7 @@ export enum RTVIMessageType {
   APPEND_TO_CONTEXT_RESULT = "append-to-context-result", // Result of appending to context
   // UI Agent Protocol (server-to-client)
   UI_COMMAND = "ui-command",
-  UI_TASK = "ui-task",
+  UI_JOB_GROUP = "ui-job-group",
 
   /** Speaking and Transcription Messages */
   USER_STARTED_SPEAKING = "user-started-speaking", // User started speaking
@@ -176,8 +176,8 @@ export type UISnapshotData = {
   tree: A11ySnapshot;
 };
 
-export type UICancelTaskData = {
-  task_id: string;
+export type UICancelJobGroupData = {
+  job_id: string;
   reason?: string;
 };
 
@@ -186,7 +186,7 @@ export type UICommandData = {
   payload: unknown;
 };
 
-export type UITaskData = UITaskEnvelope;
+export type UIJobGroupData = UIJobGroupEnvelope;
 
 export type LLMSearchResult = {
   text: string;

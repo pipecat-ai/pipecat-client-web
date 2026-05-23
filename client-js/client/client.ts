@@ -37,11 +37,11 @@ import {
   setAboutClient,
   TranscriptData,
   TransportState,
-  UICancelTaskData,
+  UICancelJobGroupData,
   UICommandData,
   UIEventData,
+  UIJobGroupData,
   UISnapshotData,
-  UITaskData,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
 import {
@@ -115,7 +115,7 @@ export type RTVIEventCallbacks = Partial<{
   onServerMessage: (data: any) => void;
   onMessageError: (message: RTVIMessage) => void;
   onUICommand: (data: UICommandData) => void;
-  onUITask: (data: UITaskData) => void;
+  onUIJobGroup: (data: UIJobGroupData) => void;
 
   onParticipantJoined: (participant: Participant) => void;
   onParticipantLeft: (participant: Participant) => void;
@@ -1009,16 +1009,16 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Ask the server to cancel an in-flight UI task group.
+   * Ask the server to cancel an in-flight UI job group.
    *
-   * @param taskId - Shared task identifier of the group to cancel.
+   * @param jobId - Shared job identifier of the group to cancel.
    * @param reason - Optional human-readable reason logged on the server.
    */
   @transportReady
-  public cancelUITask(taskId: string, reason?: string): void {
-    const payload: UICancelTaskData = { task_id: taskId };
+  public cancelUIJobGroup(jobId: string, reason?: string): void {
+    const payload: UICancelJobGroupData = { job_id: jobId };
     if (reason !== undefined) payload.reason = reason;
-    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload));
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_JOB_GROUP, payload));
   }
 
   /**
@@ -1185,10 +1185,10 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.UICommand, data);
         break;
       }
-      case RTVIMessageType.UI_TASK: {
-        const data = ev.data as UITaskData;
-        this._options.callbacks?.onUITask?.(data);
-        this.emit(RTVIEvent.UITask, data);
+      case RTVIMessageType.UI_JOB_GROUP: {
+        const data = ev.data as UIJobGroupData;
+        this._options.callbacks?.onUIJobGroup?.(data);
+        this.emit(RTVIEvent.UIJobGroup, data);
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {

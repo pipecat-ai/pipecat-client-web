@@ -120,18 +120,18 @@ export interface SelectTextPayload {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Task lifecycle protocol
+// Job lifecycle protocol
 // ---------------------------------------------------------------------------
 
 /**
- * Status of a worker within a task group.
+ * Status of a worker within a job group.
  *
- * Mirrors `pipecat_subagents.agents.task_context.TaskStatus`. Tasks
- * are surfaced to the client as `"running"` from the moment the
+ * Mirrors the server's `pipecat.pipeline.job_context.JobStatus`.
+ * Jobs are surfaced to the client as `"running"` from the moment the
  * group_started envelope arrives. The terminal status is set when
- * `task_completed` arrives.
+ * `job_completed` arrives.
  */
-export type TaskStatus =
+export type JobStatus =
   | "running"
   | "completed"
   | "cancelled"
@@ -139,24 +139,24 @@ export type TaskStatus =
   | "error";
 
 /** Group dispatched: the worker list is now known. */
-export interface UITaskGroupStartedEnvelope {
+export interface UIJobGroupStartedEnvelope {
   kind: "group_started";
-  /** Shared identifier for every task in the group. */
-  task_id: string;
+  /** Shared identifier for every job in the group. */
+  job_id: string;
   /** Worker agent names in dispatch order. */
   agents: string[];
   /** Optional human-readable label set by the server. */
   label?: string | null;
-  /** Whether the client may request cancellation via `cancelTask`. */
+  /** Whether the client may request cancellation via `cancelUIJobGroup`. */
   cancellable: boolean;
   /** Epoch ms when the group started. */
   at: number;
 }
 
-/** Per-worker progress: `data` is whatever the worker passed to `send_task_update`. */
-export interface UITaskUpdateEnvelope {
-  kind: "task_update";
-  task_id: string;
+/** Per-worker progress: `data` is whatever the worker passed to `send_job_update`. */
+export interface UIJobUpdateEnvelope {
+  kind: "job_update";
+  job_id: string;
   /** The worker that produced this update. */
   agent_name: string;
   /** Worker-defined payload. Forwarded verbatim. */
@@ -165,40 +165,40 @@ export interface UITaskUpdateEnvelope {
 }
 
 /** Per-worker terminal: status + final response. */
-export interface UITaskCompletedEnvelope {
-  kind: "task_completed";
-  task_id: string;
+export interface UIJobCompletedEnvelope {
+  kind: "job_completed";
+  job_id: string;
   agent_name: string;
-  status: TaskStatus;
+  status: JobStatus;
   /** Worker's final response payload. */
   response?: unknown;
   at: number;
 }
 
 /** Group terminal: every worker has responded (or the group was cancelled). */
-export interface UITaskGroupCompletedEnvelope {
+export interface UIJobGroupCompletedEnvelope {
   kind: "group_completed";
-  task_id: string;
+  job_id: string;
   at: number;
 }
 
-/** Discriminated union of every `ui.task` envelope kind. */
-export type UITaskEnvelope =
-  | UITaskGroupStartedEnvelope
-  | UITaskUpdateEnvelope
-  | UITaskCompletedEnvelope
-  | UITaskGroupCompletedEnvelope;
+/** Discriminated union of every `ui-job-group` envelope kind. */
+export type UIJobGroupEnvelope =
+  | UIJobGroupStartedEnvelope
+  | UIJobUpdateEnvelope
+  | UIJobCompletedEnvelope
+  | UIJobGroupCompletedEnvelope;
 
 /**
- * Signature for a UI task lifecycle listener.
+ * Signature for a UI job-group lifecycle listener.
  *
- * Receives every `ui.task` envelope in arrival order. Switch on
+ * Receives every `ui-job-group` envelope in arrival order. Switch on
  * `envelope.kind` to react to specific lifecycle phases. The React
- * `useUITasks` hook is the recommended consumer for app code; this
+ * `useUIJobGroups` hook is the recommended consumer for app code; this
  * lower-level listener is for hosts that want to drive their own
  * state.
  */
-export type UITaskListener = (envelope: UITaskEnvelope) => void;
+export type UIJobGroupListener = (envelope: UIJobGroupEnvelope) => void;
 
 /**
  * One node in the accessibility snapshot tree.

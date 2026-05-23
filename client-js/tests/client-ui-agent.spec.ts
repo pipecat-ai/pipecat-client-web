@@ -19,7 +19,7 @@ import {
   RTVIMessage,
   RTVIMessageType,
   type UICommandData,
-  type UITaskData,
+  type UIJobGroupData,
 } from "./../rtvi";
 import { TransportStub } from "./stubs/transport";
 
@@ -199,17 +199,17 @@ describe("PipecatClient UI inbound events", () => {
     command: "toast",
     payload: { title: "Hi" },
   };
-  const groupStarted: UITaskData = {
+  const groupStarted: UIJobGroupData = {
     kind: "group_started",
-    task_id: "t1",
+    job_id: "t1",
     agents: ["w1", "w2"],
     label: "Doing stuff",
     cancellable: true,
     at: 1700,
   };
-  const taskUpdate: UITaskData = {
-    kind: "task_update",
-    task_id: "t1",
+  const jobUpdate: UIJobGroupData = {
+    kind: "job_update",
+    job_id: "t1",
     agent_name: "w1",
     data: { kind: "tool_call", tool: "WebSearch" },
     at: 1701,
@@ -235,57 +235,57 @@ describe("PipecatClient UI inbound events", () => {
     expect(event).toHaveBeenCalledWith(command);
   });
 
-  it("fires onUITask callbacks and RTVIEvent.UITask events", () => {
+  it("fires onUIJobGroup callbacks and RTVIEvent.UIJobGroup events", () => {
     const callback = jest.fn();
     const event = jest.fn();
     const client = new PipecatClient({
       transport: TransportStub.create(),
-      callbacks: { onUITask: callback },
+      callbacks: { onUIJobGroup: callback },
     });
 
-    client.on(RTVIEvent.UITask, event);
-    for (const data of [groupStarted, taskUpdate]) {
+    client.on(RTVIEvent.UIJobGroup, event);
+    for (const data of [groupStarted, jobUpdate]) {
       (client.transport as TransportStub).handleMessage({
         id: "123",
         label: "rtvi-ai",
-        type: RTVIMessageType.UI_TASK,
+        type: RTVIMessageType.UI_JOB_GROUP,
         data,
       } as RTVIMessage);
     }
 
     expect(callback.mock.calls.map((c) => c[0])).toEqual([
       groupStarted,
-      taskUpdate,
+      jobUpdate,
     ]);
     expect(event.mock.calls.map((c) => c[0])).toEqual([
       groupStarted,
-      taskUpdate,
+      jobUpdate,
     ]);
   });
 });
 
-describe("PipecatClient.cancelUITask", () => {
-  it("sends a first-class ui-cancel-task RTVI message with task_id", () => {
+describe("PipecatClient.cancelUIJobGroup", () => {
+  it("sends a first-class ui-cancel-job-group RTVI message with job_id", () => {
     const client = makeMockPipecatClient();
 
-    client.cancelUITask("t1");
+    client.cancelUIJobGroup("t1");
 
     expectSentMessage(
       client,
-      RTVIMessageType.UI_CANCEL_TASK,
-      { task_id: "t1" },
+      RTVIMessageType.UI_CANCEL_JOB_GROUP,
+      { job_id: "t1" },
     );
   });
 
   it("includes reason when provided", () => {
     const client = makeMockPipecatClient();
 
-    client.cancelUITask("t1", "user clicked cancel");
+    client.cancelUIJobGroup("t1", "user clicked cancel");
 
     expectSentMessage(
       client,
-      RTVIMessageType.UI_CANCEL_TASK,
-      { task_id: "t1", reason: "user clicked cancel" },
+      RTVIMessageType.UI_CANCEL_JOB_GROUP,
+      { job_id: "t1", reason: "user clicked cancel" },
     );
   });
 });
