@@ -16,8 +16,8 @@ export interface JobUpdate {
 
 /** One worker's view of a job within a group. */
 export interface Job {
-  /** The worker agent that owns this slot. */
-  agentName: string;
+  /** The worker that owns this slot. */
+  workerName: string;
   /**
    * `"running"` until a `job_completed` envelope arrives, then the
    * terminal status from the server.
@@ -39,7 +39,7 @@ export interface Job {
  *
  * Group identity is the shared `jobId` (the server-side
  * job-group id). Per-worker identity within a group is
- * `agentName`.
+ * `workerName`.
  */
 export interface JobGroup {
   /** Shared identifier for every worker in the group. */

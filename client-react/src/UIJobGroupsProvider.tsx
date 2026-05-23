@@ -68,8 +68,8 @@ function uiJobGroupReducer(state: State, env: UIJobGroupData): State {
           cancellable: env.cancellable,
           startedAt: env.at,
           status: "running",
-          jobs: env.agents.map((agentName) => ({
-            agentName,
+          jobs: env.workers.map((workerName) => ({
+            workerName,
             status: "running",
             startedAt: env.at,
             updates: [],
@@ -83,7 +83,7 @@ function uiJobGroupReducer(state: State, env: UIJobGroupData): State {
           : {
               ...g,
               jobs: g.jobs.map((t) =>
-                t.agentName !== env.agent_name
+                t.workerName !== env.worker_name
                   ? t
                   : {
                       ...t,
@@ -99,7 +99,7 @@ function uiJobGroupReducer(state: State, env: UIJobGroupData): State {
           : {
               ...g,
               jobs: g.jobs.map((t) =>
-                t.agentName !== env.agent_name
+                t.workerName !== env.worker_name
                   ? t
                   : {
                       ...t,

@@ -43,7 +43,7 @@ function makeMockPipecatClient() {
 const groupStarted: UIJobGroupData = {
   kind: "group_started",
   job_id: "t1",
-  agents: ["w1", "w2"],
+  workers: ["w1", "w2"],
   label: "Doing stuff",
   cancellable: true,
   at: 1700,
@@ -51,14 +51,14 @@ const groupStarted: UIJobGroupData = {
 const w1Update: UIJobGroupData = {
   kind: "job_update",
   job_id: "t1",
-  agent_name: "w1",
+  worker_name: "w1",
   data: { kind: "tool_call", tool: "WebSearch" },
   at: 1701,
 };
 const w1Completed: UIJobGroupData = {
   kind: "job_completed",
   job_id: "t1",
-  agent_name: "w1",
+  worker_name: "w1",
   status: "completed",
   response: { ok: true },
   at: 1702,
@@ -66,7 +66,7 @@ const w1Completed: UIJobGroupData = {
 const w2Completed: UIJobGroupData = {
   kind: "job_completed",
   job_id: "t1",
-  agent_name: "w2",
+  worker_name: "w2",
   status: "completed",
   response: { ok: true },
   at: 1703,
@@ -135,7 +135,7 @@ describe("useUIJobGroups reducer", () => {
     expect(g.startedAt).toBe(1700);
     expect(g.completedAt).toBeUndefined();
     expect(g.status).toBe("running");
-    expect(g.jobs.map((t) => t.agentName)).toEqual(["w1", "w2"]);
+    expect(g.jobs.map((t) => t.workerName)).toEqual(["w1", "w2"]);
     expect(g.jobs.every((t) => t.status === "running")).toBe(true);
     expect(g.jobs.every((t) => t.updates.length === 0)).toBe(true);
   });
@@ -154,13 +154,13 @@ describe("useUIJobGroups reducer", () => {
       });
     });
 
-    const w1 = getApi().groups[0].jobs.find((t) => t.agentName === "w1")!;
+    const w1 = getApi().groups[0].jobs.find((t) => t.workerName === "w1")!;
     expect(w1.updates).toEqual([
       { at: 1701, data: { kind: "tool_call", tool: "WebSearch" } },
       { at: 1702, data: { kind: "tool_call", tool: "WebFetch" } },
     ]);
     // The other worker is untouched.
-    const w2 = getApi().groups[0].jobs.find((t) => t.agentName === "w2")!;
+    const w2 = getApi().groups[0].jobs.find((t) => t.workerName === "w2")!;
     expect(w2.updates).toEqual([]);
   });
 
@@ -173,7 +173,7 @@ describe("useUIJobGroups reducer", () => {
       pipecat.emit(w1Completed);
     });
 
-    const w1 = getApi().groups[0].jobs.find((t) => t.agentName === "w1")!;
+    const w1 = getApi().groups[0].jobs.find((t) => t.workerName === "w1")!;
     expect(w1.status).toBe("completed");
     expect(w1.completedAt).toBe(1702);
     expect(w1.response).toEqual({ ok: true });
@@ -211,7 +211,7 @@ describe("useUIJobGroups reducer", () => {
     const g = getApi().groups[0];
     expect(g.status).toBe("running");
     expect(g.completedAt).toBe(1704);
-    expect(g.jobs.find((t) => t.agentName === "w2")!.status).toBe("running");
+    expect(g.jobs.find((t) => t.workerName === "w2")!.status).toBe("running");
   });
 
   it("aggregates to error when any worker errored", () => {
