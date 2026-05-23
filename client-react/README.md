@@ -42,15 +42,15 @@ const MyApp = () => {
 };
 ```
 
-## UI Agent Protocol (v1)
+## UI Worker Protocol (v1)
 
-React bindings for the UI Agent Protocol shipped in [`@pipecat-ai/client-js`](../client-js/), paired with the `UIAgent` class in [`pipecat-subagents`](https://github.com/pipecat-ai/pipecat-subagents) on the Python side. Lets a server-side agent observe and drive your React app through a structured wire format.
+React bindings for the UI Worker Protocol shipped in [`@pipecat-ai/client-js`](../client-js/), paired with the `UIWorker` class in [Pipecat](https://github.com/pipecat-ai/pipecat) on the Python side. Lets a server-side worker observe and drive your React app through a structured wire format.
 
 ```tsx
 import { PipecatClient } from "@pipecat-ai/client-js";
 import {
   PipecatClientProvider,
-  UITasksProvider,
+  UIJobGroupsProvider,
   useUISnapshot,
   useDefaultScrollToHandler,
   useDefaultHighlightHandler,
@@ -60,7 +60,7 @@ import {
 const client = new PipecatClient({ transport: myTransport });
 
 function App() {
-  // Stream accessibility snapshots so the server agent sees what's on screen.
+  // Stream accessibility snapshots so the server-side worker sees what's on screen.
   useUISnapshot();
   // Wire the default handlers for "scroll to" and "highlight" commands.
   useDefaultScrollToHandler();
@@ -72,17 +72,17 @@ function App() {
 
 render(
   <PipecatClientProvider client={client}>
-    <UITasksProvider>
+    <UIJobGroupsProvider>
       <App />
-    </UITasksProvider>
+    </UIJobGroupsProvider>
   </PipecatClientProvider>
 );
 ```
 
 What's exposed:
 
-- **`UITasksProvider`** + **`useUITasks()`**: subscribes to `ui-task` envelopes for long-running fan-out work; gives you per-task progress and cancel.
-- **Hooks**: `useUIEventSender`, `useUICommandHandler`, `useUITasks`, `useUISnapshot`.
+- **`UIJobGroupsProvider`** + **`useUIJobGroups()`**: subscribes to `ui-job-group` envelopes for long-running fan-out work; gives you per-worker progress and cancel.
+- **Hooks**: `useUIEventSender`, `useUICommandHandler`, `useUIJobGroups`, `useUISnapshot`.
 - **Default UI command handlers** (opt-in DOM defaults): `useDefaultScrollToHandler`, `useDefaultHighlightHandler`, `useDefaultSelectTextHandler`, `useDefaultSetInputValueHandler`, `useDefaultClickHandler`, `useDefaultFocusHandler`, plus the `useDefaultUICommandHandlers` bundle.
 
 Form controls follow browser interaction semantics: text inputs, textareas, and native `<select>` elements use `set_input_value`; checkboxes and radios use `click`.
