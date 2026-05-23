@@ -41,7 +41,7 @@ export enum RTVIEvent {
   ServerResponse = "serverResponse",
   MessageError = "messageError",
 
-  /** UI Agent Protocol */
+  /** UI Worker Protocol */
   UICommand = "uiCommand",
   UIJobGroup = "uiJobGroup",
 
@@ -127,7 +127,7 @@ export type RTVIEvents = Partial<{
   serverResponse: (data: any) => void;
   messageError: (message: RTVIMessage) => void;
 
-  /** UI Agent Protocol */
+  /** UI Worker Protocol */
   uiCommand: (data: UICommandData) => void;
   uiJobGroup: (data: UIJobGroupData) => void;
 

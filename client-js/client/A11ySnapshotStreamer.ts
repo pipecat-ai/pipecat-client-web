@@ -37,7 +37,7 @@ export interface A11ySnapshotStreamerOptions {
   /**
    * When `true`, log each emitted snapshot to the browser console
    * (node count, rough token estimate, raw tree). Mirrors the
-   * server's `log_snapshots` flag on `UIAgent`.
+   * server's `log_snapshots` flag on `UIWorker`.
    *
    * @default false
    */

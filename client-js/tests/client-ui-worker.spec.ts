@@ -202,7 +202,7 @@ describe("PipecatClient UI inbound events", () => {
   const groupStarted: UIJobGroupData = {
     kind: "group_started",
     job_id: "t1",
-    agents: ["w1", "w2"],
+    workers: ["w1", "w2"],
     label: "Doing stuff",
     cancellable: true,
     at: 1700,
@@ -210,7 +210,7 @@ describe("PipecatClient UI inbound events", () => {
   const jobUpdate: UIJobGroupData = {
     kind: "job_update",
     job_id: "t1",
-    agent_name: "w1",
+    worker_name: "w1",
     data: { kind: "tool_call", tool: "WebSearch" },
     at: 1701,
   };
