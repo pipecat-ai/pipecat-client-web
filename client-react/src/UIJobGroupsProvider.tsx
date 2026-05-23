@@ -4,23 +4,23 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIEvent, type UITaskData } from "@pipecat-ai/client-js";
+import { RTVIEvent, type UIJobGroupData } from "@pipecat-ai/client-js";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 
-import { UITasksContext } from "./UITasksContext";
-import type { Task, TaskGroup, UITasksAPI } from "./uiTasksTypes";
+import { UIJobGroupsContext } from "./UIJobGroupsContext";
+import type { Job, JobGroup, UIJobGroupsAPI } from "./uiJobGroupsTypes";
 import { usePipecatClient } from "./usePipecatClient";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 
-type State = TaskGroup[];
+type State = JobGroup[];
 
 type Action =
-  | { type: "ui_task"; env: UITaskData; maxGroups?: number }
-  | { type: "dismiss_task"; taskId: string }
+  | { type: "ui_job_group"; env: UIJobGroupData; maxGroups?: number }
+  | { type: "dismiss_job_group"; jobId: string }
   | { type: "clear_completed" }
   | { type: "prune"; maxGroups?: number };
 
-export interface UITasksProviderProps extends React.PropsWithChildren {
+export interface UIJobGroupsProviderProps extends React.PropsWithChildren {
   /**
    * Maximum number of groups to retain. When exceeded, oldest
    * non-running groups are dropped first; running groups are never
@@ -29,11 +29,11 @@ export interface UITasksProviderProps extends React.PropsWithChildren {
   maxGroups?: number;
 }
 
-function aggregateStatus(tasks: Task[]): TaskGroup["status"] {
-  if (tasks.some((t) => t.status === "error" || t.status === "failed"))
+function aggregateStatus(jobs: Job[]): JobGroup["status"] {
+  if (jobs.some((t) => t.status === "error" || t.status === "failed"))
     return "error";
-  if (tasks.some((t) => t.status === "cancelled")) return "cancelled";
-  if (tasks.some((t) => t.status === "running")) return "running";
+  if (jobs.some((t) => t.status === "cancelled")) return "cancelled";
+  if (jobs.some((t) => t.status === "running")) return "running";
   return "completed";
 }
 
@@ -54,21 +54,21 @@ function applyMaxGroups(state: State, maxGroups?: number): State {
   return next;
 }
 
-function uiTaskReducer(state: State, env: UITaskData): State {
+function uiJobGroupReducer(state: State, env: UIJobGroupData): State {
   switch (env.kind) {
     case "group_started":
-      // Defensive: replace any prior group with the same task_id.
-      // task_ids are uuids on the server so a real collision is
+      // Defensive: replace any prior group with the same job_id.
+      // job_ids are uuids on the server so a real collision is
       // unexpected; this just keeps the reducer total.
       return [
-        ...state.filter((g) => g.taskId !== env.task_id),
+        ...state.filter((g) => g.jobId !== env.job_id),
         {
-          taskId: env.task_id,
+          jobId: env.job_id,
           label: env.label ?? null,
           cancellable: env.cancellable,
           startedAt: env.at,
           status: "running",
-          tasks: env.agents.map((agentName) => ({
+          jobs: env.agents.map((agentName) => ({
             agentName,
             status: "running",
             startedAt: env.at,
@@ -76,13 +76,13 @@ function uiTaskReducer(state: State, env: UITaskData): State {
           })),
         },
       ];
-    case "task_update":
+    case "job_update":
       return state.map((g) =>
-        g.taskId !== env.task_id
+        g.jobId !== env.job_id
           ? g
           : {
               ...g,
-              tasks: g.tasks.map((t) =>
+              jobs: g.jobs.map((t) =>
                 t.agentName !== env.agent_name
                   ? t
                   : {
@@ -92,13 +92,13 @@ function uiTaskReducer(state: State, env: UITaskData): State {
               ),
             },
       );
-    case "task_completed":
+    case "job_completed":
       return state.map((g) =>
-        g.taskId !== env.task_id
+        g.jobId !== env.job_id
           ? g
           : {
               ...g,
-              tasks: g.tasks.map((t) =>
+              jobs: g.jobs.map((t) =>
                 t.agentName !== env.agent_name
                   ? t
                   : {
@@ -112,12 +112,12 @@ function uiTaskReducer(state: State, env: UITaskData): State {
       );
     case "group_completed":
       return state.map((g) =>
-        g.taskId !== env.task_id
+        g.jobId !== env.job_id
           ? g
           : {
               ...g,
               completedAt: env.at,
-              status: aggregateStatus(g.tasks),
+              status: aggregateStatus(g.jobs),
             },
       );
   }
@@ -125,12 +125,12 @@ function uiTaskReducer(state: State, env: UITaskData): State {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case "ui_task":
-      return applyMaxGroups(uiTaskReducer(state, action.env), action.maxGroups);
-    case "dismiss_task":
+    case "ui_job_group":
+      return applyMaxGroups(uiJobGroupReducer(state, action.env), action.maxGroups);
+    case "dismiss_job_group":
       return state.filter(
         (group) =>
-          group.taskId !== action.taskId || group.status === "running",
+          group.jobId !== action.jobId || group.status === "running",
       );
     case "clear_completed":
       return state.filter((group) => group.status === "running");
@@ -140,18 +140,18 @@ function reducer(state: State, action: Action): State {
 }
 
 /**
- * Provides a structured view of every user task group dispatched
- * by the server, derived from `ui-task` envelopes.
+ * Provides a structured view of every user job group dispatched
+ * by the server, derived from `ui-job-group` envelopes.
  *
  * Mount this somewhere under `PipecatClientProvider`. Children call
- * `useUITasks()` to read the current groups and to issue
+ * `useUIJobGroups()` to read the current groups and to issue
  * cancellation requests.
  *
- * Mounting is opt-in: apps that don't surface task progress don't
+ * Mounting is opt-in: apps that don't surface job progress don't
  * pay the reducer cost. The provider holds a single reducer; its
- * cost scales with the number of `ui.task` envelopes received.
+ * cost scales with the number of `ui-job-group` envelopes received.
  */
-export const UITasksProvider: React.FC<UITasksProviderProps> = ({
+export const UIJobGroupsProvider: React.FC<UIJobGroupsProviderProps> = ({
   children,
   maxGroups,
 }) => {
@@ -163,40 +163,40 @@ export const UITasksProvider: React.FC<UITasksProviderProps> = ({
   }, [maxGroups]);
 
   useRTVIClientEvent(
-    RTVIEvent.UITask,
+    RTVIEvent.UIJobGroup,
     useCallback(
-      (env: UITaskData) => dispatch({ type: "ui_task", env, maxGroups }),
+      (env: UIJobGroupData) => dispatch({ type: "ui_job_group", env, maxGroups }),
       [maxGroups],
     ),
   );
 
-  const cancelTask = useCallback(
-    (taskId: string, reason?: string) => {
-      client?.cancelUITask(taskId, reason);
+  const cancelJobGroup = useCallback(
+    (jobId: string, reason?: string) => {
+      client?.cancelUIJobGroup(jobId, reason);
     },
     [client],
   );
 
-  const dismissTask = useCallback((taskId: string) => {
-    dispatch({ type: "dismiss_task", taskId });
+  const dismissJobGroup = useCallback((jobId: string) => {
+    dispatch({ type: "dismiss_job_group", jobId });
   }, []);
 
   const clearCompleted = useCallback(() => {
     dispatch({ type: "clear_completed" });
   }, []);
 
-  const value = useMemo<UITasksAPI>(
+  const value = useMemo<UIJobGroupsAPI>(
     () => ({
       groups,
-      cancelTask,
-      dismissTask,
+      cancelJobGroup,
+      dismissJobGroup,
       clearCompleted,
     }),
-    [groups, cancelTask, dismissTask, clearCompleted],
+    [groups, cancelJobGroup, dismissJobGroup, clearCompleted],
   );
 
   return (
-    <UITasksContext.Provider value={value}>{children}</UITasksContext.Provider>
+    <UIJobGroupsContext.Provider value={value}>{children}</UIJobGroupsContext.Provider>
   );
 };
-UITasksProvider.displayName = "UITasksProvider";
+UIJobGroupsProvider.displayName = "UIJobGroupsProvider";

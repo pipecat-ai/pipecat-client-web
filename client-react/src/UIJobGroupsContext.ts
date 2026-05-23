@@ -6,20 +6,20 @@
 
 import { createContext } from "react";
 
-import type { UITasksAPI } from "./uiTasksTypes";
+import type { UIJobGroupsAPI } from "./uiJobGroupsTypes";
 
-const NO_OP_API: UITasksAPI = {
+const NO_OP_API: UIJobGroupsAPI = {
   groups: [],
-  cancelTask: () => {},
-  dismissTask: () => {},
+  cancelJobGroup: () => {},
+  dismissJobGroup: () => {},
   clearCompleted: () => {},
 };
 
 /**
- * Context populated by `UITasksProvider`.
+ * Context populated by `UIJobGroupsProvider`.
  *
  * When the provider isn't mounted, the default value is a stable
  * empty-state object so consumers can render without conditional
  * checks.
  */
-export const UITasksContext = createContext<UITasksAPI>(NO_OP_API);
+export const UIJobGroupsContext = createContext<UIJobGroupsAPI>(NO_OP_API);
