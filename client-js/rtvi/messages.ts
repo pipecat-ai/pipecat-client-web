@@ -61,6 +61,7 @@ export enum RTVIMessageType {
 
   USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
   BOT_OUTPUT = "bot-output", // A best effort aggregation of all bot output along with metadata like if it's spoken
+  BOT_OUTPUT_PROGRESS = "bot-output-progress", // Word-level TTS progress within a spoken segment
   // DEPRECATED
   BOT_TRANSCRIPTION = "bot-transcription", // Bot full text transcription (sentence aggregated)
 
@@ -147,6 +148,13 @@ export type BotOutputData = {
   text: string;
   spoken: boolean;
   aggregated_by?: AggregationType | string;
+  segment_id?: number;
+};
+
+export type BotOutputProgressData = {
+  segment_id: number;
+  accumulated_text: string;
+  remaining_text: string;
 };
 
 export type BotLLMTextData = {

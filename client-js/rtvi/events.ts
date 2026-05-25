@@ -10,6 +10,7 @@ import {
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
+  BotOutputProgressData,
   BotReadyData,
   BotTTSTextData,
   LLMFunctionCallData,
@@ -61,6 +62,7 @@ export enum RTVIEvent {
   // stt events
   UserTranscript = "userTranscript",
   BotOutput = "botOutput",
+  BotOutputProgress = "botOutputProgress",
   // DEPRECATED
   BotTranscript = "botTranscript",
 
@@ -147,6 +149,7 @@ export type RTVIEvents = Partial<{
   // stt events
   userTranscript: (data: TranscriptData) => void;
   botOutput: (data: BotOutputData) => void;
+  botOutputProgress: (data: BotOutputProgressData) => void;
   botTranscript: (data: BotLLMTextData) => void;
 
   // llm events

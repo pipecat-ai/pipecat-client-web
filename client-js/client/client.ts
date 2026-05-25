@@ -13,6 +13,7 @@ import {
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
+  BotOutputProgressData,
   BotReadyData,
   BotTTSTextData,
   ClientMessageData,
@@ -150,6 +151,7 @@ export type RTVIEventCallbacks = Partial<{
   onUserMuteStopped: () => void;
   onUserTranscript: (data: TranscriptData) => void;
   onBotOutput: (data: BotOutputData) => void;
+  onBotOutputProgress: (data: BotOutputProgressData) => void;
   /** @deprecated Use onBotOutput instead */
   onBotTranscript: (data: BotLLMTextData) => void;
 
@@ -411,6 +413,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotOutput: (data) => {
         options?.callbacks?.onBotOutput?.(data);
         this.emit(RTVIEvent.BotOutput, data);
+      },
+      onBotOutputProgress: (data) => {
+        options?.callbacks?.onBotOutputProgress?.(data);
+        this.emit(RTVIEvent.BotOutputProgress, data);
       },
       onBotTranscript: (text) => {
         const hasSubscriber =
@@ -1146,6 +1152,12 @@ export class PipecatClient extends RTVIEventEmitter {
       }
       case RTVIMessageType.BOT_OUTPUT: {
         this._options.callbacks?.onBotOutput?.(ev.data as BotOutputData);
+        break;
+      }
+      case RTVIMessageType.BOT_OUTPUT_PROGRESS: {
+        this._options.callbacks?.onBotOutputProgress?.(
+          ev.data as BotOutputProgressData
+        );
         break;
       }
       case RTVIMessageType.BOT_TRANSCRIPTION: {
