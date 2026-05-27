@@ -39,7 +39,6 @@
     "@jest/globals": "^29.7.0",
     "@types/clone-deep": "^4.0.4",
     "@types/jest": "^29.5.12",
-    "@types/uuid": "^10.0.0",
     "eslint": "^9.11.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
@@ -54,6 +53,6 @@
     "clone-deep": "^4.0.1",
     "events": "^3.3.0",
     "typed-emitter": "^2.1.0",
-    "uuid": "^10.0.0"
+    "uuid": "^11.1.1"
   }
 }
