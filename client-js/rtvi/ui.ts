@@ -5,7 +5,8 @@
  */
 
 // ---------------------------------------------------------------------------
-// Built-in command payload types (mirror pipecat_subagents.agents.ui_commands)
+// Built-in command payload types (mirror the server's UI command models
+// in `pipecat.processors.frameworks.rtvi.models`)
 // ---------------------------------------------------------------------------
 
 /** Payload for the built-in `toast` command. */
@@ -77,7 +78,7 @@ export interface ClickPayload {
  * Asks the client to write `value` into a text input, textarea, or
  * native `<select>`. The default handler refuses to write into
  * `disabled`, `readonly`, or `<input type="hidden">` targets so the
- * agent can't bypass UI affordances the user is meant to control.
+ * worker can't bypass UI affordances the user is meant to control.
  *
  * For text inputs and textareas, `replace: false` appends the value
  * to whatever is already in the field; the default replaces. The
@@ -95,9 +96,9 @@ export interface SetInputValuePayload {
 /**
  * Payload for the built-in `select_text` command.
  *
- * Mirror of the read-side {@link A11ySelection}: the agent asks the
+ * Mirror of the read-side {@link A11ySelection}: the worker asks the
  * client to make a text selection on the page so the user can see
- * what content the agent is referring to. With `start_offset` /
+ * what content the worker is referring to. With `start_offset` /
  * `end_offset` omitted, the entire target's text is selected.
  *
  * Document elements use a `Range` over descendant text nodes and the
@@ -120,18 +121,18 @@ export interface SelectTextPayload {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Task lifecycle protocol
+// Job lifecycle protocol
 // ---------------------------------------------------------------------------
 
 /**
- * Status of a worker within a task group.
+ * Status of a worker within a job group.
  *
- * Mirrors `pipecat_subagents.agents.task_context.TaskStatus`. Tasks
- * are surfaced to the client as `"running"` from the moment the
+ * Mirrors the server's `pipecat.pipeline.job_context.JobStatus`.
+ * Jobs are surfaced to the client as `"running"` from the moment the
  * group_started envelope arrives. The terminal status is set when
- * `task_completed` arrives.
+ * `job_completed` arrives.
  */
-export type TaskStatus =
+export type JobStatus =
   | "running"
   | "completed"
   | "cancelled"
@@ -139,66 +140,66 @@ export type TaskStatus =
   | "error";
 
 /** Group dispatched: the worker list is now known. */
-export interface UITaskGroupStartedEnvelope {
+export interface UIJobGroupStartedEnvelope {
   kind: "group_started";
-  /** Shared identifier for every task in the group. */
-  task_id: string;
-  /** Worker agent names in dispatch order. */
-  agents: string[];
+  /** Shared identifier for every job in the group. */
+  job_id: string;
+  /** Worker names in dispatch order. */
+  workers: string[];
   /** Optional human-readable label set by the server. */
   label?: string | null;
-  /** Whether the client may request cancellation via `cancelTask`. */
+  /** Whether the client may request cancellation via `cancelUIJobGroup`. */
   cancellable: boolean;
   /** Epoch ms when the group started. */
   at: number;
 }
 
-/** Per-worker progress: `data` is whatever the worker passed to `send_task_update`. */
-export interface UITaskUpdateEnvelope {
-  kind: "task_update";
-  task_id: string;
+/** Per-worker progress: `data` is whatever the worker passed to `send_job_update`. */
+export interface UIJobUpdateEnvelope {
+  kind: "job_update";
+  job_id: string;
   /** The worker that produced this update. */
-  agent_name: string;
+  worker_name: string;
   /** Worker-defined payload. Forwarded verbatim. */
   data: unknown;
   at: number;
 }
 
 /** Per-worker terminal: status + final response. */
-export interface UITaskCompletedEnvelope {
-  kind: "task_completed";
-  task_id: string;
-  agent_name: string;
-  status: TaskStatus;
+export interface UIJobCompletedEnvelope {
+  kind: "job_completed";
+  job_id: string;
+  worker_name: string;
+  status: JobStatus;
   /** Worker's final response payload. */
   response?: unknown;
   at: number;
 }
 
 /** Group terminal: every worker has responded (or the group was cancelled). */
-export interface UITaskGroupCompletedEnvelope {
+export interface UIJobGroupCompletedEnvelope {
   kind: "group_completed";
-  task_id: string;
+  job_id: string;
   at: number;
 }
 
-/** Discriminated union of every `ui.task` envelope kind. */
-export type UITaskEnvelope =
-  | UITaskGroupStartedEnvelope
-  | UITaskUpdateEnvelope
-  | UITaskCompletedEnvelope
-  | UITaskGroupCompletedEnvelope;
+/** Discriminated union of every `ui-job-group` envelope kind. */
+export type UIJobGroupEnvelope =
+  | UIJobGroupStartedEnvelope
+  | UIJobUpdateEnvelope
+  | UIJobCompletedEnvelope
+  | UIJobGroupCompletedEnvelope;
 
 /**
- * Signature for a UI task lifecycle listener.
+ * Signature for a UI job-group lifecycle listener.
  *
- * Receives every `ui.task` envelope in arrival order. Switch on
+ * Receives every `ui-job-group` envelope in arrival order. Switch on
  * `envelope.kind` to react to specific lifecycle phases. The React
- * `useUITasks` hook is the recommended consumer for app code; this
+ * `useUIJobGroups` hook is the recommended consumer for app code; this
  * lower-level listener is for hosts that want to drive their own
  * state.
  */
-export type UITaskListener = (envelope: UITaskEnvelope) => void;
+export type UIJobGroupListener = (envelope: UIJobGroupEnvelope) => void;
 
 /**
  * One node in the accessibility snapshot tree.
@@ -209,7 +210,7 @@ export type UITaskListener = (envelope: UITaskEnvelope) => void;
  *
  * Stability: this is the v1 wire format. Field names and semantics
  * are versioned via the SDK's package version; consumer servers
- * (e.g. `pipecat-subagents`'s `UIAgent`) track compatible client
+ * (e.g. `pipecat`'s `UIWorker`) track compatible client
  * releases in their own changelogs.
  */
 export interface A11yNode {
@@ -253,7 +254,7 @@ export interface A11yNode {
 /**
  * The user's current text selection, when one exists.
  *
- * Lets the agent ground deictic references like "this paragraph",
+ * Lets the worker ground deictic references like "this paragraph",
  * "what I selected", or "the highlighted text" against actual on-page
  * content rather than re-asking the user to repeat it.
  *
@@ -261,7 +262,7 @@ export interface A11yNode {
  * etc.) carry the closest common-ancestor element's `ref` plus the
  * full selected text. Offsets are not provided for document
  * selections because they would require walking text-node positions
- * inside the ancestor; the agent reasons over the `text` field.
+ * inside the ancestor; the worker reasons over the `text` field.
  *
  * Input/textarea selections do carry `start_offset` and
  * `end_offset` (taken straight from
@@ -299,7 +300,7 @@ export interface A11ySelection {
  * `PipecatClient.startUISnapshotStream(...)` sends snapshots with the
  * message data shape `{ tree: A11ySnapshot }`. A full tree is sent on
  * each update; the server keeps the latest and renders it into
- * `<ui_state>...</ui_state>` when an agent injects it.
+ * `<ui_state>...</ui_state>` when a worker injects it.
  */
 export interface A11ySnapshot {
   /** The root of the accessibility tree (usually `document.body`'s node). */

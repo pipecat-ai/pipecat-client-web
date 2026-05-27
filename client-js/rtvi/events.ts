@@ -20,7 +20,7 @@ import {
   RTVIMessage,
   TranscriptData,
   UICommandData,
-  UITaskData,
+  UIJobGroupData,
 } from "./messages";
 
 export enum RTVIEvent {
@@ -41,9 +41,9 @@ export enum RTVIEvent {
   ServerResponse = "serverResponse",
   MessageError = "messageError",
 
-  /** UI Agent Protocol */
+  /** UI Worker Protocol */
   UICommand = "uiCommand",
-  UITask = "uiTask",
+  UIJobGroup = "uiJobGroup",
 
   /** service events */
   Metrics = "metrics",
@@ -127,9 +127,9 @@ export type RTVIEvents = Partial<{
   serverResponse: (data: any) => void;
   messageError: (message: RTVIMessage) => void;
 
-  /** UI Agent Protocol */
+  /** UI Worker Protocol */
   uiCommand: (data: UICommandData) => void;
-  uiTask: (data: UITaskData) => void;
+  uiJobGroup: (data: UIJobGroupData) => void;
 
   /** service events */
   metrics: (data: PipecatMetricsData) => void;

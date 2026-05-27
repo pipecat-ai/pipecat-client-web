@@ -409,7 +409,7 @@ export interface DefaultSetInputValueOptions {
  *
  * Resolves the target by ref / target_id, refuses on
  * `disabled`, `readonly`, or `<input type="hidden">` (silent
- * no-op so the agent can't bypass UI affordances the user is meant
+ * no-op so the worker can't bypass UI affordances the user is meant
  * to control), then assigns `el.value` and dispatches single-shot
  * `input` and `change` events so React-controlled inputs and
  * vanilla `onChange` listeners pick up the new value naturally.
@@ -483,7 +483,7 @@ export const useDefaultSetInputValueHandler = (
  * Resolves the target by ref / target_id and calls
  * `el.click()`. Refuses on elements that expose a `disabled`
  * property in the truthy state (form controls, `<button>`,
- * `<a>` with `aria-disabled="true"`) so the agent can't bypass
+ * `<a>` with `aria-disabled="true"`) so the worker can't bypass
  * UI affordances the user is meant to control.
  *
  * Use for checkboxes, radios, submit buttons, links, and any

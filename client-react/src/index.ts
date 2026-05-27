@@ -31,8 +31,8 @@ import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
 import { PipecatClientProvider } from "./PipecatClientProvider";
 import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle";
 import { PipecatClientVideo } from "./PipecatClientVideo";
-import { UITasksContext } from "./UITasksContext";
-import { UITasksProvider } from "./UITasksProvider";
+import { UIJobGroupsContext } from "./UIJobGroupsContext";
+import { UIJobGroupsProvider } from "./UIJobGroupsProvider";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
@@ -44,8 +44,8 @@ import { usePipecatConversation } from "./usePipecatConversation";
 import { useRTVIClientEvent } from "./useRTVIClientEvent";
 import { useUICommandHandler } from "./useUICommandHandler";
 import { useUIEventSender } from "./useUIEventSender";
+import { useUIJobGroups } from "./useUIJobGroups";
 import { useUISnapshot } from "./useUISnapshot";
-import { useUITasks } from "./useUITasks";
 import { VoiceVisualizer } from "./VoiceVisualizer";
 
 export {
@@ -61,8 +61,8 @@ export {
   PipecatClientScreenShareToggle,
   PipecatClientVideo,
   sortByCreatedAt,
-  UITasksContext,
-  UITasksProvider,
+  UIJobGroupsContext,
+  UIJobGroupsProvider,
   // Conversation
   useConversationContext,
   useDefaultClickHandler,
@@ -86,18 +86,18 @@ export {
   useToastHandler,
   useUICommandHandler,
   useUIEventSender,
+  useUIJobGroups,
   useUISnapshot,
-  useUITasks,
   VoiceVisualizer,
 };
 
-// UI tasks types
+// UI job-group types
 export type {
-  Task,
-  TaskGroup,
-  TaskUpdate,
-  UITasksAPI,
-} from "./uiTasksTypes";
+  Job,
+  JobGroup,
+  JobUpdate,
+  UIJobGroupsAPI,
+} from "./uiJobGroupsTypes";
 
 // Conversation types
 export type {
@@ -118,6 +118,6 @@ export type {
   DefaultSetInputValueOptions,
   DefaultUICommandHandlerOptions,
 } from "./defaultUICommandHandlers";
-export type { UITasksProviderProps } from "./UITasksProvider";
+export type { UIJobGroupsProviderProps } from "./UIJobGroupsProvider";
 export type { UICommandHandler } from "./useUICommandHandler";
 export type { UseUISnapshotOptions } from "./useUISnapshot";
