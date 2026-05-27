@@ -74,4 +74,4 @@ pcClient.on(RTVIEvent.Disconnected, () => {
 
 ## API
 
-Please see API reference [here](https://docs.pipecat.ai/client/reference/js/introduction).
+Please see API reference [here](https://docs.pipecat.ai/api-reference/client/js/overview).
