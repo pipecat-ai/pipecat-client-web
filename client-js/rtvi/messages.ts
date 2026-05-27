@@ -12,7 +12,7 @@ import {
 } from "../package.json";
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
-export const RTVI_PROTOCOL_VERSION = "1.3.0";
+export const RTVI_PROTOCOL_VERSION = "1.4.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
