@@ -5,6 +5,14 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.5.0...client-react-v1.6.0) (2026-05-27)
+
+
+### Features
+
+* **react:** rename UI agent -&gt; worker; UIAgent -&gt; UIWorker ([ab523cd](https://github.com/pipecat-ai/pipecat-client-web/commit/ab523cd60b70fa9bbdd99d0e8b082f54867c24b1))
+* **react:** rename UI task protocol to job-group ([dc347ab](https://github.com/pipecat-ai/pipecat-client-web/commit/dc347abdaf29819646b8a2ebfd7152561e10d5e4))
+
 ## [1.5.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.4.0...client-react-v1.5.0) (2026-05-15)
 
 
