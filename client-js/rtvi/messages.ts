@@ -153,6 +153,10 @@ export type BotLLMTextData = {
   text: string;
 };
 
+export type UserLLMTextData = {
+  text: string;
+};
+
 export type BotTTSTextData = {
   text: string;
 };

@@ -21,6 +21,7 @@ import {
   TranscriptData,
   UICommandData,
   UIJobGroupData,
+  UserLLMTextData,
 } from "./messages";
 
 export enum RTVIEvent {
@@ -65,6 +66,7 @@ export enum RTVIEvent {
   BotTranscript = "botTranscript",
 
   // llm events
+  UserLlmText = "userLlmText",
   BotLlmText = "botLlmText",
   BotLlmStarted = "botLlmStarted",
   BotLlmStopped = "botLlmStopped",
@@ -150,6 +152,7 @@ export type RTVIEvents = Partial<{
   botTranscript: (data: BotLLMTextData) => void;
 
   // llm events
+  userLlmText: (data: UserLLMTextData) => void;
   botLlmText: (data: BotLLMTextData) => void;
   botLlmStarted: () => void;
   botLlmStopped: () => void;
