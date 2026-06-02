@@ -898,7 +898,6 @@ export class PipecatClient extends RTVIEventEmitter {
     } catch (e) {
       if (e instanceof RTVIErrors.UnsupportedFeatureError) {
         this._options.callbacks?.onUnsupportedFeature?.(e);
-        this.emit(RTVIEvent.UnsupportedFeature, e);
         return {};
       }
       throw e;
@@ -935,7 +934,6 @@ export class PipecatClient extends RTVIEventEmitter {
     } catch (e) {
       if (e instanceof RTVIErrors.UnsupportedFeatureError) {
         this._options.callbacks?.onUnsupportedFeature?.(e);
-        this.emit(RTVIEvent.UnsupportedFeature, e);
       } else {
         throw e;
       }
@@ -956,7 +954,6 @@ export class PipecatClient extends RTVIEventEmitter {
     } catch (e) {
       if (e instanceof RTVIErrors.UnsupportedFeatureError) {
         this._options.callbacks?.onUnsupportedFeature?.(e);
-        this.emit(RTVIEvent.UnsupportedFeature, e);
       } else {
         throw e;
       }
