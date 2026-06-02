@@ -5,7 +5,7 @@
  */
 
 import { MediaState, Participant, TransportState } from "./common_types";
-import { DeviceError } from "./errors";
+import { DeviceError, UnsupportedFeatureError } from "./errors";
 import {
   BotLLMSearchResponseData,
   BotLLMTextData,
@@ -105,6 +105,7 @@ export enum RTVIEvent {
   SpeakerUpdated = "speakerUpdated",
   DeviceError = "deviceError",
   MediaStateUpdated = "mediaStateUpdated",
+  UnsupportedFeature = "unsupportedFeature",
 }
 
 export type RTVIEvents = Partial<{
@@ -190,6 +191,7 @@ export type RTVIEvents = Partial<{
   speakerUpdated: (speaker: MediaDeviceInfo) => void;
   deviceError: (error: DeviceError) => void;
   mediaStateUpdated: (mediaState: MediaState) => void;
+  unsupportedFeature: (error: UnsupportedFeatureError) => void;
 }>;
 
 export type RTVIEventHandler<E extends RTVIEvent> = E extends keyof RTVIEvents

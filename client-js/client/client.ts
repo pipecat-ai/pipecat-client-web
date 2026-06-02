@@ -139,6 +139,7 @@ export type RTVIEventCallbacks = Partial<{
     participant?: Participant
   ) => void;
   onScreenShareError: (errorMessage: string) => void;
+  onUnsupportedFeature: (error: RTVIErrors.UnsupportedFeatureError) => void;
   onLocalAudioLevel: (level: number) => void;
   onRemoteAudioLevel: (level: number, participant: Participant) => void;
 
@@ -313,6 +314,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onScreenShareError: (errorMessage) => {
         options?.callbacks?.onScreenShareError?.(errorMessage);
         this.emit(RTVIEvent.ScreenShareError, errorMessage);
+      },
+      onUnsupportedFeature: (error) => {
+        options?.callbacks?.onUnsupportedFeature?.(error);
+        this.emit(RTVIEvent.UnsupportedFeature, error);
       },
       onAvailableCamsUpdated: (cams) => {
         options?.callbacks?.onAvailableCamsUpdated?.(cams);
@@ -888,7 +893,15 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public get selectedCam() {
-    return this._transport.selectedCam;
+    try {
+      return this._transport.selectedCam;
+    } catch (e) {
+      if (e instanceof RTVIErrors.UnsupportedFeatureError) {
+        this._options.callbacks?.onUnsupportedFeature?.(e);
+        return {};
+      }
+      throw e;
+    }
   }
 
   public get selectedSpeaker() {
@@ -916,7 +929,15 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public enableCam(enable: boolean) {
-    this._transport.enableCam(enable);
+    try {
+      this._transport.enableCam(enable);
+    } catch (e) {
+      if (e instanceof RTVIErrors.UnsupportedFeatureError) {
+        this._options.callbacks?.onUnsupportedFeature?.(e);
+      } else {
+        throw e;
+      }
+    }
   }
 
   public get isCamEnabled(): boolean {
@@ -928,7 +949,15 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public enableScreenShare(enable: boolean) {
-    return this._transport.enableScreenShare(enable);
+    try {
+      return this._transport.enableScreenShare(enable);
+    } catch (e) {
+      if (e instanceof RTVIErrors.UnsupportedFeatureError) {
+        this._options.callbacks?.onUnsupportedFeature?.(e);
+      } else {
+        throw e;
+      }
+    }
   }
 
   public get isSharingScreen(): boolean {
