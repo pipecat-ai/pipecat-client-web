@@ -5,6 +5,13 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.10.0...client-js-v1.11.0) (2026-06-02)
+
+
+### Features
+
+* **js:** new callback for handling unsupported features ([3f38460](https://github.com/pipecat-ai/pipecat-client-web/commit/3f384604a1c3e5d38ba991319df6406a3b044850))
+
 ## [1.10.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.9.1...client-js-v1.10.0) (2026-05-27)
 
 
