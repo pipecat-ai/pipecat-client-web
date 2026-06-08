@@ -13,7 +13,6 @@ import {
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
-  BotOutputProgressData,
   BotReadyData,
   BotTTSTextData,
   ClientMessageData,
@@ -30,6 +29,7 @@ import {
   MediaState,
   Participant,
   PipecatMetricsData,
+  RTVI_PROTOCOL_VERSION,
   RTVIEvent,
   RTVIEvents,
   RTVIMessage,
@@ -152,7 +152,6 @@ export type RTVIEventCallbacks = Partial<{
   onUserMuteStopped: () => void;
   onUserTranscript: (data: TranscriptData) => void;
   onBotOutput: (data: BotOutputData) => void;
-  onBotOutputProgress: (data: BotOutputProgressData) => void;
   /** @deprecated Use onBotOutput instead */
   onBotTranscript: (data: BotLLMTextData) => void;
 
@@ -418,10 +417,6 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotOutput: (data) => {
         options?.callbacks?.onBotOutput?.(data);
         this.emit(RTVIEvent.BotOutput, data);
-      },
-      onBotOutputProgress: (data) => {
-        options?.callbacks?.onBotOutputProgress?.(data);
-        this.emit(RTVIEvent.BotOutputProgress, data);
       },
       onBotTranscript: (text) => {
         const hasSubscriber =
@@ -1135,9 +1130,9 @@ export class PipecatClient extends RTVIEventEmitter {
           ? data.version.split(".").map(Number)
           : [0, 0, 0];
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
-        if (botVersion[0] < 1) {
+        if (botVersion[0] < 2) {
           logger.warn(
-            "[Pipecat Client] Bot version is less than 1.0.0, which may not be compatible with this client."
+            `[Pipecat Client] Bot protocol version ${data.version} is older than this client (${RTVI_PROTOCOL_VERSION}). Compatibility issues may occur.`
           );
         }
         this._connectResolve?.(ev.data as BotReadyData);
@@ -1181,12 +1176,6 @@ export class PipecatClient extends RTVIEventEmitter {
       }
       case RTVIMessageType.BOT_OUTPUT: {
         this._options.callbacks?.onBotOutput?.(ev.data as BotOutputData);
-        break;
-      }
-      case RTVIMessageType.BOT_OUTPUT_PROGRESS: {
-        this._options.callbacks?.onBotOutputProgress?.(
-          ev.data as BotOutputProgressData
-        );
         break;
       }
       case RTVIMessageType.BOT_TRANSCRIPTION: {
