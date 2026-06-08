@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, test } from "@jest/globals";
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
 import { RTVIEvent, RTVIMessage } from "./../rtvi";
-import { MessageTooLargeError } from "./../rtvi/errors";
+import { MessageTooLargeError, UnsupportedFeatureError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
 describe("PipecatClient Methods", () => {
@@ -579,5 +579,165 @@ describe("Message size validation", () => {
     client.sendClientMessage("test", { data: "small payload" });
 
     expect(errors.length).toBe(0);
+  });
+});
+
+describe("UnsupportedFeatureError handling", () => {
+  // Transport stub that throws UnsupportedFeatureError for cam and screen share
+  class UnsupportedTransportStub extends TransportStub {
+    get selectedCam(): MediaDeviceInfo | Record<string, never> {
+      throw new UnsupportedFeatureError(
+        "selectedCam",
+        "UnsupportedTransportStub",
+        "Not implemented"
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    enableCam(enable: boolean): void {
+      throw new UnsupportedFeatureError(
+        "enableCam",
+        "UnsupportedTransportStub",
+        "Not implemented"
+      );
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    enableScreenShare(enable: boolean): void {
+      throw new UnsupportedFeatureError(
+        "enableScreenShare",
+        "UnsupportedTransportStub",
+        "Not implemented"
+      );
+    }
+  }
+
+  function createClientWithUnsupportedCallback(
+    onUnsupportedFeature: (error: UnsupportedFeatureError) => void
+  ): PipecatClient {
+    return new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+      callbacks: { onUnsupportedFeature },
+    });
+  }
+
+  test("selectedCam returns {} instead of throwing when transport throws UnsupportedFeatureError", () => {
+    const client = new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+    });
+    expect(() => client.selectedCam).not.toThrow();
+    expect(client.selectedCam).toEqual({});
+  });
+
+  test("selectedCam fires onUnsupportedFeature callback with the error", () => {
+    let received: UnsupportedFeatureError | null = null;
+    const client = createClientWithUnsupportedCallback((e) => (received = e));
+
+    void client.selectedCam;
+
+    expect(received).toBeInstanceOf(UnsupportedFeatureError);
+    expect((received as unknown as UnsupportedFeatureError).feature).toBe("selectedCam");
+  });
+
+  test("selectedCam emits RTVIEvent.UnsupportedFeature", () => {
+    let emitted: UnsupportedFeatureError | null = null;
+    const client = new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+    });
+    client.on(RTVIEvent.UnsupportedFeature, (e) => (emitted = e));
+
+    void client.selectedCam;
+
+    expect(emitted).toBeInstanceOf(UnsupportedFeatureError);
+  });
+
+  test("enableCam does not throw when transport throws UnsupportedFeatureError", () => {
+    const client = new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+    });
+    expect(() => client.enableCam(true)).not.toThrow();
+  });
+
+  test("enableCam fires onUnsupportedFeature callback with the error", () => {
+    let received: UnsupportedFeatureError | null = null;
+    const client = createClientWithUnsupportedCallback((e) => (received = e));
+
+    client.enableCam(true);
+
+    expect(received).toBeInstanceOf(UnsupportedFeatureError);
+    expect((received as unknown as UnsupportedFeatureError).feature).toBe("enableCam");
+  });
+
+  test("enableCam emits RTVIEvent.UnsupportedFeature", () => {
+    let emitted: UnsupportedFeatureError | null = null;
+    const client = new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+    });
+    client.on(RTVIEvent.UnsupportedFeature, (e) => (emitted = e));
+
+    client.enableCam(true);
+
+    expect(emitted).toBeInstanceOf(UnsupportedFeatureError);
+  });
+
+  test("enableScreenShare does not throw when transport throws UnsupportedFeatureError", () => {
+    const client = new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+    });
+    expect(() => client.enableScreenShare(true)).not.toThrow();
+  });
+
+  test("enableScreenShare fires onUnsupportedFeature callback with the error", () => {
+    let received: UnsupportedFeatureError | null = null;
+    const client = createClientWithUnsupportedCallback((e) => (received = e));
+
+    client.enableScreenShare(true);
+
+    expect(received).toBeInstanceOf(UnsupportedFeatureError);
+    expect((received as unknown as UnsupportedFeatureError).feature).toBe("enableScreenShare");
+  });
+
+  test("enableScreenShare emits RTVIEvent.UnsupportedFeature", () => {
+    let emitted: UnsupportedFeatureError | null = null;
+    const client = new PipecatClient({
+      transport: new UnsupportedTransportStub(),
+    });
+    client.on(RTVIEvent.UnsupportedFeature, (e) => (emitted = e));
+
+    client.enableScreenShare(true);
+
+    expect(emitted).toBeInstanceOf(UnsupportedFeatureError);
+  });
+
+  test("selectedCam re-throws non-UnsupportedFeatureError errors", () => {
+    class ErrorTransportStub extends TransportStub {
+      get selectedCam(): MediaDeviceInfo | Record<string, never> {
+        throw new Error("unexpected transport failure");
+      }
+    }
+    const client = new PipecatClient({ transport: new ErrorTransportStub() });
+    expect(() => client.selectedCam).toThrow("unexpected transport failure");
+  });
+
+  test("enableCam re-throws non-UnsupportedFeatureError errors", () => {
+    class ErrorTransportStub extends TransportStub {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      enableCam(enable: boolean): void {
+        throw new Error("unexpected transport failure");
+      }
+    }
+    const client = new PipecatClient({ transport: new ErrorTransportStub() });
+    expect(() => client.enableCam(true)).toThrow("unexpected transport failure");
+  });
+
+  test("enableScreenShare re-throws non-UnsupportedFeatureError errors", () => {
+    class ErrorTransportStub extends TransportStub {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      enableScreenShare(enable: boolean): void {
+        throw new Error("unexpected transport failure");
+      }
+    }
+    const client = new PipecatClient({ transport: new ErrorTransportStub() });
+    expect(() => client.enableScreenShare(true)).toThrow(
+      "unexpected transport failure"
+    );
   });
 });

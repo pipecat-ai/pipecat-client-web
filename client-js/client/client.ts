@@ -38,11 +38,11 @@ import {
   setAboutClient,
   TranscriptData,
   TransportState,
-  UICancelTaskData,
+  UICancelJobGroupData,
   UICommandData,
   UIEventData,
+  UIJobGroupData,
   UISnapshotData,
-  UITaskData,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
 import {
@@ -116,7 +116,7 @@ export type RTVIEventCallbacks = Partial<{
   onServerMessage: (data: any) => void;
   onMessageError: (message: RTVIMessage) => void;
   onUICommand: (data: UICommandData) => void;
-  onUITask: (data: UITaskData) => void;
+  onUIJobGroup: (data: UIJobGroupData) => void;
 
   onParticipantJoined: (participant: Participant) => void;
   onParticipantLeft: (participant: Participant) => void;
@@ -140,6 +140,7 @@ export type RTVIEventCallbacks = Partial<{
     participant?: Participant
   ) => void;
   onScreenShareError: (errorMessage: string) => void;
+  onUnsupportedFeature: (error: RTVIErrors.UnsupportedFeatureError) => void;
   onLocalAudioLevel: (level: number) => void;
   onRemoteAudioLevel: (level: number, participant: Participant) => void;
 
@@ -315,6 +316,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onScreenShareError: (errorMessage) => {
         options?.callbacks?.onScreenShareError?.(errorMessage);
         this.emit(RTVIEvent.ScreenShareError, errorMessage);
+      },
+      onUnsupportedFeature: (error) => {
+        options?.callbacks?.onUnsupportedFeature?.(error);
+        this.emit(RTVIEvent.UnsupportedFeature, error);
       },
       onAvailableCamsUpdated: (cams) => {
         options?.callbacks?.onAvailableCamsUpdated?.(cams);
@@ -894,7 +899,15 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public get selectedCam() {
-    return this._transport.selectedCam;
+    try {
+      return this._transport.selectedCam;
+    } catch (e) {
+      if (e instanceof RTVIErrors.UnsupportedFeatureError) {
+        this._options.callbacks?.onUnsupportedFeature?.(e);
+        return {};
+      }
+      throw e;
+    }
   }
 
   public get selectedSpeaker() {
@@ -922,7 +935,15 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public enableCam(enable: boolean) {
-    this._transport.enableCam(enable);
+    try {
+      this._transport.enableCam(enable);
+    } catch (e) {
+      if (e instanceof RTVIErrors.UnsupportedFeatureError) {
+        this._options.callbacks?.onUnsupportedFeature?.(e);
+      } else {
+        throw e;
+      }
+    }
   }
 
   public get isCamEnabled(): boolean {
@@ -934,7 +955,15 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public enableScreenShare(enable: boolean) {
-    return this._transport.enableScreenShare(enable);
+    try {
+      return this._transport.enableScreenShare(enable);
+    } catch (e) {
+      if (e instanceof RTVIErrors.UnsupportedFeatureError) {
+        this._options.callbacks?.onUnsupportedFeature?.(e);
+      } else {
+        throw e;
+      }
+    }
   }
 
   public get isSharingScreen(): boolean {
@@ -1015,16 +1044,16 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Ask the server to cancel an in-flight UI task group.
+   * Ask the server to cancel an in-flight UI job group.
    *
-   * @param taskId - Shared task identifier of the group to cancel.
+   * @param jobId - Shared job identifier of the group to cancel.
    * @param reason - Optional human-readable reason logged on the server.
    */
   @transportReady
-  public cancelUITask(taskId: string, reason?: string): void {
-    const payload: UICancelTaskData = { task_id: taskId };
+  public cancelUIJobGroup(jobId: string, reason?: string): void {
+    const payload: UICancelJobGroupData = { job_id: jobId };
     if (reason !== undefined) payload.reason = reason;
-    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_TASK, payload));
+    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_JOB_GROUP, payload));
   }
 
   /**
@@ -1197,10 +1226,10 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.UICommand, data);
         break;
       }
-      case RTVIMessageType.UI_TASK: {
-        const data = ev.data as UITaskData;
-        this._options.callbacks?.onUITask?.(data);
-        this.emit(RTVIEvent.UITask, data);
+      case RTVIMessageType.UI_JOB_GROUP: {
+        const data = ev.data as UIJobGroupData;
+        this._options.callbacks?.onUIJobGroup?.(data);
+        this.emit(RTVIEvent.UIJobGroup, data);
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {

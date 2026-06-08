@@ -5,13 +5,13 @@
  */
 
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RTVIEvent, type UITaskData } from "@pipecat-ai/client-js";
+import { RTVIEvent, type UIJobGroupData } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import React from "react";
 
 import { PipecatClientProvider } from "../../src/PipecatClientProvider";
-import { UITasksProvider } from "../../src/UITasksProvider";
-import { useUITasks } from "../../src/useUITasks";
+import { UIJobGroupsProvider } from "../../src/UIJobGroupsProvider";
+import { useUIJobGroups } from "../../src/useUIJobGroups";
 
 function makeMockPipecatClient() {
   const listeners: Map<string, Set<(data: unknown) => void>> = new Map();
@@ -24,80 +24,80 @@ function makeMockPipecatClient() {
     return s;
   };
   return {
-    cancelUITask: jest.fn(),
+    cancelUIJobGroup: jest.fn(),
     on: jest.fn((event: string, handler: unknown) => {
       get(event).add(handler as (data: unknown) => void);
     }),
     off: jest.fn((event: string, handler: unknown) => {
       get(event).delete(handler as (data: unknown) => void);
     }),
-    /** Fire RTVIEvent.UITask with the given envelope. */
+    /** Fire RTVIEvent.UIJobGroup with the given envelope. */
     emit: (data: unknown) => {
-      for (const l of get(RTVIEvent.UITask)) l(data);
+      for (const l of get(RTVIEvent.UIJobGroup)) l(data);
     },
   };
 }
 
-// ui-task envelopes are now the inner `data` of a `ui-task` RTVI
+// ui-job-group envelopes are now the inner `data` of a `ui-job-group` RTVI
 // message; no top-level type field.
-const groupStarted: UITaskData = {
+const groupStarted: UIJobGroupData = {
   kind: "group_started",
-  task_id: "t1",
-  agents: ["w1", "w2"],
+  job_id: "t1",
+  workers: ["w1", "w2"],
   label: "Doing stuff",
   cancellable: true,
   at: 1700,
 };
-const w1Update: UITaskData = {
-  kind: "task_update",
-  task_id: "t1",
-  agent_name: "w1",
+const w1Update: UIJobGroupData = {
+  kind: "job_update",
+  job_id: "t1",
+  worker_name: "w1",
   data: { kind: "tool_call", tool: "WebSearch" },
   at: 1701,
 };
-const w1Completed: UITaskData = {
-  kind: "task_completed",
-  task_id: "t1",
-  agent_name: "w1",
+const w1Completed: UIJobGroupData = {
+  kind: "job_completed",
+  job_id: "t1",
+  worker_name: "w1",
   status: "completed",
   response: { ok: true },
   at: 1702,
 };
-const w2Completed: UITaskData = {
-  kind: "task_completed",
-  task_id: "t1",
-  agent_name: "w2",
+const w2Completed: UIJobGroupData = {
+  kind: "job_completed",
+  job_id: "t1",
+  worker_name: "w2",
   status: "completed",
   response: { ok: true },
   at: 1703,
 };
-const groupCompleted: UITaskData = {
+const groupCompleted: UIJobGroupData = {
   kind: "group_completed",
-  task_id: "t1",
+  job_id: "t1",
   at: 1704,
 };
 
-type TasksAPI = ReturnType<typeof useUITasks>;
+type JobGroupsAPI = ReturnType<typeof useUIJobGroups>;
 
 function renderWithProviders(
   pipecat = makeMockPipecatClient(),
   options: { maxGroups?: number } = {},
 ) {
-  let api: TasksAPI = {
+  let api: JobGroupsAPI = {
     groups: [],
-    cancelTask: () => {},
-    dismissTask: () => {},
+    cancelJobGroup: () => {},
+    dismissJobGroup: () => {},
     clearCompleted: () => {},
   };
   const Probe: React.FC = () => {
-    api = useUITasks();
+    api = useUIJobGroups();
     return null;
   };
   const result = render(
     <PipecatClientProvider client={pipecat as never}>
-      <UITasksProvider maxGroups={options.maxGroups}>
+      <UIJobGroupsProvider maxGroups={options.maxGroups}>
         <Probe />
-      </UITasksProvider>
+      </UIJobGroupsProvider>
     </PipecatClientProvider>,
   );
   return {
@@ -107,7 +107,7 @@ function renderWithProviders(
   };
 }
 
-describe("useUITasks reducer", () => {
+describe("useUIJobGroups reducer", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -118,7 +118,7 @@ describe("useUITasks reducer", () => {
     expect(getApi().groups).toEqual([]);
   });
 
-  it("creates a group with running tasks on group_started", () => {
+  it("creates a group with running jobs on group_started", () => {
     const pipecat = makeMockPipecatClient();
 
     const { getApi } = renderWithProviders(pipecat);
@@ -129,18 +129,18 @@ describe("useUITasks reducer", () => {
     const groups = getApi().groups;
     expect(groups).toHaveLength(1);
     const [g] = groups;
-    expect(g.taskId).toBe("t1");
+    expect(g.jobId).toBe("t1");
     expect(g.label).toBe("Doing stuff");
     expect(g.cancellable).toBe(true);
     expect(g.startedAt).toBe(1700);
     expect(g.completedAt).toBeUndefined();
     expect(g.status).toBe("running");
-    expect(g.tasks.map((t) => t.agentName)).toEqual(["w1", "w2"]);
-    expect(g.tasks.every((t) => t.status === "running")).toBe(true);
-    expect(g.tasks.every((t) => t.updates.length === 0)).toBe(true);
+    expect(g.jobs.map((t) => t.workerName)).toEqual(["w1", "w2"]);
+    expect(g.jobs.every((t) => t.status === "running")).toBe(true);
+    expect(g.jobs.every((t) => t.updates.length === 0)).toBe(true);
   });
 
-  it("appends task_update payloads to the matching task in arrival order", () => {
+  it("appends job_update payloads to the matching job in arrival order", () => {
     const pipecat = makeMockPipecatClient();
 
     const { getApi } = renderWithProviders(pipecat);
@@ -154,17 +154,17 @@ describe("useUITasks reducer", () => {
       });
     });
 
-    const w1 = getApi().groups[0].tasks.find((t) => t.agentName === "w1")!;
+    const w1 = getApi().groups[0].jobs.find((t) => t.workerName === "w1")!;
     expect(w1.updates).toEqual([
       { at: 1701, data: { kind: "tool_call", tool: "WebSearch" } },
       { at: 1702, data: { kind: "tool_call", tool: "WebFetch" } },
     ]);
     // The other worker is untouched.
-    const w2 = getApi().groups[0].tasks.find((t) => t.agentName === "w2")!;
+    const w2 = getApi().groups[0].jobs.find((t) => t.workerName === "w2")!;
     expect(w2.updates).toEqual([]);
   });
 
-  it("transitions a task from running to completed on task_completed", () => {
+  it("transitions a job from running to completed on job_completed", () => {
     const pipecat = makeMockPipecatClient();
 
     const { getApi } = renderWithProviders(pipecat);
@@ -173,7 +173,7 @@ describe("useUITasks reducer", () => {
       pipecat.emit(w1Completed);
     });
 
-    const w1 = getApi().groups[0].tasks.find((t) => t.agentName === "w1")!;
+    const w1 = getApi().groups[0].jobs.find((t) => t.workerName === "w1")!;
     expect(w1.status).toBe("completed");
     expect(w1.completedAt).toBe(1702);
     expect(w1.response).toEqual({ ok: true });
@@ -211,7 +211,7 @@ describe("useUITasks reducer", () => {
     const g = getApi().groups[0];
     expect(g.status).toBe("running");
     expect(g.completedAt).toBe(1704);
-    expect(g.tasks.find((t) => t.agentName === "w2")!.status).toBe("running");
+    expect(g.jobs.find((t) => t.workerName === "w2")!.status).toBe("running");
   });
 
   it("aggregates to error when any worker errored", () => {
@@ -248,45 +248,45 @@ describe("useUITasks reducer", () => {
     const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
-      pipecat.emit({ ...groupStarted, task_id: "t2", at: 1800 });
+      pipecat.emit({ ...groupStarted, job_id: "t2", at: 1800 });
     });
 
-    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1", "t2"]);
+    expect(getApi().groups.map((g) => g.jobId)).toEqual(["t1", "t2"]);
   });
 
-  it("cancelTask sends a first-class ui-cancel-task RTVI message with the task_id", () => {
+  it("cancelJobGroup sends a first-class ui-cancel-job-group RTVI message with the job_id", () => {
     const pipecat = makeMockPipecatClient();
 
     const { getApi } = renderWithProviders(pipecat);
 
     act(() => {
-      getApi().cancelTask("t1", "user clicked cancel");
+      getApi().cancelJobGroup("t1", "user clicked cancel");
     });
 
-    expect(pipecat.cancelUITask).toHaveBeenCalledWith(
+    expect(pipecat.cancelUIJobGroup).toHaveBeenCalledWith(
       "t1",
       "user clicked cancel",
     );
   });
 
-  it("dismissTask refuses running groups and removes completed groups", () => {
+  it("dismissJobGroup refuses running groups and removes completed groups", () => {
     const pipecat = makeMockPipecatClient();
 
     const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
-      pipecat.emit({ ...groupStarted, task_id: "t2", at: 1800 });
-      pipecat.emit({ ...w1Completed, task_id: "t2" });
-      pipecat.emit({ ...w2Completed, task_id: "t2" });
-      pipecat.emit({ ...groupCompleted, task_id: "t2" });
+      pipecat.emit({ ...groupStarted, job_id: "t2", at: 1800 });
+      pipecat.emit({ ...w1Completed, job_id: "t2" });
+      pipecat.emit({ ...w2Completed, job_id: "t2" });
+      pipecat.emit({ ...groupCompleted, job_id: "t2" });
     });
 
     act(() => {
-      getApi().dismissTask("t1");
-      getApi().dismissTask("t2");
+      getApi().dismissJobGroup("t1");
+      getApi().dismissJobGroup("t2");
     });
 
-    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1"]);
+    expect(getApi().groups.map((g) => g.jobId)).toEqual(["t1"]);
   });
 
   it("clearCompleted removes terminal groups and keeps running groups", () => {
@@ -295,21 +295,21 @@ describe("useUITasks reducer", () => {
     const { getApi } = renderWithProviders(pipecat);
     act(() => {
       pipecat.emit(groupStarted);
-      pipecat.emit({ ...groupStarted, task_id: "t2", at: 1800 });
-      pipecat.emit({ ...w1Completed, task_id: "t2" });
-      pipecat.emit({ ...w2Completed, task_id: "t2", status: "error" });
-      pipecat.emit({ ...groupCompleted, task_id: "t2" });
-      pipecat.emit({ ...groupStarted, task_id: "t3", at: 1900 });
-      pipecat.emit({ ...w1Completed, task_id: "t3" });
-      pipecat.emit({ ...w2Completed, task_id: "t3", status: "cancelled" });
-      pipecat.emit({ ...groupCompleted, task_id: "t3" });
+      pipecat.emit({ ...groupStarted, job_id: "t2", at: 1800 });
+      pipecat.emit({ ...w1Completed, job_id: "t2" });
+      pipecat.emit({ ...w2Completed, job_id: "t2", status: "error" });
+      pipecat.emit({ ...groupCompleted, job_id: "t2" });
+      pipecat.emit({ ...groupStarted, job_id: "t3", at: 1900 });
+      pipecat.emit({ ...w1Completed, job_id: "t3" });
+      pipecat.emit({ ...w2Completed, job_id: "t3", status: "cancelled" });
+      pipecat.emit({ ...groupCompleted, job_id: "t3" });
     });
 
     act(() => {
       getApi().clearCompleted();
     });
 
-    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1"]);
+    expect(getApi().groups.map((g) => g.jobId)).toEqual(["t1"]);
   });
 
   it("maxGroups drops oldest terminal groups but keeps running groups", () => {
@@ -318,34 +318,34 @@ describe("useUITasks reducer", () => {
     const { getApi } = renderWithProviders(pipecat, { maxGroups: 2 });
     act(() => {
       pipecat.emit(groupStarted);
-      for (const taskId of ["t2", "t3", "t4"]) {
-        pipecat.emit({ ...groupStarted, task_id: taskId });
-        pipecat.emit({ ...w1Completed, task_id: taskId });
-        pipecat.emit({ ...w2Completed, task_id: taskId });
-        pipecat.emit({ ...groupCompleted, task_id: taskId });
+      for (const jobId of ["t2", "t3", "t4"]) {
+        pipecat.emit({ ...groupStarted, job_id: jobId });
+        pipecat.emit({ ...w1Completed, job_id: jobId });
+        pipecat.emit({ ...w2Completed, job_id: jobId });
+        pipecat.emit({ ...groupCompleted, job_id: jobId });
       }
     });
 
-    expect(getApi().groups.map((g) => g.taskId)).toEqual(["t1", "t4"]);
+    expect(getApi().groups.map((g) => g.jobId)).toEqual(["t1", "t4"]);
   });
 
   it("default API is a no-op when no provider is mounted", () => {
-    let api: TasksAPI = {
+    let api: JobGroupsAPI = {
       groups: [],
-      cancelTask: () => {},
-      dismissTask: () => {},
+      cancelJobGroup: () => {},
+      dismissJobGroup: () => {},
       clearCompleted: () => {},
     };
     const Probe: React.FC = () => {
-      api = useUITasks();
+      api = useUIJobGroups();
       return null;
     };
 
     render(<Probe />);
 
     expect(api.groups).toEqual([]);
-    expect(() => api.cancelTask("t1")).not.toThrow();
-    expect(() => api.dismissTask("t1")).not.toThrow();
+    expect(() => api.cancelJobGroup("t1")).not.toThrow();
+    expect(() => api.dismissJobGroup("t1")).not.toThrow();
     expect(() => api.clearCompleted()).not.toThrow();
   });
 });

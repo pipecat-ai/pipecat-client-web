@@ -5,6 +5,27 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.10.0...client-js-v1.11.0) (2026-06-02)
+
+
+### Features
+
+* **js:** new callback for handling unsupported features ([3f38460](https://github.com/pipecat-ai/pipecat-client-web/commit/3f384604a1c3e5d38ba991319df6406a3b044850))
+
+## [1.10.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.9.1...client-js-v1.10.0) (2026-05-27)
+
+
+### Features
+
+* **js:** bump RTVI protocol version to 1.4.0 ([e5d2568](https://github.com/pipecat-ai/pipecat-client-web/commit/e5d256815eb69c5bef76d3d7fa8865b8dab42733))
+* **js:** rename UI agent -&gt; worker; UIAgent -&gt; UIWorker ([4a232a0](https://github.com/pipecat-ai/pipecat-client-web/commit/4a232a0ae95e30d9f9917fb4b82e4aafa346eb56))
+* **js:** rename UI task protocol to job-group ([de1f3b3](https://github.com/pipecat-ai/pipecat-client-web/commit/de1f3b336b09e7f7ebc9e7d7dbb6def9c72c1426))
+
+
+### Bug Fixes
+
+* **js:** bump uuid to ^11.1.1 to patch GHSA-w5hq-g745-h8pq ([c4f9108](https://github.com/pipecat-ai/pipecat-client-web/commit/c4f9108c43cd0fbf0260f93007360f0305ce8881))
+
 ## [1.9.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.9.0...client-js-v1.9.1) (2026-05-22)
 
 

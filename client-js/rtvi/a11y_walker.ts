@@ -17,7 +17,7 @@
  *
  * Viewport awareness: when `trackViewport` is enabled (default),
  * every emitted node that's fully outside the viewport rect gets
- * `"offscreen"` in its `state` list. The agent reads this to
+ * `"offscreen"` in its `state` list. The worker reads this to
  * distinguish "on the page" from "what the user is currently
  * looking at" and can decide whether to `ScrollTo` before acting.
  * Computing this calls `getBoundingClientRect` per node, which
@@ -38,7 +38,7 @@ const NAME_MAX = 100;
 // can have hundreds of entries; truncating at 20 keeps the snapshot
 // useful without ballooning LLM context.
 const MAX_SELECT_OPTIONS = 20;
-// Selections benefit from preserving paragraph structure, but the agent
+// Selections benefit from preserving paragraph structure, but the worker
 // only needs enough text to disambiguate the referent. 2000 chars is
 // roughly 500 tokens — meaningful context without dominating the
 // `<ui_state>` injection.
@@ -225,7 +225,7 @@ function getRole(el: Element): string | null {
       return el.getAttribute("alt") !== null ? "img" : null;
     case "p":
       // Promote prose containers so paragraph-level deixis works:
-      // selection anchors at the enclosing paragraph, and the agent
+      // selection anchors at the enclosing paragraph, and the worker
       // can address individual paragraphs by ref for select_text /
       // scroll_to / highlight. Pure-wrapper flattening would lose
       // both. Paragraphs are walked as non-leaf so inline links and
@@ -524,7 +524,7 @@ function walk(
     }
   } else if (el instanceof HTMLSelectElement) {
     // Combobox is a leaf role, but for native `<select>` we synthesize
-    // `option` children so the agent can see all available choices,
+    // `option` children so the worker can see all available choices,
     // not just the one currently selected. Without this, an LLM has no
     // way to know what other values it could ask the user to pick.
     const options = collectSelectOptions(el, budget, node.ref);

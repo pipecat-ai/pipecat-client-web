@@ -23,9 +23,9 @@ export interface UseUISnapshotOptions extends A11ySnapshotStreamerOptions {
 /**
  * Capture a structured accessibility snapshot of the document and
  * send it to the server as a first-class `ui-snapshot` RTVI
- * message. The server-side `UIAgent` stores the latest
+ * message. The server-side `UIWorker` stores the latest
  * snapshot and, on demand, renders it into the LLM's context as
- * `<ui_state>` so the agent can reason about what's on screen.
+ * `<ui_state>` so the worker can reason about what's on screen.
  *
  * Usage: call once near the root of your app, inside a
  * `PipecatClientProvider`.
