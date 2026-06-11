@@ -38,6 +38,7 @@ import {
   TranscriptData,
   TransportState,
   UICancelJobGroupData,
+  UserLLMTextData,
   UICommandData,
   UIEventData,
   UIJobGroupData,
@@ -150,6 +151,7 @@ export type RTVIEventCallbacks = Partial<{
   onUserMuteStarted: () => void;
   onUserMuteStopped: () => void;
   onUserTranscript: (data: TranscriptData) => void;
+  onUserLlmText: (data: UserLLMTextData) => void;
   onBotOutput: (data: BotOutputData) => void;
   /** @deprecated Use onBotOutput instead */
   onBotTranscript: (data: BotLLMTextData) => void;
@@ -1171,6 +1173,12 @@ export class PipecatClient extends RTVIEventEmitter {
       case RTVIMessageType.USER_TRANSCRIPTION: {
         const TranscriptData = ev.data as TranscriptData;
         this._options.callbacks?.onUserTranscript?.(TranscriptData);
+        break;
+      }
+      case RTVIMessageType.USER_LLM_TEXT: {
+        const llmTextData = ev.data as UserLLMTextData;
+        this._options.callbacks?.onUserLlmText?.(llmTextData);
+        this.emit(RTVIEvent.UserLlmText, llmTextData);
         break;
       }
       case RTVIMessageType.BOT_OUTPUT: {

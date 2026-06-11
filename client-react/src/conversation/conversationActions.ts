@@ -130,6 +130,7 @@ export const mergeMessages = (
       lastMerged.role === currentMessage.role &&
       currentMessage.role !== "system" &&
       currentMessage.role !== "function_call" &&
+      !lastMerged.final &&
       timeDiff < MERGE_WINDOW_MS;
 
     if (shouldMerge) {
