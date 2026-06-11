@@ -29,6 +29,7 @@ import {
   MediaState,
   Participant,
   PipecatMetricsData,
+  RTVI_PROTOCOL_VERSION,
   RTVIEvent,
   RTVIEvents,
   RTVIMessage,
@@ -1131,9 +1132,9 @@ export class PipecatClient extends RTVIEventEmitter {
           ? data.version.split(".").map(Number)
           : [0, 0, 0];
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
-        if (botVersion[0] < 1) {
+        if (botVersion[0] < 2) {
           logger.warn(
-            "[Pipecat Client] Bot version is less than 1.0.0, which may not be compatible with this client."
+            `[Pipecat Client] Bot protocol version ${data.version} is older than this client (${RTVI_PROTOCOL_VERSION}). Compatibility issues may occur.`
           );
         }
         this._connectResolve?.(ev.data as BotReadyData);
