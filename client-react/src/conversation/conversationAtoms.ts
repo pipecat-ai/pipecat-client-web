@@ -31,6 +31,9 @@ export const messageCallbacksAtom = atom<Map<string, MessageCallbacks>>(
 /** Whether BotOutput events are supported (RTVI 1.1.0+): null = unknown, true/false = detected */
 export const botOutputSupportedAtom = atom<boolean | null>(null);
 
+/** Which BotOutput protocol version is active. null = unknown (pre-BotReady). */
+export const botOutputProtocolAtom = atom<"legacy" | "v2" | null>(null);
+
 /** Raw BotOutput events per message (keyed by message createdAt), for debugging/replay */
 export const botOutputEventsAtom = atom<Map<string, BotOutputEvent[]>>(
   new Map()
