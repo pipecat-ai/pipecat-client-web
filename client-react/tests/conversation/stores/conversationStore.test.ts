@@ -1,4 +1,3 @@
-import { createStoreHarness } from "../helpers/storeHarness";
 import {
   filterEmptyMessages,
   isMessageEmpty,
@@ -6,6 +5,8 @@ import {
   stripTurnCompletionMarker,
 } from "@/conversation/conversationActions";
 import type { ConversationMessage } from "@/conversation/types";
+
+import { createStoreHarness } from "../helpers/storeHarness";
 
 /** Helper: create a minimal message for merge/filter tests. */
 function msg(
@@ -177,8 +178,8 @@ describe("conversationStore", () => {
         parts: [],
       });
 
-      harness.updateAssistantBotOutput("Hello", false, false, "word");
-      harness.updateAssistantBotOutput(" world", false, false, "word");
+      harness.updateAssistantBotOutput("Hello", false, { protocol: "legacy", spoken: false }, "word");
+      harness.updateAssistantBotOutput(" world", false, { protocol: "legacy", spoken: false }, "word");
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(1);
@@ -196,13 +197,13 @@ describe("conversationStore", () => {
       harness.updateAssistantBotOutput(
         "First sentence.",
         true,
-        false,
+        { protocol: "legacy", spoken: false },
         "sentence"
       );
       harness.updateAssistantBotOutput(
         "Second sentence.",
         true,
-        false,
+        { protocol: "legacy", spoken: false },
         "sentence"
       );
 
@@ -222,13 +223,13 @@ describe("conversationStore", () => {
       harness.updateAssistantBotOutput(
         "Some text",
         false,
-        false,
+        { protocol: "legacy", spoken: false },
         "sentence"
       );
       harness.updateAssistantBotOutput(
         "console.log('hi')",
         false,
-        false,
+        { protocol: "legacy", spoken: false },
         "code"
       );
 
@@ -250,11 +251,11 @@ describe("conversationStore", () => {
       });
 
       // First send unspoken
-      harness.updateAssistantBotOutput("Hello", false, false, "word");
-      harness.updateAssistantBotOutput(" world", false, false, "word");
+      harness.updateAssistantBotOutput("Hello", false, { protocol: "legacy", spoken: false }, "word");
+      harness.updateAssistantBotOutput(" world", false, { protocol: "legacy", spoken: false }, "word");
 
       // Then spoken
-      harness.updateAssistantBotOutput("Hello", false, true, "word");
+      harness.updateAssistantBotOutput("Hello", false, { protocol: "legacy", spoken: true }, "word");
 
       const cursor = harness.getBotOutputState().values().next().value;
       expect(cursor).toBeDefined();
@@ -269,7 +270,7 @@ describe("conversationStore", () => {
       });
 
       // Spoken without prior unspoken
-      harness.updateAssistantBotOutput("Hello", false, true, "word");
+      harness.updateAssistantBotOutput("Hello", false, { protocol: "legacy", spoken: true }, "word");
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(1);
@@ -453,7 +454,7 @@ describe("conversationStore", () => {
         parts: [],
       });
 
-      harness.updateAssistantBotOutput("✓ Japan", false, false, "word");
+      harness.updateAssistantBotOutput("✓ Japan", false, { protocol: "legacy", spoken: false }, "word");
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(1);
@@ -467,7 +468,7 @@ describe("conversationStore", () => {
         parts: [],
       });
 
-      harness.updateAssistantBotOutput("○", false, false, "word");
+      harness.updateAssistantBotOutput("○", false, { protocol: "legacy", spoken: false }, "word");
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(0);
@@ -480,7 +481,7 @@ describe("conversationStore", () => {
         parts: [],
       });
 
-      harness.updateAssistantBotOutput("✓ Hello", false, true, "word");
+      harness.updateAssistantBotOutput("✓ Hello", false, { protocol: "legacy", spoken: true }, "word");
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(1);

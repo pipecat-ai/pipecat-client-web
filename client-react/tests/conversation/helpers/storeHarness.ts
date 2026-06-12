@@ -4,6 +4,7 @@ import {
   type BotOutputMessageCursor,
   hasUnspokenContent,
 } from "@/conversation/botOutput";
+import type { BotOutputPayload } from "@/conversation/conversationActions";
 import * as actions from "@/conversation/conversationActions";
 import {
   botOutputMessageStateAtom,
@@ -103,7 +104,7 @@ export function createStoreHarness() {
       store.set,
       textToAdd,
       isFinal,
-      spoken,
+      { protocol: "legacy", spoken },
       aggregatedBy
     );
   }
@@ -263,7 +264,7 @@ export function createStoreHarness() {
   function updateAssistantBotOutput(
     text: string,
     final: boolean,
-    spoken: boolean,
+    payload: BotOutputPayload,
     aggregatedBy?: string
   ) {
     actions.updateAssistantBotOutput(
@@ -271,7 +272,7 @@ export function createStoreHarness() {
       store.set,
       text,
       final,
-      spoken,
+      payload,
       aggregatedBy
     );
   }
