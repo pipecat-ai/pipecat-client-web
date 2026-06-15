@@ -4,6 +4,7 @@ import {
   type BotOutputMessageCursor,
   hasUnspokenContent,
 } from "@/conversation/botOutput";
+import type { BotOutputPayload } from "@/conversation/conversationActions";
 import * as actions from "@/conversation/conversationActions";
 import {
   botOutputMessageStateAtom,
@@ -103,8 +104,45 @@ export function createStoreHarness() {
       store.set,
       textToAdd,
       isFinal,
-      spoken,
+      { protocol: "legacy", spoken },
       aggregatedBy
+    );
+  }
+
+  /**
+   * Emit a BotOutput event using RTVI Protocol 2.0.0 semantics, replicating
+   * the spacing and routing logic from useConversationEventWiring.
+   *
+   * For content events (spoken_status "new" or undefined, or will_be_spoken false):
+   *   - ensures an assistant message exists
+   *   - prepends an inter-segment space when a previous content event was seen
+   *
+   * For progress events (spoken_status "in-progress" | "completed"):
+   *   - only advances the cursor; no new text is added
+   */
+  function emitBotOutputV2(params: {
+    text: string;
+    will_be_spoken?: boolean;
+    spoken_status?: "new" | "in-progress" | "completed";
+    spoken_progress?: { accumulated_text: string; remaining_text: string };
+    segment_id?: number;
+    aggregated_by?: string;
+  }) {
+    const { text, will_be_spoken = false, spoken_status, spoken_progress, segment_id, aggregated_by } = params;
+    const isProgressEvent = spoken_status === "in-progress" || spoken_status === "completed";
+
+    if (!isProgressEvent) {
+      ensureAssistantMessage();
+    }
+
+    const isFinal = aggregated_by === "sentence";
+    actions.updateAssistantBotOutput(
+      store.get,
+      store.set,
+      text,
+      isFinal,
+      { protocol: "v2", will_be_spoken, spoken_status, spoken_progress, segment_id },
+      aggregated_by
     );
   }
 
@@ -263,7 +301,7 @@ export function createStoreHarness() {
   function updateAssistantBotOutput(
     text: string,
     final: boolean,
-    spoken: boolean,
+    payload: BotOutputPayload,
     aggregatedBy?: string
   ) {
     actions.updateAssistantBotOutput(
@@ -271,7 +309,7 @@ export function createStoreHarness() {
       store.set,
       text,
       final,
-      spoken,
+      payload,
       aggregatedBy
     );
   }
@@ -301,6 +339,7 @@ export function createStoreHarness() {
     reset,
     ensureAssistantMessage,
     emitBotOutput,
+    emitBotOutputV2,
     emitUserTranscript,
     finalizeAssistant,
     finalizeUser,

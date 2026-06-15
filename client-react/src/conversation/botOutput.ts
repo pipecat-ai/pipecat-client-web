@@ -28,6 +28,7 @@ export type BotOutputMessageCursor = {
   hasReceivedUnspoken: boolean;
 };
 
+/** @deprecated Protocol 1.4.x only. Not used in the 2.0.0 path. */
 export const normalizeForMatching = (text: string): string => {
   return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "");
 };
@@ -169,6 +170,8 @@ export function hasUnspokenContent(
  * advance — pure punctuation is consumed without moving the cursor), or false
  * if there was nothing to consume (e.g. no parts, all parts already spoken).
  * Used to detect "spoken-only" bots that never send unspoken events.
+ *
+ * @deprecated Protocol 1.4.x only. Use `applySpokenProgressV2` for RTVI 2.0.0+.
  */
 export function applySpokenBotOutputProgress(
   cursor: BotOutputMessageCursor,
@@ -289,4 +292,63 @@ export function applySpokenBotOutputProgress(
   }
 
   return false;
+}
+
+/**
+ * Applies a `spoken_progress` update directly to the cursor using the
+ * server-provided split from RTVI Protocol 2.0.0+.
+ *
+ * The server sends `accumulated_text` (already spoken) and `remaining_text`
+ * (not yet spoken) for the active segment. When `segmentId` is provided the
+ * target part is located by matching `part.segment_id`; this ensures progress
+ * events are always applied to the correct part even when multiple segments
+ * are in flight. Falls back to `currentPartIndex` when no match is found.
+ */
+export function applySpokenProgressV2(
+  cursor: BotOutputMessageCursor,
+  parts: ConversationMessagePart[],
+  accumulatedText: string,
+  segmentId?: number
+): void {
+  if (parts.length === 0) return;
+
+  // Locate the target part by segment_id when available.
+  let targetPartIndex = -1;
+  if (segmentId !== undefined) {
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].segment_id === segmentId) {
+        targetPartIndex = i;
+        break;
+      }
+    }
+  }
+
+  // Fall back to the cursor's current position if no segment_id match.
+  if (targetPartIndex === -1) {
+    targetPartIndex = Math.min(cursor.currentPartIndex, parts.length - 1);
+    // Advance past already-finalized parts.
+    while (
+      targetPartIndex < parts.length - 1 &&
+      cursor.partFinalFlags[targetPartIndex]
+    ) {
+      targetPartIndex++;
+    }
+  }
+
+  const targetPart = parts[targetPartIndex];
+  if (typeof targetPart?.text !== "string") return;
+
+  const partText = targetPart.text;
+  const newCharIndex = Math.min(accumulatedText.length, partText.length);
+
+  cursor.currentPartIndex = targetPartIndex;
+  cursor.currentCharIndex = newCharIndex;
+
+  if (newCharIndex >= partText.length) {
+    cursor.partFinalFlags[targetPartIndex] = true;
+    if (targetPartIndex < parts.length - 1) {
+      cursor.currentPartIndex = targetPartIndex + 1;
+      cursor.currentCharIndex = 0;
+    }
+  }
 }
