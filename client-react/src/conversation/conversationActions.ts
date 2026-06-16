@@ -492,18 +492,10 @@ export function updateAssistantBotOutput(
   payload: BotOutputPayload,
   aggregatedBy?: string
 ) {
-  // v2 progress events carry no text — they only advance the cursor.
-  // Skip text stripping and the empty-text guard for those.
-  const isV2ProgressEvent =
-    payload.protocol === "v2" &&
-    (payload.spoken_status === "in-progress" || payload.spoken_status === "completed");
-
-  if (!isV2ProgressEvent) {
-    // Strip turn-completion markers emitted by FilterIncompleteTurns before
-    // the text enters conversation state.
-    text = stripTurnCompletionMarker(text);
-    if (text.length === 0) return;
-  }
+  // Strip turn-completion markers emitted by FilterIncompleteTurns before
+  // the text enters conversation state.
+  text = stripTurnCompletionMarker(text);
+  if (text.length === 0) return;
 
   const now = new Date();
   const messages = [...get(messagesAtom)];
