@@ -591,7 +591,7 @@ export function updateAssistantBotOutput(
 
   if (payload.protocol === "v2") {
     // -------------------------------------------------------------------------
-    // RTVI Protocol 2.0.0 path
+    // RTVI Protocol 2.x.x path
     // -------------------------------------------------------------------------
     const { will_be_spoken, spoken_status, spoken_progress, segment_id } =
       payload;
