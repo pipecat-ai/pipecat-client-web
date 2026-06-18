@@ -12,7 +12,7 @@ import {
 } from "../package.json";
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
-export const RTVI_PROTOCOL_VERSION = "1.4.0";
+export const RTVI_PROTOCOL_VERSION = "2.0.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -143,10 +143,23 @@ export enum AggregationType {
   SENTENCE = "sentence",
 }
 
+export type SpokenStatus = "new" | "in-progress" | "completed";
+
+export type SpokenProgressData = {
+  accumulated_text: string;
+  remaining_text: string;
+};
+
 export type BotOutputData = {
   text: string;
-  spoken: boolean;
   aggregated_by?: AggregationType | string;
+  segment_id?: number;
+  /** @deprecated Protocol 1.4.x only. Use `will_be_spoken` instead. */
+  spoken?: boolean;
+  // Protocol 2.0.0+ fields
+  will_be_spoken?: boolean;
+  spoken_status?: SpokenStatus;
+  spoken_progress?: SpokenProgressData;
 };
 
 export type BotLLMTextData = {
