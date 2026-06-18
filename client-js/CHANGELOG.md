@@ -5,6 +5,18 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.11.0...client-js-v1.12.0) (2026-06-18)
+
+
+### Bug Fixes
+
+* respect final flag in mergeMessages and handle user-llm-text event ([bed406f](https://github.com/pipecat-ai/pipecat-client-web/commit/bed406f679faa7428d7d93780db877c17cd0bdb8))
+
+
+### Miscellaneous Chores
+
+* **js:** force release 1.12.0 for RTVI protocol 2.0.0 ([#215](https://github.com/pipecat-ai/pipecat-client-web/issues/215)) ([#229](https://github.com/pipecat-ai/pipecat-client-web/issues/229)) ([b966fe3](https://github.com/pipecat-ai/pipecat-client-web/commit/b966fe385b65938265e3410fd8d04f4cd10f5d36))
+
 ## [1.11.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.10.0...client-js-v1.11.0) (2026-06-02)
 
 
