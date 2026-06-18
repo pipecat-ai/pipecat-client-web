@@ -344,7 +344,22 @@ describe("conversationStore", () => {
   });
 
   describe("mergeMessages", () => {
-    it("merges consecutive same-role messages within 30s", () => {
+    it("merges consecutive same-role messages within 30s when first is not final", () => {
+      const now = new Date();
+      const messages: ConversationMessage[] = [
+        msg("assistant", "Hello", { createdAt: now.toISOString(), final: false }),
+        msg("assistant", "World", {
+          createdAt: new Date(now.getTime() + 5000).toISOString(),
+        }),
+      ];
+
+      const merged = mergeMessages(messages);
+
+      expect(merged).toHaveLength(1);
+      expect(merged[0].parts).toHaveLength(2);
+    });
+
+    it("does not merge consecutive same-role messages when first is final", () => {
       const now = new Date();
       const messages: ConversationMessage[] = [
         msg("assistant", "Hello", { createdAt: now.toISOString() }),
@@ -355,8 +370,7 @@ describe("conversationStore", () => {
 
       const merged = mergeMessages(messages);
 
-      expect(merged).toHaveLength(1);
-      expect(merged[0].parts).toHaveLength(2);
+      expect(merged).toHaveLength(2);
     });
 
     it("does not merge messages from different roles", () => {

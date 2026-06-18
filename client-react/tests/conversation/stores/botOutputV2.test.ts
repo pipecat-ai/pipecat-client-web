@@ -82,7 +82,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
     it("advances cursor on in-progress event using accumulated_text length", () => {
       harness.emitBotOutputV2({ text: "Hello world.", will_be_spoken: true, spoken_status: "new", segment_id: 1, aggregated_by: "sentence" });
       harness.emitBotOutputV2({
-        text: "",
+        text: "Hello world.",
         will_be_spoken: true,
         spoken_status: "in-progress",
         spoken_progress: { accumulated_text: "Hello", remaining_text: " world." },
@@ -101,7 +101,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
       // Progress on second segment: accumulated_text="Wor" (3 chars into "World.")
       // Part text is "World." (unchanged); cursor should be at exactly 3
       harness.emitBotOutputV2({
-        text: "",
+        text: "World.",
         will_be_spoken: true,
         spoken_status: "in-progress",
         spoken_progress: { accumulated_text: "Wor", remaining_text: "ld." },
@@ -116,7 +116,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
     it("marks part as final on completed event with full accumulated_text", () => {
       harness.emitBotOutputV2({ text: "Hello.", will_be_spoken: true, spoken_status: "new", segment_id: 1, aggregated_by: "sentence" });
       harness.emitBotOutputV2({
-        text: "",
+        text: "Hello.",
         will_be_spoken: true,
         spoken_status: "completed",
         spoken_progress: { accumulated_text: "Hello.", remaining_text: "" },
@@ -134,7 +134,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
 
       // Progress for segment 1 (already created, cursor starts at 0)
       harness.emitBotOutputV2({
-        text: "",
+        text: "Segment one.",
         will_be_spoken: true,
         spoken_status: "in-progress",
         spoken_progress: { accumulated_text: "Segment", remaining_text: " one." },
@@ -153,7 +153,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
       const partsBefore = harness.getMessages()[0].parts.length;
 
       harness.emitBotOutputV2({
-        text: "",
+        text: "Hello.",
         will_be_spoken: true,
         spoken_status: "in-progress",
         spoken_progress: { accumulated_text: "Hel", remaining_text: "lo." },
