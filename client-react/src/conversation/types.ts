@@ -42,12 +42,17 @@ export interface BotOutputFilter {
 export interface BotOutputEvent {
   /** The raw text from the BotOutput event */
   text: string;
-  /** Whether this was a spoken (TTS) event */
+  /** @deprecated Protocol 1.4.x only. Use `will_be_spoken` instead. */
   spoken: boolean;
   /** Aggregation type (e.g., "sentence", "word", "code") */
   aggregatedBy?: string;
   /** ISO timestamp of when the event was received */
   receivedAt: string;
+  // Protocol 2.0.0+ fields
+  will_be_spoken?: boolean;
+  spoken_status?: "new" | "in-progress" | "completed";
+  spoken_progress?: { accumulated_text: string; remaining_text: string };
+  segment_id?: number;
 }
 
 /**
@@ -102,6 +107,18 @@ export interface ConversationMessagePart {
    * Used to determine which custom renderer to use, if any
    */
   aggregatedBy?: string;
+  /**
+   * RTVI Protocol 2.0.0+ segment identifier. Used to correlate progress
+   * events (`spoken_status: "in-progress" | "completed"`) back to the
+   * part they belong to.
+   */
+  segment_id?: number;
+  /**
+   * RTVI Protocol 2.0.0+ only. When true, the renderer should prepend an
+   * inter-segment separator (a space) before this part's text. The stored
+   * `text` is always the original segment text as received from the server.
+   */
+  needsSeparator?: boolean;
   /**
    * Display mode for BotOutput content.
    * - "inline": Rendered inline with surrounding text (default for sentence-level)

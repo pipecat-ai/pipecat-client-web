@@ -200,11 +200,16 @@ export const usePipecatConversation = ({
                 ? ""
                 : partText;
 
+            // For v2 segments that follow another segment, prepend the separator
+            // space to the spoken bucket so it appears immediately. The stored
+            // text is the original segment text and is never modified.
+            const separator = part.needsSeparator ? " " : "";
+
             return {
               ...part,
               displayMode,
               text: filterBotOutputText(
-                { spoken: spokenText, unspoken: unspokenText },
+                { spoken: separator + spokenText, unspoken: unspokenText },
                 botOutputFilter
               ),
             };

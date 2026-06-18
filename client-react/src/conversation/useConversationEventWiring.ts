@@ -19,6 +19,7 @@ import { useRTVIClientEvent } from "../useRTVIClientEvent";
 import { hasUnspokenContent } from "./botOutput";
 import {
   addMessage,
+  type BotOutputPayload,
   clearMessages,
   finalizeLastMessage,
   handleFunctionCallInProgress,
@@ -31,6 +32,7 @@ import {
 } from "./conversationActions";
 import {
   botOutputMessageStateAtom,
+  botOutputProtocolAtom,
   botOutputSupportedAtom,
   messagesAtom,
 } from "./conversationAtoms";
@@ -145,6 +147,7 @@ export function useConversationEventWiring() {
       useCallback((get, set) => {
         clearMessages(get, set);
         set(botOutputSupportedAtom, null);
+        set(botOutputProtocolAtom, null);
         clearTimeout(botStoppedSpeakingTimeoutRef.current);
         botStoppedSpeakingTimeoutRef.current = undefined;
         botOutputLastChunkRef.current = { spoken: "", unspoken: "" };
@@ -158,7 +161,16 @@ export function useConversationEventWiring() {
       useCallback((_get, set, botData: BotReadyData) => {
         const rtviVersion = botData.version;
         const supportsBotOutput = isMinVersion(rtviVersion, [1, 1, 0]);
+        const isV2 = isMinVersion(rtviVersion, [2, 0, 0]);
         set(botOutputSupportedAtom, supportsBotOutput);
+        set(botOutputProtocolAtom, isV2 ? "v2" : "legacy");
+        if (isV2) {
+          console.debug(`[Pipecat Client] Bot protocol version ${rtviVersion} — using RTVI 2.0.0 path (server-side speech progress).`);
+        } else if (supportsBotOutput) {
+          console.debug(`[Pipecat Client] Bot protocol version ${rtviVersion} — using legacy RTVI path (client-side speech progress).`);
+        } else {
+          console.debug(`[Pipecat Client] Bot protocol version ${rtviVersion} — BotOutput events not supported (requires RTVI 1.1.0+).`);
+        }
       }, [])
     )
   );
@@ -173,36 +185,74 @@ export function useConversationEventWiring() {
           clearTimeout(botStoppedSpeakingTimeoutRef.current);
           botStoppedSpeakingTimeoutRef.current = undefined;
 
-          ensureAssistantMessage();
+          const protocol = get(botOutputProtocolAtom) ?? "legacy";
 
-          // Handle spacing for BotOutput chunks
-          let textToAdd = data.text;
-          const lastChunk = data.spoken
-            ? botOutputLastChunkRef.current.spoken
-            : botOutputLastChunkRef.current.unspoken;
+          if (protocol === "v2") {
+            // Protocol 2.0.0: progress events (in-progress/completed) carry no
+            // new text to display — they only advance the cursor. Skip
+            // ensureAssistantMessage and spacing for those.
+            const spoken_status = data.spoken_status;
+            const isProgressEvent =
+              spoken_status === "in-progress" || spoken_status === "completed";
 
-          // Add space separator if needed between BotOutput chunks
-          if (lastChunk) {
-            textToAdd = " " + textToAdd;
-          }
+            if (!isProgressEvent) {
+              ensureAssistantMessage();
+            }
 
-          // Update the appropriate last chunk tracker
-          if (data.spoken) {
-            botOutputLastChunkRef.current.spoken = textToAdd;
+            const payload: BotOutputPayload = {
+              protocol: "v2",
+              will_be_spoken: data.will_be_spoken ?? false,
+              spoken_status: data.spoken_status,
+              spoken_progress: data.spoken_progress,
+              segment_id: data.segment_id,
+            };
+
+            const isFinal = data.aggregated_by === "sentence";
+            updateAssistantBotOutput(
+              get,
+              set,
+              data.text,
+              isFinal,
+              payload,
+              data.aggregated_by
+            );
           } else {
-            botOutputLastChunkRef.current.unspoken = textToAdd;
-          }
+            // Protocol 1.4.x (legacy): use spoken boolean with inter-chunk spacing.
+            ensureAssistantMessage();
 
-          // Update both spoken and unspoken text streams
-          const isFinal = data.aggregated_by === "sentence";
-          updateAssistantBotOutput(
-            get,
-            set,
-            textToAdd,
-            isFinal,
-            data.spoken,
-            data.aggregated_by
-          );
+            const isSpoken = data.will_be_spoken ?? data.spoken ?? false;
+
+            // Handle spacing for BotOutput chunks
+            let textToAdd = data.text;
+            const lastChunk = isSpoken
+              ? botOutputLastChunkRef.current.spoken
+              : botOutputLastChunkRef.current.unspoken;
+
+            if (lastChunk) {
+              textToAdd = " " + textToAdd;
+            }
+
+            if (isSpoken) {
+              botOutputLastChunkRef.current.spoken = textToAdd;
+            } else {
+              botOutputLastChunkRef.current.unspoken = textToAdd;
+            }
+
+            const payload: BotOutputPayload = {
+              protocol: "legacy",
+              spoken: isSpoken,
+            };
+
+            const isFinal = data.aggregated_by === "sentence";
+            updateAssistantBotOutput(
+              get,
+              set,
+              textToAdd,
+              isFinal,
+              payload,
+              data.aggregated_by
+            );
+          }
         },
         [ensureAssistantMessage]
       )
