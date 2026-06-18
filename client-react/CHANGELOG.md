@@ -5,6 +5,19 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.6.0...client-react-v1.7.0) (2026-06-18)
+
+
+### Features
+
+* **react:** add support for bot-output-progress events ([f6bf72d](https://github.com/pipecat-ai/pipecat-client-web/commit/f6bf72d43aa7686debab7949852d4a4a081755d3))
+
+
+### Bug Fixes
+
+* respect final flag in mergeMessages and handle user-llm-text event ([bed406f](https://github.com/pipecat-ai/pipecat-client-web/commit/bed406f679faa7428d7d93780db877c17cd0bdb8))
+* respect final flag in mergeMessages and handle user-llm-text event ([6119ada](https://github.com/pipecat-ai/pipecat-client-web/commit/6119adac15805c28bac22f8594018e1867930a95))
+
 ## [1.6.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.5.0...client-react-v1.6.0) (2026-05-27)
 
 
