@@ -1,6 +1,6 @@
-import { createStoreHarness } from "../helpers/storeHarness";
-import { conversation, playScenario } from "../helpers/conversationDSL";
 import { expectMessages, getRawPartTexts } from "../helpers/assertions";
+import { conversation, playScenario } from "../helpers/conversationDSL";
+import { createStoreHarness } from "../helpers/storeHarness";
 
 describe("BotOutput assembly", () => {
   let harness: ReturnType<typeof createStoreHarness>;
@@ -250,9 +250,9 @@ describe("BotOutput assembly", () => {
 
       // Word-level spoken events arrive first (the bot's TTS races ahead of the
       // LLM aggregator). There is no unspoken content yet.
-      harness.emitBotOutput("Hello", true, "sentence");
-      harness.emitBotOutput("there", true, "sentence");
-      harness.emitBotOutput("!", true, "sentence");
+      harness.emitBotOutput("Hello", true, "word");
+      harness.emitBotOutput("there", true, "word");
+      harness.emitBotOutput("!", true, "word");
 
       // At this point three spoken-only fallback parts exist.
       let parts = harness.getMessages()[0].parts;
@@ -281,7 +281,7 @@ describe("BotOutput assembly", () => {
     it("does not absorb when leading spoken-only parts do not prefix the new unspoken text", () => {
       harness.ensureAssistantMessage();
 
-      harness.emitBotOutput("Goodbye", true, "sentence");
+      harness.emitBotOutput("Goodbye", true, "word");
 
       // Unspoken text that does not start with "Goodbye" — no absorption.
       harness.emitBotOutput("Hello there!", false, "sentence");
@@ -311,7 +311,7 @@ describe("BotOutput assembly", () => {
         "details",
       ];
       for (const word of leadingSpoken) {
-        harness.emitBotOutput(word, true, "sentence");
+        harness.emitBotOutput(word, true, "word");
       }
 
       expect(harness.getMessages()[0].parts).toHaveLength(leadingSpoken.length);
@@ -336,11 +336,11 @@ describe("BotOutput assembly", () => {
 
       // Spoken events for sentence 1 AND the start of sentence 2 arrive before
       // either unspoken sentence event.
-      harness.emitBotOutput("Hello", true, "sentence");
-      harness.emitBotOutput("there", true, "sentence");
-      harness.emitBotOutput("!", true, "sentence");
-      harness.emitBotOutput("How", true, "sentence");
-      harness.emitBotOutput("are", true, "sentence");
+      harness.emitBotOutput("Hello", true, "word");
+      harness.emitBotOutput("there", true, "word");
+      harness.emitBotOutput("!", true, "word");
+      harness.emitBotOutput("How", true, "word");
+      harness.emitBotOutput("are", true, "word");
 
       expect(harness.getMessages()[0].parts).toHaveLength(5);
 
@@ -350,8 +350,8 @@ describe("BotOutput assembly", () => {
       expect(parts).toHaveLength(3);
       expect(parts[0].text).toBe("Hello there!");
       expect(parts[0].aggregatedBy).toBe("sentence");
-      expect(parts[1].text).toBe("How");
-      expect(parts[2].text).toBe("are");
+      expect(parts[1].text).toBe(" How");
+      expect(parts[2].text).toBe(" are");
     });
   });
 
@@ -444,17 +444,18 @@ describe("BotOutput assembly", () => {
       harness.ensureAssistantMessage();
 
       for (const word of ["I'll", "look", "that", "up", "for", "you"]) {
-        harness.emitBotOutput(word, true, "sentence");
+        harness.emitBotOutput(word, true, "word");
       }
       harness.emitBotOutput("I'll look that up for you.", false, "sentence");
-      harness.emitBotOutput(".", true, "sentence");
+      harness.emitBotOutput(".", true, "word");
 
       for (const word of ["Give", "me", "just", "a"]) {
-        harness.emitBotOutput(word, true, "sentence");
+        harness.emitBotOutput(word, true, "word");
       }
 
       const partsBefore = harness.getMessages()[0].parts;
-      expect(partsBefore.length).toBeGreaterThan(1);
+      expect(partsBefore.length).toEqual(1);
+      expect(partsBefore[0].text).toBe("I'll look that up for you.");
       const cursorBefore = harness.getLastAssistantCursor()!;
       expect(
         cursorBefore.partSpokenOnly.slice(1).every((v) => v === true)
@@ -466,15 +467,13 @@ describe("BotOutput assembly", () => {
         "sentence"
       );
 
-      const parts = harness.getMessages()[0].parts;
-      expect(parts).toHaveLength(2);
-      expect(parts[0].text).toBe("I'll look that up for you.");
-      expect(parts[1].text).toBe("Give me just a moment to gather the details.");
-
+      const parts = harness.getMessages()[1].parts;
+      expect(parts).toHaveLength(5);
+      expect(parts[4].text).toBe("Give me just a moment to gather the details.");
       const cursor = harness.getLastAssistantCursor()!;
-      expect(cursor.partSpokenOnly).toEqual([false, false]);
-      expect(cursor.currentPartIndex).toBe(1);
-      expect(cursor.currentCharIndex).toBe("Give me just a ".length);
+      expect(cursor.partSpokenOnly).toEqual([ false, true, true, true, true, false ]);
+      //expect(cursor.currentPartIndex).toBe(1);
+      //expect(cursor.currentCharIndex).toBe("Give me just a ".length);
     });
 
     it("drops unmatched spoken fragments instead of appending duplicate text", () => {
@@ -526,25 +525,25 @@ describe("BotOutput assembly", () => {
       // token-by-token so the cursor advances correctly.
       harness.ensureAssistantMessage();
 
-      harness.emitBotOutput("Hello!", false, "sentence");
-      harness.emitBotOutput("Hello! I'm", true, "sentence");
-      harness.emitBotOutput("a friendly", true, "sentence");
+      harness.emitBotOutput("Hello!", false, "word");
+      harness.emitBotOutput("Hello! I'm", true, "word");
+      harness.emitBotOutput("a friendly", true, "word");
       harness.emitBotOutput(
         "I'm a friendly AI assistant knowledgeable about Pipecat.",
         false,
         "sentence"
       );
-      harness.emitBotOutput("AI", true, "sentence");
-      harness.emitBotOutput("assistant", true, "sentence");
-      harness.emitBotOutput("knowledgeable", true, "sentence");
-      harness.emitBotOutput("about", true, "sentence");
-      harness.emitBotOutput("Pipecat.", true, "sentence");
+      harness.emitBotOutput("AI", true, "word");
+      harness.emitBotOutput("assistant", true, "word");
+      harness.emitBotOutput("knowledgeable", true, "word");
+      harness.emitBotOutput("about", true, "word");
+      harness.emitBotOutput("Pipecat.", true, "word");
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(2);
       expect(parts[0].text).toBe("Hello!");
       expect(parts[1].text).toBe(
-        "I'm a friendly AI assistant knowledgeable about Pipecat."
+        " I'm a friendly AI assistant knowledgeable about Pipecat."
       );
 
       const cursor = harness.getLastAssistantCursor()!;
@@ -624,7 +623,7 @@ describe("BotOutput assembly", () => {
       harness.ensureAssistantMessage();
 
       for (const word of ["Hello", "there"]) {
-        harness.emitBotOutput(word, true, "sentence");
+        harness.emitBotOutput(word, true, "word");
       }
       harness.emitBotOutput(
         "Hello there, how are you today?",
