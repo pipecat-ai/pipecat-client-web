@@ -48,7 +48,7 @@ export interface BotOutputEvent {
   aggregatedBy?: string;
   /** ISO timestamp of when the event was received */
   receivedAt: string;
-  // Protocol 2.0.0+ fields
+  // Protocol 2.0.0 adds server-driven bot-output progress (will_be_spoken, spoken_status, spoken_progress, segment_id).
   will_be_spoken?: boolean;
   spoken_status?: "new" | "in-progress" | "completed";
   spoken_progress?: { accumulated_text: string; remaining_text: string };
