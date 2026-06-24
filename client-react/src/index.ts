@@ -33,6 +33,7 @@ import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle
 import { PipecatClientVideo } from "./PipecatClientVideo";
 import { UIJobGroupsContext } from "./UIJobGroupsContext";
 import { UIJobGroupsProvider } from "./UIJobGroupsProvider";
+import { useDTMF } from "./useDTMF";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
@@ -72,6 +73,7 @@ export {
   useDefaultSelectTextHandler,
   useDefaultSetInputValueHandler,
   useDefaultUICommandHandlers,
+  useDTMF,
   useMediaState,
   useNavigateHandler,
   usePipecatClient,
