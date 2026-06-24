@@ -264,6 +264,28 @@ describe("PipecatClient UI inbound events", () => {
   });
 });
 
+describe("PipecatClient.sendDTMF", () => {
+  it("sends a first-class dtmf RTVI message with the button", () => {
+    const client = makeMockPipecatClient();
+
+    client.sendDTMF("1");
+
+    expect(sendMock(client)).toHaveBeenCalledTimes(1);
+    expectSentMessage(client, RTVIMessageType.DTMF, { button: "1" });
+  });
+
+  it("sends one message per call", () => {
+    const client = makeMockPipecatClient();
+
+    client.sendDTMF("*");
+    client.sendDTMF("#");
+
+    expect(sendMock(client)).toHaveBeenCalledTimes(2);
+    expectSentMessage(client, RTVIMessageType.DTMF, { button: "*" });
+    expectSentMessage(client, RTVIMessageType.DTMF, { button: "#" });
+  });
+});
+
 describe("PipecatClient.cancelUIJobGroup", () => {
   it("sends a first-class ui-cancel-job-group RTVI message with job_id", () => {
     const client = makeMockPipecatClient();

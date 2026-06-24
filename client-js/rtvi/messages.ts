@@ -27,6 +27,7 @@ export enum RTVIMessageType {
   // Client-to-server messages
   CLIENT_MESSAGE = "client-message",
   SEND_TEXT = "send-text",
+  DTMF = "dtmf",
   // UI Worker Protocol (client-to-server)
   UI_EVENT = "ui-event",
   UI_SNAPSHOT = "ui-snapshot",
@@ -259,6 +260,25 @@ export type LLMFunctionCallStoppedData = {
 export type SendTextOptions = {
   run_immediately?: boolean;
   audio_response?: boolean;
+};
+
+/** Valid DTMF keypad keys. */
+export type DTMFButton =
+  | "0"
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5"
+  | "6"
+  | "7"
+  | "8"
+  | "9"
+  | "*"
+  | "#";
+
+export type DTMFData = {
+  button: DTMFButton;
 };
 
 /** DEPRECATED */
