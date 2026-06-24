@@ -18,6 +18,8 @@ import {
   ClientMessageData,
   DeviceErrorReason,
   DeviceStatus,
+  DTMFButton,
+  DTMFData,
   ErrorData,
   LLMContextMessage,
   LLMFunctionCallData,
@@ -39,11 +41,11 @@ import {
   TranscriptData,
   TransportState,
   UICancelJobGroupData,
-  UserLLMTextData,
   UICommandData,
   UIEventData,
   UIJobGroupData,
   UISnapshotData,
+  UserLLMTextData,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
 import {
@@ -996,6 +998,18 @@ export class PipecatClient extends RTVIEventEmitter {
   public sendUIEvent(event: string, payload?: unknown): void {
     const data: UIEventData = { event, payload };
     this._sendMessage(new RTVIMessage(RTVIMessageType.UI_EVENT, data));
+  }
+
+  /**
+   * Send a single DTMF tone to the server as a first-class RTVI
+   * `dtmf` message. Call once per key.
+   *
+   * @param button - The DTMF key to send (0-9, *, or #).
+   */
+  @transportReady
+  public sendDTMF(button: DTMFButton): void {
+    const data: DTMFData = { button };
+    this._sendMessage(new RTVIMessage(RTVIMessageType.DTMF, data));
   }
 
   /**
