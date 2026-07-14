@@ -5,6 +5,14 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.12.0...client-js-v1.13.0) (2026-07-14)
+
+
+### Features
+
+* **js:** accept DTMF key sequences in sendDTMF ([5c5ce54](https://github.com/pipecat-ai/pipecat-client-web/commit/5c5ce54f74a7f5426ab7df868704e70996941aac))
+* **js:** add sendDTMF method and DTMFButton type ([47ad59a](https://github.com/pipecat-ai/pipecat-client-web/commit/47ad59a6ce9b36524a12907eaee1214897a5a2d2))
+
 ## [1.12.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.11.0...client-js-v1.12.0) (2026-06-18)
 
 
