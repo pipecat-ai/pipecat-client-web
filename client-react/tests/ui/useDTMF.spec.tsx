@@ -48,6 +48,31 @@ describe("useDTMF", () => {
     expect(sendDTMF).toHaveBeenCalledWith("1");
   });
 
+  it("passes a multi-key sequence through to sendDTMF", () => {
+    const sendDTMF = jest.fn();
+    mockUsePipecatClient.mockReturnValue({
+      sendDTMF,
+    });
+
+    let sendTone: (dtmf: DTMFButton | string) => void = () => {
+      throw new Error("sendTone not yet bound");
+    };
+
+    const Probe: React.FC = () => {
+      ({ sendTone } = useDTMF());
+      return null;
+    };
+
+    render(<Probe />);
+
+    act(() => {
+      sendTone("123#");
+    });
+
+    expect(sendDTMF).toHaveBeenCalledTimes(1);
+    expect(sendDTMF).toHaveBeenCalledWith("123#");
+  });
+
   it("is a no-op when the Pipecat client is unavailable", () => {
     mockUsePipecatClient.mockReturnValue(undefined);
 
