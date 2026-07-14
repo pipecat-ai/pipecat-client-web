@@ -46,7 +46,7 @@ function makeMockPipecatClient(): MockPipecatClient {
 
   const mock = Object.create(PipecatClient.prototype) as MockPipecatClient;
   (mock as unknown as MessageMockHolder)._sendMessage = jest.fn();
-  Object.assign(mock, { _transport: { state: "ready" } });
+  Object.assign(mock, { _transport: { state: "ready" }, _botVersion: [0, 0, 0] });
   mock.on = jest.fn((event: unknown, handler: unknown) => {
     get(event as RTVIEvent).add(handler as Listener);
     return mock;
@@ -265,24 +265,60 @@ describe("PipecatClient UI inbound events", () => {
 });
 
 describe("PipecatClient.sendDTMF", () => {
-  it("sends a first-class dtmf RTVI message with the button", () => {
+  it("sends a sequence as a single buttons message when the bot is on protocol 2.1.0+", () => {
     const client = makeMockPipecatClient();
+    Object.assign(client, { _botVersion: [2, 1, 0] });
+
+    client.sendDTMF("123#");
+
+    expect(sendMock(client)).toHaveBeenCalledTimes(1);
+    expectSentMessage(client, RTVIMessageType.DTMF, {
+      buttons: ["1", "2", "3", "#"],
+    });
+  });
+
+  it("sends a single key as a one-element buttons message on protocol 2.1.0+", () => {
+    const client = makeMockPipecatClient();
+    Object.assign(client, { _botVersion: [2, 1, 0] });
 
     client.sendDTMF("1");
 
     expect(sendMock(client)).toHaveBeenCalledTimes(1);
-    expectSentMessage(client, RTVIMessageType.DTMF, { button: "1" });
+    expectSentMessage(client, RTVIMessageType.DTMF, { buttons: ["1"] });
   });
 
-  it("sends one message per call", () => {
+  it("fans out legacy button messages, one per key, for pre-2.1.0 bots", () => {
+    const client = makeMockPipecatClient();
+    Object.assign(client, { _botVersion: [2, 0, 0] });
+
+    client.sendDTMF("12#");
+
+    expect(sendMock(client)).toHaveBeenCalledTimes(3);
+    expect(
+      sendMock(client).mock.calls.map(
+        (c) => (c[0] as RTVIMessage).data
+      )
+    ).toEqual([{ button: "1" }, { button: "2" }, { button: "#" }]);
+  });
+
+  it("throws when the bot predates DTMF support (protocol < 2.0.0 or unknown)", () => {
     const client = makeMockPipecatClient();
 
-    client.sendDTMF("*");
-    client.sendDTMF("#");
+    expect(() => client.sendDTMF("42")).toThrow(/does not support DTMF/);
 
-    expect(sendMock(client)).toHaveBeenCalledTimes(2);
-    expectSentMessage(client, RTVIMessageType.DTMF, { button: "*" });
-    expectSentMessage(client, RTVIMessageType.DTMF, { button: "#" });
+    Object.assign(client, { _botVersion: [1, 4, 0] });
+    expect(() => client.sendDTMF("1")).toThrow(/does not support DTMF/);
+
+    expect(sendMock(client)).not.toHaveBeenCalled();
+  });
+
+  it("throws on invalid input and sends nothing", () => {
+    const client = makeMockPipecatClient();
+    Object.assign(client, { _botVersion: [2, 1, 0] });
+
+    expect(() => client.sendDTMF("12a#")).toThrow();
+    expect(() => client.sendDTMF("")).toThrow();
+    expect(sendMock(client)).not.toHaveBeenCalled();
   });
 });
 

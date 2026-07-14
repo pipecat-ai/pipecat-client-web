@@ -13,7 +13,7 @@ import {
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
-export const RTVI_PROTOCOL_VERSION = "2.0.0";
+export const RTVI_PROTOCOL_VERSION = "2.1.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -278,7 +278,9 @@ export type DTMFButton =
   | "#";
 
 export type DTMFData = {
-  button: DTMFButton;
+  /** One or more DTMF keys, in order. Requires a bot on RTVI protocol
+   * 2.1.0+; older bots expect a legacy `{button}` message per key. */
+  buttons: DTMFButton[];
 };
 
 /** DEPRECATED */
