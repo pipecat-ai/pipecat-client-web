@@ -18,6 +18,8 @@ import {
   ClientMessageData,
   DeviceErrorReason,
   DeviceStatus,
+  DTMFButton,
+  DTMFData,
   ErrorData,
   LLMContextMessage,
   LLMFunctionCallData,
@@ -39,11 +41,11 @@ import {
   TranscriptData,
   TransportState,
   UICancelJobGroupData,
-  UserLLMTextData,
   UICommandData,
   UIEventData,
   UIJobGroupData,
   UISnapshotData,
+  UserLLMTextData,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
 import {
@@ -228,6 +230,9 @@ export class PipecatClient extends RTVIEventEmitter {
 
   private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
+
+  // Bot's RTVI protocol version, parsed from bot-ready. [0, 0, 0] until known.
+  private _botVersion: number[] = [0, 0, 0];
 
   // Per-device device state. Independent of TransportState — driven by
   // initDevices() and DeviceError events, never by transport connect/disconnect.
@@ -676,6 +681,7 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
+    this._botVersion = [0, 0, 0];
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -999,6 +1005,41 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
+   * Send DTMF tones to the server as first-class RTVI `dtmf` messages.
+   *
+   * Accepts a single key or a sequence of keys (e.g. "123#"). Bots on
+   * RTVI protocol 2.1.0+ receive the keys as a single message; 2.0.x
+   * bots receive one legacy `{button}` message per key. Bots older than
+   * 2.0.0 don't support DTMF at all.
+   *
+   * @param dtmf - The DTMF key(s) to send (0-9, *, or #).
+   */
+  @transportReady
+  public sendDTMF(dtmf: DTMFButton | string): void {
+    if (!/^[0-9*#]+$/.test(dtmf)) {
+      throw new RTVIErrors.RTVIError(
+        `Invalid DTMF sequence "${dtmf}". Only 0-9, * and # are allowed.`
+      );
+    }
+    if (this._botVersion[0] < 2) {
+      throw new RTVIErrors.UnsupportedFeatureError(
+        "DTMF",
+        "bot",
+        "requires RTVI protocol 2.0.0+"
+      );
+    }
+    const buttons = [...dtmf] as DTMFButton[];
+    if (this._botVersion[0] === 2 && this._botVersion[1] < 1) {
+      for (const button of buttons) {
+        this._sendMessage(new RTVIMessage(RTVIMessageType.DTMF, { button }));
+      }
+    } else {
+      const data: DTMFData = { buttons };
+      this._sendMessage(new RTVIMessage(RTVIMessageType.DTMF, data));
+    }
+  }
+
+  /**
    * Start streaming UI snapshots to the server as
    * first-class `ui-snapshot` RTVI messages.
    *
@@ -1131,6 +1172,7 @@ export class PipecatClient extends RTVIEventEmitter {
         const botVersion = data.version
           ? data.version.split(".").map(Number)
           : [0, 0, 0];
+        this._botVersion = botVersion;
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
         if (botVersion[0] < 2) {
           logger.warn(
