@@ -13,7 +13,7 @@ import {
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
-export const RTVI_PROTOCOL_VERSION = "2.1.0";
+export const RTVI_PROTOCOL_VERSION = "2.2.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
