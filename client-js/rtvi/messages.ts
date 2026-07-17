@@ -374,6 +374,7 @@ export type FileBytes = {
 export type FileUrl = {
   type: Extract<FileSourceType, "url">;
   url: string | URL;
+  public?: boolean;
 };
 export type FileId = {
   type: Extract<FileSourceType, "id">;
