@@ -306,7 +306,7 @@ export type RTVIImageFormat =
   | "webp"
   | "gif"
   | "heic"
-  | "hief";
+  | "heif";
 export type RTVIDocFormat =
   | "pdf"
   | "csv"
@@ -327,7 +327,6 @@ export type RTVIMediaFormat =
   | "aac"
   | "mp4"
   | "webm"
-  | "ogg"
   | "avi";
 export type RTVIFileFormat = RTVIImageFormat | RTVIDocFormat | RTVIMediaFormat;
 
@@ -339,7 +338,7 @@ export const MimeTypeMapping: Record<RTVIFileFormat, string> = {
   webp: "image/webp",
   gif: "image/gif",
   heic: "image/heic",
-  hief: "image/heif",
+  heif: "image/heif",
   // Documents
   pdf: "application/pdf",
   csv: "text/csv",
