@@ -4,11 +4,11 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { beforeEach, describe, expect, test } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
-import { RTVIEvent, RTVIMessage } from "./../rtvi";
+import { FileBytes, RTVIEvent, RTVIFile, RTVIMessage, RTVIMessageType } from "./../rtvi";
 import { MessageTooLargeError, UnsupportedFeatureError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
@@ -739,5 +739,269 @@ describe("UnsupportedFeatureError handling", () => {
     expect(() => client.enableScreenShare(true)).toThrow(
       "unexpected transport failure"
     );
+  });
+});
+
+describe("sendFile", () => {
+  const DEFAULT_MAX_MESSAGE_SIZE = 64 * 1024;
+
+  // Connect a client and override the bot version by injecting a second BOT_READY.
+  const connectWithBotVersion = async (
+    version = "2.2.0"
+  ): Promise<{ client: PipecatClient; stub: TransportStub }> => {
+    const stub = new TransportStub();
+    const client = new PipecatClient({ transport: stub });
+    await client.connect();
+    stub.handleMessage({
+      label: "rtvi-ai",
+      id: "bot-ready-override",
+      type: RTVIMessageType.BOT_READY,
+      data: { version },
+    } as RTVIMessage);
+    return { client, stub };
+  };
+
+  interface MockFileReader {
+    readAsDataURL: ReturnType<typeof jest.fn>;
+    onload: ((e: { target: { result: string | null } | null }) => void) | null;
+    onerror: (() => void) | null;
+  }
+
+  let mockFileReaderInstance: MockFileReader;
+  let OriginalFileReader: typeof FileReader;
+
+  beforeEach(() => {
+    OriginalFileReader = globalThis.FileReader;
+    mockFileReaderInstance = {
+      readAsDataURL: jest.fn(),
+      onload: null,
+      onerror: null,
+    };
+    globalThis.FileReader = jest.fn(
+      () => mockFileReaderInstance
+    ) as unknown as typeof FileReader;
+  });
+
+  afterEach(() => {
+    globalThis.FileReader = OriginalFileReader;
+    jest.restoreAllMocks();
+  });
+
+  describe("version guard", () => {
+    test("throws UnsupportedFeatureError for bot version 1.x", async () => {
+      const { client } = await connectWithBotVersion("1.0.0");
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      await expect(client.sendFile(file, "caption")).rejects.toThrow(
+        UnsupportedFeatureError
+      );
+    });
+
+    test("throws UnsupportedFeatureError for bot version 2.1.x", async () => {
+      const { client } = await connectWithBotVersion("2.1.0");
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      await expect(client.sendFile(file, "caption")).rejects.toThrow(
+        UnsupportedFeatureError
+      );
+    });
+
+    test("proceeds for bot version 2.2.0", async () => {
+      const { client } = await connectWithBotVersion("2.2.0");
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "caption");
+      mockFileReaderInstance.onload?.({
+        target: { result: "data:image/jpeg;base64,dGVzdA==" },
+      });
+      await expect(pending).resolves.toBeUndefined();
+    });
+  });
+
+  describe("Browser File input", () => {
+    test("small file is read as base64 and sent inline", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+
+      const file = new File(["hello"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "what is this?");
+      mockFileReaderInstance.onload?.({
+        target: { result: "data:image/jpeg;base64,aGVsbG8=" },
+      });
+      await pending;
+
+      expect(sentMessages).toHaveLength(1);
+      const payload = sentMessages[0].data as { file: RTVIFile };
+      expect(payload.file.source.type).toBe("bytes");
+      expect((payload.file.source as FileBytes).bytes).toBe("aGVsbG8=");
+      expect(payload.file.format).toBe("image/jpeg");
+      expect(payload.file.name).toBe("photo.jpg");
+    });
+
+    test("strips data-URL prefix from base64 result", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+
+      const file = new File(["data"], "photo.png", { type: "image/png" });
+      const pending = client.sendFile(file, "caption");
+      mockFileReaderInstance.onload?.({
+        target: { result: "data:image/png;base64,dGVzdA==" },
+      });
+      await pending;
+
+      const source = (sentMessages[0].data as { file: RTVIFile })
+        .file.source as FileBytes;
+      expect(source.bytes).toBe("dGVzdA==");
+      expect(source.bytes).not.toContain("data:");
+    });
+
+    test("large file is uploaded instead of read inline", async () => {
+      const { client } = await connectWithBotVersion();
+      const uploadSpy = jest.spyOn(client, "uploadFile").mockResolvedValue({
+        name: "large.jpg",
+        format: "image/jpeg",
+        source: { type: "url", url: "https://cdn.example.com/large.jpg" },
+      });
+
+      // size * 1.37 + 1000 exceeds 64 KiB
+      const largeContent = new Uint8Array(DEFAULT_MAX_MESSAGE_SIZE);
+      const file = new File([largeContent], "large.jpg", { type: "image/jpeg" });
+      await client.sendFile(file, "caption");
+
+      expect(uploadSpy).toHaveBeenCalledWith(file);
+      expect(mockFileReaderInstance.readAsDataURL).not.toHaveBeenCalled();
+    });
+
+    test("FileReader onerror rejects with RTVIError", async () => {
+      const { client } = await connectWithBotVersion();
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "caption");
+
+      mockFileReaderInstance.onerror?.();
+
+      await expect(pending).rejects.toThrow("Could not read file data");
+    });
+
+    test("null FileReader result rejects with RTVIError", async () => {
+      const { client } = await connectWithBotVersion();
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "caption");
+
+      mockFileReaderInstance.onload?.({ target: { result: null } });
+
+      await expect(pending).rejects.toThrow("Could not read file data");
+    });
+  });
+
+  describe("RTVIFile input", () => {
+    test("url source passes through without upload", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+      const uploadSpy = jest.spyOn(client, "uploadFile");
+
+      const rtviFile: RTVIFile = {
+        name: "photo.jpg",
+        format: "image/jpeg",
+        source: { type: "url", url: "https://example.com/photo.jpg" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(
+        (sentMessages[0].data as { file: RTVIFile }).file.source.type
+      ).toBe("url");
+    });
+
+    test("id source passes through without upload", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+      const uploadSpy = jest.spyOn(client, "uploadFile");
+
+      const rtviFile: RTVIFile = {
+        name: "doc.pdf",
+        format: "application/pdf",
+        source: { type: "id", id: "file-abc-123" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(
+        (sentMessages[0].data as { file: RTVIFile }).file.source.type
+      ).toBe("id");
+    });
+
+    test("small bytes source is sent inline", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+      const uploadSpy = jest.spyOn(client, "uploadFile");
+
+      const rtviFile: RTVIFile = {
+        name: "photo.jpg",
+        format: "image/jpeg",
+        source: { type: "bytes", bytes: "aGVsbG8=" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(
+        ((sentMessages[0].data as { file: RTVIFile }).file.source as FileBytes)
+          .bytes
+      ).toBe("aGVsbG8=");
+    });
+
+    test("large bytes source is uploaded", async () => {
+      const { client } = await connectWithBotVersion();
+      const uploadSpy = jest.spyOn(client, "uploadFile").mockResolvedValue({
+        name: "large.jpg",
+        format: "image/jpeg",
+        source: { type: "url", url: "https://cdn.example.com/large.jpg" },
+      });
+
+      const rtviFile: RTVIFile = {
+        name: "large.jpg",
+        format: "image/jpeg",
+        source: { type: "bytes", bytes: "x".repeat(DEFAULT_MAX_MESSAGE_SIZE) },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).toHaveBeenCalled();
+    });
+
+    test("shorthand format is normalized to MIME type", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+
+      const rtviFile: RTVIFile = {
+        name: "photo.jpg",
+        format: "jpg" as string,
+        source: { type: "url", url: "https://example.com/photo.jpg" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(
+        (sentMessages[0].data as { file: RTVIFile }).file.format
+      ).toBe("image/jpeg");
+    });
   });
 });
