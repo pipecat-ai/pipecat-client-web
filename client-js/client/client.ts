@@ -1168,8 +1168,8 @@ export class PipecatClient extends RTVIEventEmitter {
     options: SendFileOptions = {}
   ) {
     if (
-      this._botVersion[0] < 1 ||
-      (this._botVersion[0] === 1 && this._botVersion[1] < 3)
+      this._botVersion[0] < 2 ||
+      (this._botVersion[0] === 2 && this._botVersion[1] < 2)
     ) {
       throw new RTVIErrors.UnsupportedFeatureError(
         "sendFile",
@@ -1177,7 +1177,7 @@ export class PipecatClient extends RTVIEventEmitter {
         "requires RTVI protocol 2.2.0+"
       );
     }
-    let rtvi_file = file instanceof File ? ({} as RTVIFile) : file;
+    let rtvi_file = file instanceof File ? ({} as RTVIFile) : { ...file };
     let mimeType: string =
       file instanceof File ? file.type : rtvi_file.format.toLowerCase();
     if (mimeType in MimeTypeMapping) {
@@ -1205,23 +1205,33 @@ export class PipecatClient extends RTVIEventEmitter {
       if (estimatedEncodedSize > this._transport.maxMessageSize) {
         uploadFile = file;
       } else {
-        return new Promise<void>((resolve) => {
+        return new Promise<void>((resolve, reject) => {
           const reader = new FileReader();
+          reader.onerror = () => {
+            reject(new RTVIErrors.RTVIError("Could not read file data"));
+          };
           reader.onload = async (e) => {
-            if (!e.target?.result) {
-              throw new RTVIErrors.RTVIError("Could not read file data");
-            }
-            const fileContent = e.target.result as string;
+            try {
+              if (!e.target?.result) {
+                throw new RTVIErrors.RTVIError("Could not read file data");
+              }
+              const dataUrl = e.target.result as string;
+              // FileBytes.bytes carries raw base64; strip the data-URL prefix.
+              const base64Data = dataUrl.split(",")[1] ?? dataUrl;
 
-            rtvi_file = {
-              format: file.type,
-              source: {
-                type: "bytes",
-                bytes: fileContent,
-              },
-            };
-            await sendFileMessage();
-            resolve();
+              rtvi_file = {
+                name: file.name,
+                format: mimeType,
+                source: {
+                  type: "bytes",
+                  bytes: base64Data,
+                },
+              };
+              await sendFileMessage();
+              resolve();
+            } catch (err) {
+              reject(err);
+            }
           };
 
           reader.readAsDataURL(file);
