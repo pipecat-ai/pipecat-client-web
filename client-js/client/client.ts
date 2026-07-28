@@ -1167,6 +1167,23 @@ export class PipecatClient extends RTVIEventEmitter {
     content: string,
     options: SendFileOptions = {}
   ) {
+    this._assertBotSupportsSendFile();
+
+    const rawMime = file instanceof File ? file.type : file.format.toLowerCase();
+    const mimeType = rawMime in MimeTypeMapping
+      ? MimeTypeMapping[rawMime as RTVIFileFormat]
+      : rawMime;
+
+    const resolved = file instanceof File
+      ? await this._resolveBrowserFile(file, mimeType)
+      : await this._resolveRTVIFile(file, mimeType);
+
+    await this._sendMessage(
+      new RTVIMessage(RTVIMessageType.SEND_FILE, { file: resolved, content, options })
+    );
+  }
+
+  private _assertBotSupportsSendFile() {
     if (
       this._botVersion[0] < 2 ||
       (this._botVersion[0] === 2 && this._botVersion[1] < 2)
@@ -1177,91 +1194,57 @@ export class PipecatClient extends RTVIEventEmitter {
         "requires RTVI protocol 2.2.0+"
       );
     }
-    let rtvi_file = file instanceof File ? ({} as RTVIFile) : { ...file };
-    let mimeType: string =
-      file instanceof File ? file.type : rtvi_file.format.toLowerCase();
-    if (mimeType in MimeTypeMapping) {
-      mimeType = MimeTypeMapping[mimeType as RTVIFileFormat];
+  }
+
+  private _resolveBrowserFile(file: File, mimeType: string): Promise<RTVIFile> {
+    // Estimate base64 size (~33% overhead) + message wrapper before reading into memory.
+    const estimatedEncodedSize = Math.ceil(file.size * 1.37) + 1000;
+    if (estimatedEncodedSize > this._transport.maxMessageSize) {
+      return this.uploadFile(file);
     }
-    rtvi_file.format = mimeType;
-
-    const sendFileMessage = async () => {
-      await this._sendMessage(
-        new RTVIMessage(RTVIMessageType.SEND_FILE, {
-          file: rtvi_file,
-          content,
-          options,
-        })
-      );
-    };
-
-    let uploadFile: File | undefined;
-    if (file instanceof File) {
-      // Estimate the message size with base64 encoding overhead (~33% larger)
-      // Add buffer for message wrapper overhead. This saves us from having to
-      // unnecessarily read the file into memory and encode it to base64.
-      const estimatedEncodedSize = Math.ceil(file.size * 1.37) + 1000;
-
-      if (estimatedEncodedSize > this._transport.maxMessageSize) {
-        uploadFile = file;
-      } else {
-        return new Promise<void>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = () => {
-            reject(new RTVIErrors.RTVIError("Could not read file data"));
-          };
-          reader.onload = async (e) => {
-            try {
-              if (!e.target?.result) {
-                throw new RTVIErrors.RTVIError("Could not read file data");
-              }
-              const dataUrl = e.target.result as string;
-              // FileBytes.bytes carries raw base64; strip the data-URL prefix.
-              const base64Data = dataUrl.split(",")[1] ?? dataUrl;
-
-              rtvi_file = {
-                name: file.name,
-                format: mimeType,
-                source: {
-                  type: "bytes",
-                  bytes: base64Data,
-                },
-              };
-              await sendFileMessage();
-              resolve();
-            } catch (err) {
-              reject(err);
-            }
-          };
-
-          reader.readAsDataURL(file);
-        });
-      }
-    } else if (rtvi_file.source.type === "bytes") {
-      const estimatedSize = rtvi_file.source.bytes.length + 1000;
-      if (estimatedSize > this._transport.maxMessageSize) {
-        // Convert bytes to File and upload
-        const byteString = atob(
-          rtvi_file.source.bytes.split(",")[1] || rtvi_file.source.bytes
-        );
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
+    return new Promise<RTVIFile>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () =>
+        reject(new RTVIErrors.RTVIError("Could not read file data"));
+      reader.onload = async (e) => {
+        try {
+          if (!e.target?.result) {
+            throw new RTVIErrors.RTVIError("Could not read file data");
+          }
+          const dataUrl = e.target.result as string;
+          // FileBytes.bytes carries raw base64; strip the data-URL prefix.
+          const base64Data = dataUrl.split(",")[1] ?? dataUrl;
+          resolve({
+            name: file.name,
+            format: mimeType,
+            source: { type: "bytes", bytes: base64Data },
+          });
+        } catch (err) {
+          reject(err);
         }
-        const blob = new Blob([ab], { type: mimeType });
-        uploadFile = new File([blob], rtvi_file.name || "uploaded_file", {
-          type: mimeType,
-        });
-      }
-    }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
-    if (uploadFile) {
-      // File is too large for transport, upload it first
-      rtvi_file = await this.uploadFile(uploadFile);
-    }
+  private async _resolveRTVIFile(file: RTVIFile, mimeType: string): Promise<RTVIFile> {
+    const normalized = { ...file, format: mimeType };
+    if (normalized.source.type !== "bytes") return normalized;
 
-    await sendFileMessage();
+    const estimatedSize = normalized.source.bytes.length + 1000;
+    if (estimatedSize <= this._transport.maxMessageSize) return normalized;
+
+    const byteString = atob(
+      normalized.source.bytes.split(",")[1] || normalized.source.bytes
+    );
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+    const uploadable = new File([blob], file.name || "uploaded_file", { type: mimeType });
+    return this.uploadFile(uploadable);
   }
 
   /**

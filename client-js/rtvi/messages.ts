@@ -339,6 +339,9 @@ export type FileSourceType = "bytes" | "url" | "id";
 export type FileBytes = {
   type: Extract<FileSourceType, "bytes">;
   bytes: string;
+};
+
+export type ImageFileBytes = FileBytes & {
   width?: number;
   height?: number;
 };
