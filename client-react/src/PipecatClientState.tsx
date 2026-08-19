@@ -100,6 +100,25 @@ export const PipecatClientStateProvider: React.FC<React.PropsWithChildren> = ({
     }
   });
 
+  // TrackStarted/Stopped fire for more than an enabled/disabled toggle — a
+  // device switch is Stopped(old)+Started(new) with the enabled state never
+  // conceptually changing, so treating "stopped" as false / "started" as
+  // true would drift from reality whenever those causes interleave. Use the
+  // event purely as a signal to re-check, and read the actual state off the
+  // client (the source of truth) rather than inferring it from which event
+  // fired.
+  useRTVIClientEvent(RTVIEvent.TrackStarted, (track, participant) => {
+    if (!participant?.local || !client) return;
+    if (track.kind === "audio") setIsMicEnabled(client.isMicEnabled ?? false);
+    if (track.kind === "video") setIsCamEnabled(client.isCamEnabled ?? false);
+  });
+
+  useRTVIClientEvent(RTVIEvent.TrackStopped, (track, participant) => {
+    if (!participant?.local || !client) return;
+    if (track.kind === "audio") setIsMicEnabled(client.isMicEnabled ?? false);
+    if (track.kind === "video") setIsCamEnabled(client.isCamEnabled ?? false);
+  });
+
   return (
     <PipecatClientTransportStateContext.Provider value={transportState}>
       <PipecatClientCamStateContext.Provider
