@@ -135,12 +135,13 @@ export function createStoreHarness() {
       ensureAssistantMessage();
     }
 
-    const isFinal = aggregated_by === "sentence";
+    // v2 never finalizes per segment; the turn is finalized by
+    // BotStoppedSpeaking / UserStartedSpeaking. Mirrors useConversationEventWiring.
     actions.updateAssistantBotOutput(
       store.get,
       store.set,
       text,
-      isFinal,
+      false,
       { protocol: "v2", will_be_spoken, spoken_status, spoken_progress, segment_id },
       aggregated_by
     );
@@ -159,6 +160,38 @@ export function createStoreHarness() {
    */
   function finalizeAssistant() {
     actions.finalizeLastMessage(store.get, store.set, "assistant");
+  }
+
+  /**
+   * Finalize the assistant turn the way the BotStoppedSpeaking timer does:
+   * snap the speech-progress cursor to the end of all parts, then finalize.
+   * Mirrors armBotStoppedFinalizeTimer in useConversationEventWiring.
+   *
+   * Use this for a normal, uninterrupted turn boundary. `finalizeAssistant`
+   * models the raw UserStartedSpeaking / interruption path, which deliberately
+   * does not snap the cursor (unspoken text stays unspoken).
+   */
+  function finalizeAssistantAfterBotStoppedSpeaking() {
+    const messages = store.get(messagesAtom);
+    const cursorMap = new Map(store.get(botOutputMessageStateAtom));
+    const last = [...messages]
+      .reverse()
+      .find((m: ConversationMessage) => m.role === "assistant");
+    if (last) {
+      const cursor = cursorMap.get(last.createdAt);
+      if (cursor && last.parts && last.parts.length > 0) {
+        const lastPartIdx = last.parts.length - 1;
+        const lastPartText = last.parts[lastPartIdx]?.text;
+        cursor.currentPartIndex = lastPartIdx;
+        cursor.currentCharIndex =
+          typeof lastPartText === "string" ? lastPartText.length : 0;
+        for (let i = 0; i <= lastPartIdx; i++) {
+          cursor.partFinalFlags[i] = true;
+        }
+        store.set(botOutputMessageStateAtom, cursorMap);
+      }
+    }
+    finalizeAssistant();
   }
 
   /**
@@ -342,6 +375,7 @@ export function createStoreHarness() {
     emitBotOutputV2,
     emitUserTranscript,
     finalizeAssistant,
+    finalizeAssistantAfterBotStoppedSpeaking,
     finalizeUser,
     finalizeAssistantIfPending,
     finalizeUserIfPending,

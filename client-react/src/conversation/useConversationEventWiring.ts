@@ -83,10 +83,15 @@ export function useConversationEventWiring() {
 
   // -- helpers ---------------------------------------------------------------
 
+  /** Cancel any pending delayed finalize, leaving no timer armed. */
+  const cancelFinalizeTimer = useCallback(() => {
+    clearTimeout(botStoppedSpeakingTimeoutRef.current);
+    botStoppedSpeakingTimeoutRef.current = undefined;
+  }, []);
+
   const finalizeLastAssistantMessageIfPending = useAtomCallback(
     useCallback((get, set) => {
-      clearTimeout(botStoppedSpeakingTimeoutRef.current);
-      botStoppedSpeakingTimeoutRef.current = undefined;
+      cancelFinalizeTimer();
       const messages = get(messagesAtom);
       const lastAssistant = findLast(messages,
         (m: ConversationMessage) => m.role === "assistant"
@@ -139,6 +144,58 @@ export function useConversationEventWiring() {
     }, [])
   );
 
+  /**
+   * Arms (or re-arms) the delayed finalize for the in-flight assistant turn.
+   *
+   * Finalizing is deferred rather than immediate because the bot may just be
+   * pausing mid-turn; BotStartedSpeaking cancels the timer when that happens.
+   * On RTVI 2.0.0+ this timer and UserStartedSpeaking are the *only* things
+   * that end an assistant turn, so any path that cancels the timer has to
+   * re-arm it here rather than dropping it on the floor.
+   */
+  const armBotStoppedFinalizeTimer = useAtomCallback(
+    useCallback((get, set) => {
+      cancelFinalizeTimer();
+
+      const messages = get(messagesAtom);
+      const lastAssistant = findLast(messages,
+        (m: ConversationMessage) => m.role === "assistant"
+      );
+      if (!lastAssistant || lastAssistant.final) return;
+
+      botStoppedSpeakingTimeoutRef.current = setTimeout(() => {
+        botStoppedSpeakingTimeoutRef.current = undefined;
+
+        // Snap the speech-progress cursor to the end of all parts.
+        // The bot finished speaking normally (not interrupted), so all
+        // text should render as "spoken". Without this, text from the
+        // last sentence can remain grey if the spoken BotOutput event
+        // didn't match the unspoken text exactly.
+        const msgs = get(messagesAtom);
+        const cursorMap = new Map(get(botOutputMessageStateAtom));
+        const last = findLast(msgs,
+          (m: ConversationMessage) => m.role === "assistant"
+        );
+        if (last) {
+          const cursor = cursorMap.get(last.createdAt);
+          if (cursor && last.parts && last.parts.length > 0) {
+            const lastPartIdx = last.parts.length - 1;
+            const lastPartText = last.parts[lastPartIdx]?.text;
+            cursor.currentPartIndex = lastPartIdx;
+            cursor.currentCharIndex =
+              typeof lastPartText === "string" ? lastPartText.length : 0;
+            for (let i = 0; i <= lastPartIdx; i++) {
+              cursor.partFinalFlags[i] = true;
+            }
+            set(botOutputMessageStateAtom, cursorMap);
+          }
+        }
+
+        finalizeLastMessage(get, set, "assistant");
+      }, BOT_STOPPED_FINALIZE_DELAY_MS);
+    }, [])
+  );
+
   // -- event handlers --------------------------------------------------------
 
   useRTVIClientEvent(
@@ -148,10 +205,9 @@ export function useConversationEventWiring() {
         clearMessages(get, set);
         set(botOutputSupportedAtom, null);
         set(botOutputProtocolAtom, null);
-        clearTimeout(botStoppedSpeakingTimeoutRef.current);
-        botStoppedSpeakingTimeoutRef.current = undefined;
+        cancelFinalizeTimer();
         botOutputLastChunkRef.current = { spoken: "", unspoken: "" };
-      }, [])
+      }, [cancelFinalizeTimer])
     )
   );
 
@@ -180,11 +236,6 @@ export function useConversationEventWiring() {
     useAtomCallback(
       useCallback(
         (get, set, data: BotOutputData) => {
-          // A BotOutput event means the response is still active; cancel any
-          // pending finalize timer from BotStoppedSpeaking.
-          clearTimeout(botStoppedSpeakingTimeoutRef.current);
-          botStoppedSpeakingTimeoutRef.current = undefined;
-
           const protocol = get(botOutputProtocolAtom) ?? "legacy";
 
           if (protocol === "v2") {
@@ -207,12 +258,17 @@ export function useConversationEventWiring() {
               segment_id: data.segment_id,
             };
 
-            const isFinal = data.aggregated_by === "sentence";
+            // `aggregated_by` describes how the text was chunked, not whether
+            // the turn is over: a turn contains many sentences. Marking each
+            // sentence final ends the message after the first one, and the
+            // next segment then opens a new bubble instead of continuing the
+            // turn. On 2.0.0 the turn is finalized by BotStoppedSpeaking (or
+            // by the user starting a new turn), so leave it open here.
             updateAssistantBotOutput(
               get,
               set,
               data.text,
-              isFinal,
+              false,
               payload,
               data.aggregated_by
             );
@@ -253,64 +309,37 @@ export function useConversationEventWiring() {
               data.aggregated_by
             );
           }
+
+          // A BotOutput event means the response is still active, so push a
+          // pending finalize deadline back rather than letting it fire
+          // mid-turn. It is postponed, not dropped: on 2.0.0 nothing else ends
+          // the turn, so cancelling outright for a trailing event would leave
+          // the message non-final until the user speaks again. This handler is
+          // synchronous, so a pending timer cannot have fired before here.
+          // Re-arming is a no-op once the message is final (legacy path).
+          if (botStoppedSpeakingTimeoutRef.current) {
+            armBotStoppedFinalizeTimer();
+          }
         },
-        [ensureAssistantMessage]
+        [armBotStoppedFinalizeTimer, ensureAssistantMessage]
       )
     )
   );
 
   useRTVIClientEvent(
     RTVIEvent.BotStoppedSpeaking,
-    useAtomCallback(
-      useCallback((get, set) => {
-        // Don't finalize immediately; start a timer. Bot may start speaking again (pause).
-        clearTimeout(botStoppedSpeakingTimeoutRef.current);
-        const messages = get(messagesAtom);
-        const lastAssistant = findLast(messages,
-          (m: ConversationMessage) => m.role === "assistant"
-        );
-        if (!lastAssistant || lastAssistant.final) return;
-        botStoppedSpeakingTimeoutRef.current = setTimeout(() => {
-          botStoppedSpeakingTimeoutRef.current = undefined;
-
-          // Snap the speech-progress cursor to the end of all parts.
-          // The bot finished speaking normally (not interrupted), so all
-          // text should render as "spoken". Without this, text from the
-          // last sentence can remain grey if the spoken BotOutput event
-          // didn't match the unspoken text exactly.
-          const msgs = get(messagesAtom);
-          const cursorMap = new Map(get(botOutputMessageStateAtom));
-          const last = findLast(msgs,
-            (m: ConversationMessage) => m.role === "assistant"
-          );
-          if (last) {
-            const cursor = cursorMap.get(last.createdAt);
-            if (cursor && last.parts && last.parts.length > 0) {
-              const lastPartIdx = last.parts.length - 1;
-              const lastPartText = last.parts[lastPartIdx]?.text;
-              cursor.currentPartIndex = lastPartIdx;
-              cursor.currentCharIndex =
-                typeof lastPartText === "string" ? lastPartText.length : 0;
-              for (let i = 0; i <= lastPartIdx; i++) {
-                cursor.partFinalFlags[i] = true;
-              }
-              set(botOutputMessageStateAtom, cursorMap);
-            }
-          }
-
-          finalizeLastMessage(get, set, "assistant");
-        }, BOT_STOPPED_FINALIZE_DELAY_MS);
-      }, [])
-    )
+    useCallback(() => {
+      // Don't finalize immediately; start a timer. Bot may start speaking again (pause).
+      armBotStoppedFinalizeTimer();
+    }, [armBotStoppedFinalizeTimer])
   );
 
   useRTVIClientEvent(
     RTVIEvent.BotStartedSpeaking,
     useCallback(() => {
       // Bot is speaking again; reset the finalize timer (bot was just pausing).
-      clearTimeout(botStoppedSpeakingTimeoutRef.current);
-      botStoppedSpeakingTimeoutRef.current = undefined;
-    }, [])
+      cancelFinalizeTimer();
+    }, [cancelFinalizeTimer])
   );
 
   useRTVIClientEvent(
