@@ -5,6 +5,16 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.2](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.1...client-react-v1.8.2) (2026-08-25)
+
+
+### Bug Fixes
+
+* **client-react:** Fixed issue where mic/cam enabled state could get … ([2063e11](https://github.com/pipecat-ai/pipecat-client-web/commit/2063e118dbdd31731a18f11083b94c50dbbd3407))
+* **react:** Fixed issue where mic/cam enabled state could get out of sync ([023688e](https://github.com/pipecat-ai/pipecat-client-web/commit/023688e8d9a90df1c27acdb1153b89e4e1b9c2fe))
+* **react:** Keep an assistant turn in one message on RTVI 2.0.0 ([de2fac4](https://github.com/pipecat-ai/pipecat-client-web/commit/de2fac4596ef6ba6f2e095696470b91d5bbc62ab))
+* **react:** Keep an assistant turn in one message on RTVI 2.0.0 ([d42e831](https://github.com/pipecat-ai/pipecat-client-web/commit/d42e8311c116f2d573e545722034cfe21cb1b760))
+
 ## [1.8.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.0...client-react-v1.8.1) (2026-07-15)
 
 
