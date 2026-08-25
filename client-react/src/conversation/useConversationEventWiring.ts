@@ -26,6 +26,7 @@ import {
   handleFunctionCallStarted,
   handleFunctionCallStopped,
   removeEmptyLastMessage,
+  snapSpeechCursorToEnd,
   updateAssistantBotOutput,
   updateLastMessage,
   upsertUserTranscript,
@@ -99,7 +100,7 @@ export function useConversationEventWiring() {
       if (lastAssistant && !lastAssistant.final) {
         finalizeLastMessage(get, set, "assistant");
       }
-    }, [])
+    }, [cancelFinalizeTimer])
   );
 
   const ensureAssistantMessage = useAtomCallback(
@@ -166,34 +167,13 @@ export function useConversationEventWiring() {
       botStoppedSpeakingTimeoutRef.current = setTimeout(() => {
         botStoppedSpeakingTimeoutRef.current = undefined;
 
-        // Snap the speech-progress cursor to the end of all parts.
         // The bot finished speaking normally (not interrupted), so all
-        // text should render as "spoken". Without this, text from the
-        // last sentence can remain grey if the spoken BotOutput event
-        // didn't match the unspoken text exactly.
-        const msgs = get(messagesAtom);
-        const cursorMap = new Map(get(botOutputMessageStateAtom));
-        const last = findLast(msgs,
-          (m: ConversationMessage) => m.role === "assistant"
-        );
-        if (last) {
-          const cursor = cursorMap.get(last.createdAt);
-          if (cursor && last.parts && last.parts.length > 0) {
-            const lastPartIdx = last.parts.length - 1;
-            const lastPartText = last.parts[lastPartIdx]?.text;
-            cursor.currentPartIndex = lastPartIdx;
-            cursor.currentCharIndex =
-              typeof lastPartText === "string" ? lastPartText.length : 0;
-            for (let i = 0; i <= lastPartIdx; i++) {
-              cursor.partFinalFlags[i] = true;
-            }
-            set(botOutputMessageStateAtom, cursorMap);
-          }
-        }
+        // text should render as "spoken".
+        snapSpeechCursorToEnd(get, set);
 
         finalizeLastMessage(get, set, "assistant");
       }, BOT_STOPPED_FINALIZE_DELAY_MS);
-    }, [])
+    }, [cancelFinalizeTimer])
   );
 
   // -- event handlers --------------------------------------------------------
@@ -299,6 +279,13 @@ export function useConversationEventWiring() {
               spoken: isSpoken,
             };
 
+            // Deliberately kept, and deliberately asymmetric with the 2.0.0
+            // path above: on 1.4.x an unspoken event precedes the spoken one
+            // for each sentence, so `hasUnspokenContent` is true and
+            // `ensureAssistantMessage` reopens the message rather than
+            // splitting it. The per-sentence `final` is effectively inert
+            // here, so there is no turn-splitting bug to fix on this branch —
+            // and passing `false` would change shipped behavior for nothing.
             const isFinal = data.aggregated_by === "sentence";
             updateAssistantBotOutput(
               get,

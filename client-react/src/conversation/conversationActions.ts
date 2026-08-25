@@ -295,6 +295,41 @@ export function updateLastMessage(
   set(messagesAtom, processedMessages);
 }
 
+/**
+ * Snap the speech-progress cursor of the last assistant message to the end of
+ * all its parts, marking every part as fully spoken.
+ *
+ * Used on a normal, uninterrupted turn boundary: the bot finished speaking, so
+ * all text should render as "spoken". Without this, text from the last
+ * sentence can remain grey if the spoken BotOutput event didn't match the
+ * unspoken text exactly.
+ *
+ * Deliberately *not* used on the interruption path (UserStartedSpeaking),
+ * where unspoken text should stay unspoken.
+ */
+export function snapSpeechCursorToEnd(get: Getter, set: Setter) {
+  const messages = get(messagesAtom);
+  const last = findLast(
+    messages,
+    (m: ConversationMessage) => m.role === "assistant"
+  );
+  if (!last) return;
+
+  const cursorMap = new Map(get(botOutputMessageStateAtom));
+  const cursor = cursorMap.get(last.createdAt);
+  if (!cursor || !last.parts || last.parts.length === 0) return;
+
+  const lastPartIdx = last.parts.length - 1;
+  const lastPartText = last.parts[lastPartIdx]?.text;
+  cursor.currentPartIndex = lastPartIdx;
+  cursor.currentCharIndex =
+    typeof lastPartText === "string" ? lastPartText.length : 0;
+  for (let i = 0; i <= lastPartIdx; i++) {
+    cursor.partFinalFlags[i] = true;
+  }
+  set(botOutputMessageStateAtom, cursorMap);
+}
+
 export function finalizeLastMessage(
   get: Getter,
   set: Setter,

@@ -165,32 +165,15 @@ export function createStoreHarness() {
   /**
    * Finalize the assistant turn the way the BotStoppedSpeaking timer does:
    * snap the speech-progress cursor to the end of all parts, then finalize.
-   * Mirrors armBotStoppedFinalizeTimer in useConversationEventWiring.
+   * Calls the same `snapSpeechCursorToEnd` that armBotStoppedFinalizeTimer
+   * uses, so this cannot drift from production.
    *
    * Use this for a normal, uninterrupted turn boundary. `finalizeAssistant`
    * models the raw UserStartedSpeaking / interruption path, which deliberately
    * does not snap the cursor (unspoken text stays unspoken).
    */
   function finalizeAssistantAfterBotStoppedSpeaking() {
-    const messages = store.get(messagesAtom);
-    const cursorMap = new Map(store.get(botOutputMessageStateAtom));
-    const last = [...messages]
-      .reverse()
-      .find((m: ConversationMessage) => m.role === "assistant");
-    if (last) {
-      const cursor = cursorMap.get(last.createdAt);
-      if (cursor && last.parts && last.parts.length > 0) {
-        const lastPartIdx = last.parts.length - 1;
-        const lastPartText = last.parts[lastPartIdx]?.text;
-        cursor.currentPartIndex = lastPartIdx;
-        cursor.currentCharIndex =
-          typeof lastPartText === "string" ? lastPartText.length : 0;
-        for (let i = 0; i <= lastPartIdx; i++) {
-          cursor.partFinalFlags[i] = true;
-        }
-        store.set(botOutputMessageStateAtom, cursorMap);
-      }
-    }
+    actions.snapSpeechCursorToEnd(store.get, store.set);
     finalizeAssistant();
   }
 
