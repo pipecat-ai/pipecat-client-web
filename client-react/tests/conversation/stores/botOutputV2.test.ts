@@ -195,4 +195,41 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
       expect(cursor!.hasReceivedUnspoken).toBe(true);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Turn continuity
+  // -------------------------------------------------------------------------
+  describe("turn continuity", () => {
+    it("keeps one assistant message when a sentence finishes speaking mid-turn", () => {
+      harness.emitBotOutputV2({ text: "Hi there!", will_be_spoken: true, spoken_status: "new", segment_id: 167, aggregated_by: "sentence" });
+      harness.emitBotOutputV2({ text: "Hi there!", will_be_spoken: true, spoken_status: "completed", segment_id: 167, aggregated_by: "sentence", spoken_progress: { accumulated_text: "Hi there!", remaining_text: "" } });
+      harness.emitBotOutputV2({ text: "How can I help you today?", will_be_spoken: true, spoken_status: "new", segment_id: 271, aggregated_by: "sentence" });
+
+      const assistant = harness.getMessages().filter((m) => m.role === "assistant");
+      expect(assistant).toHaveLength(1);
+      expect(assistant[0].parts.map((p) => p.text)).toEqual([
+        "Hi there!",
+        "How can I help you today?",
+      ]);
+    });
+
+    it("leaves the turn open until it is explicitly finalized", () => {
+      harness.emitBotOutputV2({ text: "One.", will_be_spoken: true, spoken_status: "new", segment_id: 1, aggregated_by: "sentence" });
+      harness.emitBotOutputV2({ text: "One.", will_be_spoken: true, spoken_status: "completed", segment_id: 1, aggregated_by: "sentence", spoken_progress: { accumulated_text: "One.", remaining_text: "" } });
+
+      expect(harness.getMessages()[0].final).toBeFalsy();
+
+      harness.finalizeAssistant();
+      expect(harness.getMessages()[0].final).toBe(true);
+    });
+
+    it("starts a new assistant message for the next turn after finalization", () => {
+      harness.emitBotOutputV2({ text: "First turn.", will_be_spoken: true, spoken_status: "new", segment_id: 1, aggregated_by: "sentence" });
+      harness.finalizeAssistantAfterBotStoppedSpeaking();
+      harness.emitBotOutputV2({ text: "Second turn.", will_be_spoken: true, spoken_status: "new", segment_id: 2, aggregated_by: "sentence" });
+
+      const assistant = harness.getMessages().filter((m) => m.role === "assistant");
+      expect(assistant).toHaveLength(2);
+    });
+  });
 });

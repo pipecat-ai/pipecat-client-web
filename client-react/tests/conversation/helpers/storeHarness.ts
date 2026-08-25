@@ -135,12 +135,13 @@ export function createStoreHarness() {
       ensureAssistantMessage();
     }
 
-    const isFinal = aggregated_by === "sentence";
+    // v2 never finalizes per segment; the turn is finalized by
+    // BotStoppedSpeaking / UserStartedSpeaking. Mirrors useConversationEventWiring.
     actions.updateAssistantBotOutput(
       store.get,
       store.set,
       text,
-      isFinal,
+      false,
       { protocol: "v2", will_be_spoken, spoken_status, spoken_progress, segment_id },
       aggregated_by
     );
@@ -159,6 +160,21 @@ export function createStoreHarness() {
    */
   function finalizeAssistant() {
     actions.finalizeLastMessage(store.get, store.set, "assistant");
+  }
+
+  /**
+   * Finalize the assistant turn the way the BotStoppedSpeaking timer does:
+   * snap the speech-progress cursor to the end of all parts, then finalize.
+   * Calls the same `snapSpeechCursorToEnd` that armBotStoppedFinalizeTimer
+   * uses, so this cannot drift from production.
+   *
+   * Use this for a normal, uninterrupted turn boundary. `finalizeAssistant`
+   * models the raw UserStartedSpeaking / interruption path, which deliberately
+   * does not snap the cursor (unspoken text stays unspoken).
+   */
+  function finalizeAssistantAfterBotStoppedSpeaking() {
+    actions.snapSpeechCursorToEnd(store.get, store.set);
+    finalizeAssistant();
   }
 
   /**
@@ -342,6 +358,7 @@ export function createStoreHarness() {
     emitBotOutputV2,
     emitUserTranscript,
     finalizeAssistant,
+    finalizeAssistantAfterBotStoppedSpeaking,
     finalizeUser,
     finalizeAssistantIfPending,
     finalizeUserIfPending,

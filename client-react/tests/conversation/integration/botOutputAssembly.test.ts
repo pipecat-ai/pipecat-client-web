@@ -653,4 +653,21 @@ describe("BotOutput assembly", () => {
       expect(cursorAfter.currentCharIndex).toBe(absorbedOffset);
     });
   });
+
+  // -----------------------------------------------------------------------
+  // Backwards compatibility (protocol 1.4.x)
+  // -----------------------------------------------------------------------
+  describe("legacy per-sentence finalization", () => {
+    it("still marks a sentence-aggregated message final", () => {
+      harness.emitBotOutput("Hello there.", false, "sentence");
+
+      expect(harness.getMessages()[0].final).toBe(true);
+    });
+
+    it("does not mark non-sentence aggregations final", () => {
+      harness.emitBotOutput("Hello", false, "word");
+
+      expect(harness.getMessages()[0].final).toBeFalsy();
+    });
+  });
 });
