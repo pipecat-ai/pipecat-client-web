@@ -66,6 +66,18 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: _docs
 
+      # The update-docs skill is shared and lives in pipecat-ai/pipecat, published
+      # through the pipecat-dev-skills marketplace. Only the directory holding it
+      # is fetched; this repo supplies the profile beside it.
+      - name: Checkout the shared update-docs skill
+        uses: actions/checkout@v4
+        with:
+          repository: pipecat-ai/pipecat
+          sparse-checkout: .claude/skills/update-docs
+          sparse-checkout-cone-mode: false
+          path: _skill
+          fetch-depth: 1
+
       - name: Record docs baseline
         id: docs-base
         working-directory: _docs
@@ -120,8 +132,8 @@ jobs:
 
             ## Setup
 
-            1. Read the skill instructions at `.claude/skills/update-docs/SKILL.md`
-            2. Read the source-to-doc mapping at `.claude/skills/update-docs/SOURCE_DOC_MAPPING.md`
+            1. Read the shared skill instructions at `_skill/.claude/skills/update-docs/SKILL.md`
+            2. Read this repo's profile at `.claude/skills/update-docs/SOURCE_DOC_MAPPING.md`
             3. The docs repository is checked out at `./_docs/`
 
             ## Get the diff
