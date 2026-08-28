@@ -29,13 +29,17 @@ import {
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
   MediaState,
+  MimeTypeMapping,
   Participant,
   PipecatMetricsData,
   RTVI_PROTOCOL_VERSION,
   RTVIEvent,
   RTVIEvents,
+  RTVIFile,
+  RTVIFileFormat,
   RTVIMessage,
   RTVIMessageType,
+  SendFileOptions,
   SendTextOptions,
   setAboutClient,
   TranscriptData,
@@ -1091,7 +1095,9 @@ export class PipecatClient extends RTVIEventEmitter {
   public cancelUIJobGroup(jobId: string, reason?: string): void {
     const payload: UICancelJobGroupData = { job_id: jobId };
     if (reason !== undefined) payload.reason = reason;
-    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_JOB_GROUP, payload));
+    this._sendMessage(
+      new RTVIMessage(RTVIMessageType.UI_CANCEL_JOB_GROUP, payload)
+    );
   }
 
   /**
@@ -1155,6 +1161,180 @@ export class PipecatClient extends RTVIEventEmitter {
     );
   }
 
+  @transportReady
+  public async sendFile(
+    file: RTVIFile | File,
+    content: string,
+    options: SendFileOptions = {}
+  ) {
+    this._assertBotSupportsSendFile();
+
+    const rawMime = file instanceof File ? file.type : file.format.toLowerCase();
+    const mimeType = rawMime in MimeTypeMapping
+      ? MimeTypeMapping[rawMime as RTVIFileFormat]
+      : rawMime;
+
+    const resolved = file instanceof File
+      ? await this._resolveBrowserFile(file, mimeType)
+      : await this._resolveRTVIFile(file, mimeType);
+
+    await this._sendMessage(
+      new RTVIMessage(RTVIMessageType.SEND_FILE, { file: resolved, content, options })
+    );
+  }
+
+  private _assertBotSupportsSendFile() {
+    if (
+      this._botVersion[0] < 2 ||
+      (this._botVersion[0] === 2 && this._botVersion[1] < 2)
+    ) {
+      throw new RTVIErrors.UnsupportedFeatureError(
+        "sendFile",
+        "bot",
+        "requires RTVI protocol 2.2.0+"
+      );
+    }
+  }
+
+  private _resolveBrowserFile(file: File, mimeType: string): Promise<RTVIFile> {
+    // Estimate base64 size (~33% overhead) + message wrapper before reading into memory.
+    const estimatedEncodedSize = Math.ceil(file.size * 1.37) + 1000;
+    if (estimatedEncodedSize > this._transport.maxMessageSize) {
+      return this.uploadFile(file);
+    }
+    return new Promise<RTVIFile>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () =>
+        reject(new RTVIErrors.RTVIError("Could not read file data"));
+      reader.onload = async (e) => {
+        try {
+          if (!e.target?.result) {
+            throw new RTVIErrors.RTVIError("Could not read file data");
+          }
+          const dataUrl = e.target.result as string;
+          // FileBytes.bytes carries raw base64; strip the data-URL prefix.
+          const base64Data = dataUrl.split(",")[1] ?? dataUrl;
+          resolve({
+            name: file.name,
+            format: mimeType,
+            source: { type: "bytes", bytes: base64Data },
+          });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private async _resolveRTVIFile(file: RTVIFile, mimeType: string): Promise<RTVIFile> {
+    const normalized = { ...file, format: mimeType };
+    if (normalized.source.type !== "bytes") return normalized;
+
+    const estimatedSize = normalized.source.bytes.length + 1000;
+    if (estimatedSize <= this._transport.maxMessageSize) return normalized;
+
+    const byteString = atob(
+      normalized.source.bytes.split(",")[1] || normalized.source.bytes
+    );
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+    const uploadable = new File([blob], file.name || "uploaded_file", { type: mimeType });
+    return this.uploadFile(uploadable);
+  }
+
+  /**
+   * Upload a file to a specified endpoint or the default files endpoint.
+   * @param file - The File to upload
+   * @param uploadFileParams - Optional APIRequest. If not provided, constructs
+   *   endpoint from startBotParams.endpoint by replacing the path with /files
+   * @returns Promise resolving to RTVIFile with name, format, and FileUrl source
+   */
+  public async uploadFile(
+    file: File,
+    uploadFileParams?: APIRequest
+  ): Promise<RTVIFile> {
+    let uploadUrl: string;
+    let headers: Headers | undefined;
+    let timeout: number | undefined;
+
+    if (uploadFileParams) {
+      const { endpoint } = uploadFileParams;
+      headers = uploadFileParams.headers;
+      timeout = uploadFileParams.timeout;
+
+      if (endpoint instanceof URL) {
+        uploadUrl = endpoint.toString();
+      } else if (typeof endpoint === "string") {
+        uploadUrl = endpoint;
+      } else if (
+        typeof Request !== "undefined" &&
+        endpoint instanceof Request
+      ) {
+        uploadUrl = endpoint.url;
+      } else {
+        throw new RTVIErrors.RTVIError(
+          "Unable to determine URL from uploadFileParams.endpoint"
+        );
+      }
+    } else {
+      // Construct from startBotParams
+      const startBotParams = this._transport.startBotParams;
+      if (!startBotParams?.endpoint) {
+        throw new RTVIErrors.RTVIError(
+          "No uploadFileParams provided and no startBotParams.endpoint available"
+        );
+      }
+
+      timeout = startBotParams.timeout;
+
+      let baseUrl: URL;
+      if (startBotParams.endpoint instanceof URL) {
+        baseUrl = startBotParams.endpoint;
+        headers = startBotParams.headers;
+      } else if (typeof startBotParams.endpoint === "string") {
+        baseUrl = new URL(startBotParams.endpoint);
+        headers = startBotParams.headers;
+      } else if (
+        typeof Request !== "undefined" &&
+        startBotParams.endpoint instanceof Request
+      ) {
+        baseUrl = new URL(startBotParams.endpoint.url);
+        headers = new Headers(startBotParams.endpoint.headers);
+      } else {
+        throw new RTVIErrors.RTVIError(
+          "Unable to determine base URL from startBotParams.endpoint"
+        );
+      }
+
+      // Change the path to /files
+      uploadUrl = `${baseUrl.origin}/files`;
+    }
+
+    // Create FormData with the file
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Create the Request object
+    // Note: Don't set Content-Type header - browser sets it automatically with boundary
+    const request = new Request(uploadUrl, {
+      method: "POST",
+      mode: "cors",
+      body: formData,
+      headers: headers ? Object.fromEntries(headers.entries()) : undefined,
+    });
+
+    const response = await makeRequest(
+      { endpoint: request, timeout },
+      this._abortController
+    );
+    return response as RTVIFile;
+  }
+
   /**
    * Disconnects the bot, but keeps the session alive
    */
@@ -1174,7 +1354,7 @@ export class PipecatClient extends RTVIEventEmitter {
           : [0, 0, 0];
         this._botVersion = botVersion;
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
-        if (botVersion[0] < 2) {
+        if (this._botVersion[0] < 2) {
           logger.warn(
             `[Pipecat Client] Bot protocol version ${data.version} is older than this client (${RTVI_PROTOCOL_VERSION}). Compatibility issues may occur.`
           );
