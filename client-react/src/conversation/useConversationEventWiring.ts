@@ -520,4 +520,9 @@ export function useConversationEventWiring() {
       }, [])
     )
   );
+
+  // Exposed so a caller-driven turn boundary — a message injected into the
+  // conversation, which no RTVI event announces — can end the assistant turn
+  // the same way UserStartedSpeaking does.
+  return { finalizeLastAssistantMessageIfPending };
 }
