@@ -118,8 +118,10 @@ export type ClientReadyData = {
 };
 
 export type ErrorData = {
-  message: string;
+  error: string;
   fatal: boolean;
+  /** @deprecated Use `error` instead. */
+  message?: string;
 };
 
 export type PipecatMetricData = {
@@ -339,6 +341,10 @@ export class RTVIMessage {
   }
 
   static error(message: string, fatal = false): RTVIMessage {
-    return new RTVIMessage(RTVIMessageType.ERROR, { message, fatal });
+    return new RTVIMessage(RTVIMessageType.ERROR, {
+      error: message,
+      message,
+      fatal,
+    });
   }
 }
