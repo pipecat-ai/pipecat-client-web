@@ -1,7 +1,7 @@
 {
   "extends": ["@commitlint/config-conventional"],
   "rules": {
-    "scope-enum": [2, "always", ["js", "react", ""]],
+    "scope-enum": [2, "always", ["js", "client-js", "react", "client-react", ""]],
     "body-max-line-length": [0],
     "footer-max-line-length": [0],
     "header-case": [0],
