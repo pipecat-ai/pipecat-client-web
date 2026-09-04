@@ -5,6 +5,13 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.0...client-js-v1.13.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* **client-js:** align ErrorData with server payload ([6d4907f](https://github.com/pipecat-ai/pipecat-client-web/commit/6d4907f8c0a49808504e2d87ff509618ded19385))
+
 ## [1.13.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.12.0...client-js-v1.13.0) (2026-07-14)
 
 
