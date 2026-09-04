@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 * **client-js:** align ErrorData with server payload ([6d4907f](https://github.com/pipecat-ai/pipecat-client-web/commit/6d4907f8c0a49808504e2d87ff509618ded19385))
-* **client-js:** align ErrorData with server payload ([8495644](https://github.com/pipecat-ai/pipecat-client-web/commit/8495644981b8d026628c8a3fe89bfb9c5c9ac523))
 
 ## [1.13.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.12.0...client-js-v1.13.0) (2026-07-14)
 
