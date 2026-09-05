@@ -16,9 +16,18 @@ import { RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
 
-import { messagesAtom } from "@/conversation/conversationAtoms";
-import { PipecatConversationProvider } from "@/conversation/PipecatConversationProvider";
-import type { ConversationMessage } from "@/conversation/types";
+import {
+  botOutputMessageStateAtom,
+  messagesAtom,
+} from "@/conversation/conversationAtoms";
+import {
+  PipecatConversationProvider,
+  useConversationContext,
+} from "@/conversation/PipecatConversationProvider";
+import type {
+  ConversationMessage,
+  ConversationMessagePart,
+} from "@/conversation/types";
 import { RTVIEventContext } from "@/RTVIEventContext";
 
 /**
@@ -41,6 +50,15 @@ function renderWiring() {
     handlers.get(event)?.delete(handler);
   };
 
+  let injectMessage: ReturnType<
+    typeof useConversationContext
+  >["injectMessage"];
+
+  const CaptureContext = () => {
+    injectMessage = useConversationContext().injectMessage;
+    return null;
+  };
+
   render(
     <Provider store={store}>
       <RTVIEventContext.Provider
@@ -51,7 +69,9 @@ function renderWiring() {
           off: off as any,
         }}
       >
-        <PipecatConversationProvider>{null}</PipecatConversationProvider>
+        <PipecatConversationProvider>
+          <CaptureContext />
+        </PipecatConversationProvider>
       </RTVIEventContext.Provider>
     </Provider>
   );
@@ -69,14 +89,31 @@ function renderWiring() {
     });
   };
 
+  const getMessages = () => store.get(messagesAtom);
+
+  const inject = (
+    role: "user" | "assistant" | "system",
+    parts: ConversationMessagePart[]
+  ) => {
+    act(() => {
+      injectMessage({ role, parts });
+    });
+  };
+
   return {
     emit,
     advance,
-    getMessages: () => store.get(messagesAtom),
+    inject,
+    getMessages,
     getAssistantMessages: () =>
-      store
-        .get(messagesAtom)
-        .filter((m: ConversationMessage) => m.role === "assistant"),
+      getMessages().filter((m: ConversationMessage) => m.role === "assistant"),
+    getLastAssistantCursor: () => {
+      const lastAssistant = [...getMessages()]
+        .reverse()
+        .find((m: ConversationMessage) => m.role === "assistant");
+      if (!lastAssistant) return undefined;
+      return store.get(botOutputMessageStateAtom).get(lastAssistant.createdAt);
+    },
   };
 }
 
@@ -205,6 +242,167 @@ describe("useConversationEventWiring", () => {
       );
 
       expect(w.getAssistantMessages()).toHaveLength(2);
+    });
+  });
+
+  describe("RTVI 2.0.0+ injected messages and user turn boundaries", () => {
+    const userText = (text: string): ConversationMessagePart[] => [
+      { text, final: true, createdAt: new Date().toISOString() },
+    ];
+
+    /**
+     * Text input reaches the bot through `sendText`, which produces no
+     * UserStartedSpeaking, and the bot is mid-utterance, so no finalize timer
+     * is armed. Injecting the user's message is the only turn boundary the
+     * conversation ever sees.
+     */
+    function startInterruptedV2Turn() {
+      const w = renderWiring();
+      w.emit(RTVIEvent.BotReady, { version: "2.1.0" });
+      w.emit(RTVIEvent.BotStartedSpeaking);
+      w.emit(
+        RTVIEvent.BotOutput,
+        sentence("Hi there, how can I help you today?", 1, {
+          spoken_status: "new",
+        })
+      );
+      w.emit(
+        RTVIEvent.BotOutput,
+        sentence("Hi there, how can I help you today?", 1, {
+          spoken_status: "in-progress",
+          spoken_progress: {
+            accumulated_text: "Hi there,",
+            remaining_text: " how can I help you today?",
+          },
+        })
+      );
+      return w;
+    }
+
+    it("finalizes the open turn when a user message is injected", () => {
+      const w = startInterruptedV2Turn();
+      expect(w.getAssistantMessages()[0].final).toBeFalsy();
+
+      w.inject("user", userText("actually, never mind"));
+
+      expect(w.getAssistantMessages()[0].final).toBe(true);
+    });
+
+    it("opens a new message for the reply to injected text", () => {
+      const w = startInterruptedV2Turn();
+      w.inject("user", userText("actually, never mind"));
+
+      w.emit(RTVIEvent.BotStartedSpeaking);
+      w.emit(
+        RTVIEvent.BotOutput,
+        sentence("No problem.", 2, {
+          spoken_status: "new",
+        })
+      );
+
+      const assistant = w.getAssistantMessages();
+      expect(assistant).toHaveLength(2);
+      expect(assistant[1].parts.map((p) => p.text)).toEqual(["No problem."]);
+    });
+
+    it("leaves the speech cursor where the interruption stopped it", () => {
+      const w = startInterruptedV2Turn();
+      w.inject("user", userText("actually, never mind"));
+
+      // Finalizing must not snap the cursor to the end: the turn was cut off,
+      // so the unspoken tail stays unspoken.
+      expect(w.getLastAssistantCursor()!.currentCharIndex).toBe(
+        "Hi there,".length
+      );
+    });
+
+    describe.each(["text", "voice"] as const)("%s input", (input) => {
+      function startUserTurn(w: ReturnType<typeof renderWiring>) {
+        if (input === "text") {
+          w.inject("user", userText("actually, never mind"));
+        } else {
+          w.emit(RTVIEvent.UserStartedSpeaking);
+        }
+      }
+
+      it.each([false, true])(
+        "completes speech progress after the bot stops (trailing unspoken segment: %s)",
+        (trailingUnspokenSegment) => {
+          const w = startInterruptedV2Turn();
+          const trailingText = "(See the attached reference.)";
+          if (trailingUnspokenSegment) {
+            w.emit(
+              RTVIEvent.BotOutput,
+              sentence(trailingText, 2, {
+                spoken_status: "new",
+                will_be_spoken: false,
+              })
+            );
+          }
+          w.emit(RTVIEvent.BotStoppedSpeaking);
+          w.advance(500);
+
+          startUserTurn(w);
+
+          expect(w.getAssistantMessages()[0].final).toBe(true);
+          expect(w.getLastAssistantCursor()).toMatchObject({
+            currentPartIndex: trailingUnspokenSegment ? 1 : 0,
+            currentCharIndex: trailingUnspokenSegment
+              ? trailingText.length
+              : "Hi there, how can I help you today?".length,
+          });
+
+          // The cancelled deadline must not finalize the next response.
+          w.emit(RTVIEvent.BotStartedSpeaking);
+          w.emit(
+            RTVIEvent.BotOutput,
+            sentence("No problem.", 3, { spoken_status: "new" })
+          );
+          w.advance(FINALIZE_DELAY_MS);
+          const assistant = w.getAssistantMessages();
+          expect(assistant).toHaveLength(2);
+          expect(assistant[1].final).toBeFalsy();
+        }
+      );
+
+      it("preserves unspoken text when the bot resumes before interruption", () => {
+        const w = startInterruptedV2Turn();
+        w.emit(RTVIEvent.BotStoppedSpeaking);
+        w.advance(500);
+        w.emit(RTVIEvent.BotStartedSpeaking);
+
+        startUserTurn(w);
+        w.advance(FINALIZE_DELAY_MS);
+
+        expect(w.getAssistantMessages()[0].final).toBe(true);
+        expect(w.getLastAssistantCursor()!.currentCharIndex).toBe(
+          "Hi there,".length
+        );
+      });
+    });
+
+    it("merges an injected assistant message into the active bubble", () => {
+      const w = startInterruptedV2Turn();
+      w.advance(1);
+      w.inject("assistant", userText("(tool result attached)"));
+
+      const assistant = w.getAssistantMessages();
+      expect(assistant).toHaveLength(1);
+      expect(assistant[0].parts.map((p) => p.text)).toEqual([
+        "Hi there, how can I help you today?",
+        "(tool result attached)",
+      ]);
+      expect(w.getLastAssistantCursor()!.currentCharIndex).toBe(
+        "Hi there,".length
+      );
+    });
+
+    it("does not finalize the turn for an injected system message", () => {
+      const w = startInterruptedV2Turn();
+      w.inject("system", userText("connection is unstable"));
+
+      expect(w.getAssistantMessages()[0].final).toBeFalsy();
+      expect(w.getAssistantMessages()).toHaveLength(1);
     });
   });
 
