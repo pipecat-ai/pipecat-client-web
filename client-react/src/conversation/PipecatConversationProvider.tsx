@@ -39,20 +39,12 @@ export const PipecatConversationProvider: React.FC<React.PropsWithChildren> = ({
       role: "user" | "assistant" | "system";
       parts: ConversationMessagePart[];
     }) => {
-      // An injected message is a turn boundary the RTVI events never report:
-      // text input reaches the bot through `sendText`, so there is no
-      // UserStartedSpeaking to close the assistant's turn, and the bot was
-      // likely mid-utterance, so the BotStoppedSpeaking finalize timer is not
-      // armed either. Without this the next BotOutput reopens the still-open
-      // message and the following turn is appended to the previous one.
-      //
-      // System messages are excluded: `injectMessage` deliberately backdates
-      // them behind an in-flight assistant message so they don't split it.
-      //
-      // Finalizing here mirrors the UserStartedSpeaking path, which likewise
-      // leaves the speech cursor where it stopped — the turn was interrupted,
-      // so unspoken text must stay unspoken.
-      if (message.role !== "system") {
+      // Text input through `sendText` produces no UserStartedSpeaking event,
+      // so injecting the user message must close the assistant's turn. This
+      // also emits onMessageUpdated when the assistant message is finalized.
+      // Assistant injections can still merge into the active bubble, and
+      // system injections retain their backdating behavior.
+      if (message.role === "user") {
         finalizeLastAssistantMessageIfPending();
       }
       injectMessageAction(get, set, message);

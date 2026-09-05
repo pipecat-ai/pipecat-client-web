@@ -92,12 +92,17 @@ export function useConversationEventWiring() {
 
   const finalizeLastAssistantMessageIfPending = useAtomCallback(
     useCallback((get, set) => {
+      const botFinishedSpeaking =
+        botStoppedSpeakingTimeoutRef.current !== undefined;
       cancelFinalizeTimer();
       const messages = get(messagesAtom);
       const lastAssistant = findLast(messages,
         (m: ConversationMessage) => m.role === "assistant"
       );
       if (lastAssistant && !lastAssistant.final) {
+        // A pending timer means the bot already stopped. Complete its speech
+        // progress before finalizing; genuine interruptions keep their cursor.
+        if (botFinishedSpeaking) snapSpeechCursorToEnd(get, set);
         finalizeLastMessage(get, set, "assistant");
       }
     }, [cancelFinalizeTimer])
@@ -150,9 +155,9 @@ export function useConversationEventWiring() {
    *
    * Finalizing is deferred rather than immediate because the bot may just be
    * pausing mid-turn; BotStartedSpeaking cancels the timer when that happens.
-   * On RTVI 2.0.0+ this timer and UserStartedSpeaking are the *only* things
-   * that end an assistant turn, so any path that cancels the timer has to
-   * re-arm it here rather than dropping it on the floor.
+   * On RTVI 2.0.0+ a turn ends here or when the user starts a new turn via
+   * speech or an injected message. BotOutput postpones a pending deadline
+   * by re-arming it here so the turn can still finalize once output settles.
    */
   const armBotStoppedFinalizeTimer = useAtomCallback(
     useCallback((get, set) => {
@@ -438,7 +443,7 @@ export function useConversationEventWiring() {
     )
   );
 
-  // Exposed so a caller-driven turn boundary — a message injected into the
+  // Exposed so a caller-driven turn boundary — a user message injected into the
   // conversation, which no RTVI event announces — can end the assistant turn
   // the same way UserStartedSpeaking does.
   return { finalizeLastAssistantMessageIfPending };

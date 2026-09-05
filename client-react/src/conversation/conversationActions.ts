@@ -304,8 +304,9 @@ export function updateLastMessage(
  * sentence can remain grey if the spoken BotOutput event didn't match the
  * unspoken text exactly.
  *
- * Deliberately *not* used on the interruption path (UserStartedSpeaking),
- * where unspoken text should stay unspoken.
+ * Also used when user input arrives during the delayed finalize window after
+ * the bot stops. Skipped when input interrupts active speech, where unspoken
+ * text should stay unspoken.
  */
 export function snapSpeechCursorToEnd(get: Getter, set: Setter) {
   const messages = get(messagesAtom);
