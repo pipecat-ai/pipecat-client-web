@@ -245,7 +245,7 @@ describe("useConversationEventWiring", () => {
     });
   });
 
-  describe("RTVI 2.0.0+ text-input turn boundaries", () => {
+  describe("RTVI 2.0.0+ injected messages and user turn boundaries", () => {
     const userText = (text: string): ConversationMessagePart[] => [
       { text, final: true, createdAt: new Date().toISOString() },
     ];
@@ -311,6 +311,87 @@ describe("useConversationEventWiring", () => {
 
       // Finalizing must not snap the cursor to the end: the turn was cut off,
       // so the unspoken tail stays unspoken.
+      expect(w.getLastAssistantCursor()!.currentCharIndex).toBe(
+        "Hi there,".length
+      );
+    });
+
+    describe.each(["text", "voice"] as const)("%s input", (input) => {
+      function startUserTurn(w: ReturnType<typeof renderWiring>) {
+        if (input === "text") {
+          w.inject("user", userText("actually, never mind"));
+        } else {
+          w.emit(RTVIEvent.UserStartedSpeaking);
+        }
+      }
+
+      it.each([false, true])(
+        "completes speech progress after the bot stops (trailing unspoken segment: %s)",
+        (trailingUnspokenSegment) => {
+          const w = startInterruptedV2Turn();
+          const trailingText = "(See the attached reference.)";
+          if (trailingUnspokenSegment) {
+            w.emit(
+              RTVIEvent.BotOutput,
+              sentence(trailingText, 2, {
+                spoken_status: "new",
+                will_be_spoken: false,
+              })
+            );
+          }
+          w.emit(RTVIEvent.BotStoppedSpeaking);
+          w.advance(500);
+
+          startUserTurn(w);
+
+          expect(w.getAssistantMessages()[0].final).toBe(true);
+          expect(w.getLastAssistantCursor()).toMatchObject({
+            currentPartIndex: trailingUnspokenSegment ? 1 : 0,
+            currentCharIndex: trailingUnspokenSegment
+              ? trailingText.length
+              : "Hi there, how can I help you today?".length,
+          });
+
+          // The cancelled deadline must not finalize the next response.
+          w.emit(RTVIEvent.BotStartedSpeaking);
+          w.emit(
+            RTVIEvent.BotOutput,
+            sentence("No problem.", 3, { spoken_status: "new" })
+          );
+          w.advance(FINALIZE_DELAY_MS);
+          const assistant = w.getAssistantMessages();
+          expect(assistant).toHaveLength(2);
+          expect(assistant[1].final).toBeFalsy();
+        }
+      );
+
+      it("preserves unspoken text when the bot resumes before interruption", () => {
+        const w = startInterruptedV2Turn();
+        w.emit(RTVIEvent.BotStoppedSpeaking);
+        w.advance(500);
+        w.emit(RTVIEvent.BotStartedSpeaking);
+
+        startUserTurn(w);
+        w.advance(FINALIZE_DELAY_MS);
+
+        expect(w.getAssistantMessages()[0].final).toBe(true);
+        expect(w.getLastAssistantCursor()!.currentCharIndex).toBe(
+          "Hi there,".length
+        );
+      });
+    });
+
+    it("merges an injected assistant message into the active bubble", () => {
+      const w = startInterruptedV2Turn();
+      w.advance(1);
+      w.inject("assistant", userText("(tool result attached)"));
+
+      const assistant = w.getAssistantMessages();
+      expect(assistant).toHaveLength(1);
+      expect(assistant[0].parts.map((p) => p.text)).toEqual([
+        "Hi there, how can I help you today?",
+        "(tool result attached)",
+      ]);
       expect(w.getLastAssistantCursor()!.currentCharIndex).toBe(
         "Hi there,".length
       );
