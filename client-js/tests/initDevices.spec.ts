@@ -192,15 +192,22 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(states).toEqual(["initializing"]);
   });
 
-  // KNOWN LATENT BUG — intentionally not asserted as a passing test:
-  //
-  // When initDevices() rejects inside connect(), the `await` sits outside the
-  // try/catch in client.ts, so the async IIFE emits an unhandled rejection
-  // and the outer Promise never settles. Step 2 of Plan A fixes this by
-  // handling the error deliberately. The "explicit initDevices() rejects"
-  // test above locks in the init-level rejection behavior the refactor builds
-  // on; the connect-path behavior will be re-characterized in step 2 once
-  // the fix is in place.
+  test("connect() rejects when the implicit initDevices() rejects", async () => {
+    transport.initDevicesShouldThrow = new Error("boom");
+
+    // Without the fix the promise never settles, so race it against a timer.
+    const outcome = await Promise.race([
+      client.connect().then(
+        () => "resolved",
+        (e: Error) => `rejected: ${e.message}`
+      ),
+      new Promise<string>((resolve) =>
+        setTimeout(() => resolve("pending"), 1000)
+      ),
+    ]);
+
+    expect(outcome).toBe("rejected: boom");
+  });
 
   test("startBot() implicitly calls initDevices() when state === 'disconnected'", async () => {
     // Stub makeRequest via the global fetch mock supplied by whatwg-fetch.

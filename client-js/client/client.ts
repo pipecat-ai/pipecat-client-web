@@ -649,11 +649,11 @@ export class PipecatClient extends RTVIEventEmitter {
       (async () => {
         this._connectResolve = resolve;
 
-        if (this.needsInit()) {
-          await this.initDevices();
-        }
-
         try {
+          if (this.needsInit()) {
+            await this.initDevices();
+          }
+
           await this._transport.connect(
             connectParams as TransportConnectionParams
           );
