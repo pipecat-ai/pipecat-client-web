@@ -33,6 +33,7 @@ import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle
 import { PipecatClientVideo } from "./PipecatClientVideo";
 import { UIJobGroupsContext } from "./UIJobGroupsContext";
 import { UIJobGroupsProvider } from "./UIJobGroupsProvider";
+import { useBotCapabilities } from "./useBotCapabilities";
 import { useDTMF } from "./useDTMF";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
@@ -64,6 +65,7 @@ export {
   sortByCreatedAt,
   UIJobGroupsContext,
   UIJobGroupsProvider,
+  useBotCapabilities,
   // Conversation
   useConversationContext,
   useDefaultClickHandler,
