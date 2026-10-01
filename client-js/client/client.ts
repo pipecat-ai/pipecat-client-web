@@ -10,6 +10,7 @@ import TypedEmitter from "typed-emitter";
 import packageJson from "../package.json";
 import {
   A11ySnapshot,
+  BotCapabilities,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -233,6 +234,9 @@ export class PipecatClient extends RTVIEventEmitter {
 
   // Bot's RTVI protocol version, parsed from bot-ready. [0, 0, 0] until known.
   private _botVersion: number[] = [0, 0, 0];
+  // Bot's capabilities from bot-ready, cleared on disconnect. Undefined for bots
+  // that don't send them.
+  private _botCapabilities: BotCapabilities | undefined;
 
   // Per-device device state. Independent of TransportState — driven by
   // initDevices() and DeviceError events, never by transport connect/disconnect.
@@ -682,6 +686,7 @@ export class PipecatClient extends RTVIEventEmitter {
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
     this._botVersion = [0, 0, 0];
+    this._botCapabilities = undefined;
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -881,6 +886,17 @@ export class PipecatClient extends RTVIEventEmitter {
 
   public get version(): string {
     return packageJson.version;
+  }
+
+  /**
+   * What the bot does in this session, from its `bot-ready` message.
+   *
+   * Undefined before `bot-ready`, after disconnecting, and for bots that don't
+   * send capabilities (RTVI protocol older than 2.2.0). Within the object, a
+   * missing field means the bot can't tell.
+   */
+  public get botCapabilities(): BotCapabilities | undefined {
+    return this._botCapabilities;
   }
 
   // ------ Device methods
@@ -1173,6 +1189,7 @@ export class PipecatClient extends RTVIEventEmitter {
           ? data.version.split(".").map(Number)
           : [0, 0, 0];
         this._botVersion = botVersion;
+        this._botCapabilities = data.capabilities;
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
         if (botVersion[0] < 2) {
           logger.warn(

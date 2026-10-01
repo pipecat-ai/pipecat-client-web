@@ -13,7 +13,7 @@ import {
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
-export const RTVI_PROTOCOL_VERSION = "2.1.0";
+export const RTVI_PROTOCOL_VERSION = "2.2.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -90,9 +90,29 @@ export enum RTVIMessageType {
 
 // ----- Message Data Types
 
+/**
+ * What the bot does in the session, sent in `bot-ready` (RTVI 2.2.0+).
+ *
+ * A missing field means the bot can't tell, so keep the default behavior for
+ * it. `false` means the bot doesn't do it, so the matching UI can be hidden.
+ */
+export type BotCapabilities = {
+  /** Whether the bot receives the user's audio. */
+  audio_in?: boolean;
+  /** Whether the bot sends audio to the user. */
+  audio_out?: boolean;
+  /** Whether the bot receives the user's video. */
+  video_in?: boolean;
+  /** Whether the bot sends video to the user. */
+  video_out?: boolean;
+  /** Whether the bot reports metrics. */
+  metrics?: boolean;
+};
+
 export type BotReadyData = {
   version: string;
   about?: unknown; // Optional about data from the bot
+  capabilities?: BotCapabilities; // Sent by bots on RTVI 2.2.0+
 };
 
 type PlatformDetailsValue = undefined | string | number | boolean;

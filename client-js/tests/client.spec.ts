@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, test } from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
-import { RTVIEvent, RTVIMessage } from "./../rtvi";
+import { BotReadyData, RTVIEvent, RTVIMessage } from "./../rtvi";
 import { MessageTooLargeError, UnsupportedFeatureError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
@@ -739,5 +739,59 @@ describe("UnsupportedFeatureError handling", () => {
     expect(() => client.enableScreenShare(true)).toThrow(
       "unexpected transport failure"
     );
+  });
+});
+
+describe("Bot capabilities", () => {
+  let client: PipecatClient;
+
+  const botReady = (data: Record<string, unknown>): RTVIMessage => ({
+    id: "1",
+    label: "rtvi-ai",
+    type: "bot-ready",
+    data,
+  });
+
+  beforeEach(() => {
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+    });
+  });
+
+  test("botCapabilities is undefined before bot-ready", () => {
+    expect(client.botCapabilities).toBeUndefined();
+  });
+
+  test("botCapabilities holds the capabilities from bot-ready", async () => {
+    await client.connect();
+    const capabilities = { audio_in: true, audio_out: true, video_in: false };
+    let eventData: BotReadyData | undefined;
+    client.on(RTVIEvent.BotReady, (data) => {
+      eventData = data;
+    });
+
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities })
+    );
+
+    expect(client.botCapabilities).toEqual(capabilities);
+    expect(eventData?.capabilities).toEqual(capabilities);
+  });
+
+  test("botCapabilities is undefined for a bot that doesn't send them", async () => {
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.1.0" })
+    );
+    expect(client.botCapabilities).toBeUndefined();
+  });
+
+  test("disconnect() clears botCapabilities", async () => {
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { video_out: true } })
+    );
+    await client.disconnect();
+    expect(client.botCapabilities).toBeUndefined();
   });
 });
