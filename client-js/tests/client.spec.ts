@@ -764,7 +764,12 @@ describe("Bot capabilities", () => {
 
   test("botCapabilities holds the capabilities from bot-ready", async () => {
     await client.connect();
-    const capabilities = { audio_in: true, audio_out: true, video_in: false };
+    const capabilities = {
+      audio_in: true,
+      audio_out: true,
+      video_in: true,
+      screen_in: false,
+    };
     let eventData: BotReadyData | undefined;
     client.on(RTVIEvent.BotReady, (data) => {
       eventData = data;

@@ -103,6 +103,12 @@ export type BotCapabilities = {
   audio_out?: boolean;
   /** Whether the bot receives the user's video. */
   video_in?: boolean;
+  /**
+   * Whether the bot receives the user's screen share. Left out when the bot
+   * captures its video sources itself, so a screen share control should be
+   * shown unless this or `video_in` is `false`.
+   */
+  screen_in?: boolean;
   /** Whether the bot sends video to the user. */
   video_out?: boolean;
   /** Whether the bot reports metrics. */
