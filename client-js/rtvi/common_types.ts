@@ -83,3 +83,21 @@ export type MediaState = {
   mic: DeviceStatus;
   cam: DeviceStatus;
 };
+
+/**
+ * Whether each kind of media can flow in a session. `false` rules it out, so
+ * the matching UI can be hidden; `undefined` means it isn't ruled out, so the
+ * UI should be shown. `true` means everything involved supports it.
+ */
+export type MediaSupport = {
+  /** The user's microphone audio to the bot. */
+  mic?: boolean;
+  /** The user's camera video to the bot. */
+  cam?: boolean;
+  /** The user's screen share to the bot. */
+  screenShare?: boolean;
+  /** The bot's audio to the user. */
+  botAudio?: boolean;
+  /** The bot's video to the user. */
+  botVideo?: boolean;
+};

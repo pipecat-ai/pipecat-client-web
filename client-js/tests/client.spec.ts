@@ -800,3 +800,57 @@ describe("Bot capabilities", () => {
     expect(client.botCapabilities).toBeUndefined();
   });
 });
+
+describe("Media support", () => {
+  class VideoLessTransport extends TransportStub {
+    get mediaSupport() {
+      return { mic: true, cam: false, screenShare: false, botAudio: true, botVideo: false };
+    }
+  }
+
+  const botReady = (data: Record<string, unknown>): RTVIMessage => ({
+    id: "1",
+    label: "rtvi-ai",
+    type: "bot-ready",
+    data,
+  });
+
+  test("a transport that rules nothing out leaves everything unknown before bot-ready", () => {
+    const client = new PipecatClient({ transport: TransportStub.create() });
+    expect(Object.values(client.mediaSupport).every((v) => v === undefined)).toBe(true);
+  });
+
+  test("reflects the transport before bot-ready", () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    expect(client.mediaSupport.cam).toBe(false);
+    expect(client.mediaSupport.screenShare).toBe(false);
+    expect(client.mediaSupport.mic).toBeUndefined();
+  });
+
+  test("combines the transport with the bot's capabilities after bot-ready", async () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({
+        version: "2.2.0",
+        capabilities: { audio_in: true, audio_out: true, video_in: true },
+      })
+    );
+    expect(client.mediaSupport).toMatchObject({
+      mic: true,
+      cam: false,
+      botAudio: true,
+      botVideo: false,
+    });
+  });
+
+  test("falls back to the transport after disconnect", async () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true } })
+    );
+    await client.disconnect();
+    expect(client.mediaSupport.mic).toBeUndefined();
+  });
+});

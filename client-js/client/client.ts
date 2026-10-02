@@ -30,6 +30,7 @@ import {
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
   MediaState,
+  MediaSupport,
   Participant,
   PipecatMetricsData,
   RTVI_PROTOCOL_VERSION,
@@ -68,7 +69,7 @@ import {
   TransportConnectionParams,
   TransportWrapper,
 } from "./transport";
-import { learnAboutClient, messageSizeWithinLimit } from "./utils";
+import { combineMediaSupport, learnAboutClient, messageSizeWithinLimit } from "./utils";
 
 export type FunctionCallParams = {
   functionName: string;
@@ -897,6 +898,16 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   public get botCapabilities(): BotCapabilities | undefined {
     return this._botCapabilities;
+  }
+
+  /**
+   * Whether each kind of media can flow in this session, combining what the
+   * transport supports with the bot's capabilities. Before `bot-ready` it
+   * reflects only the transport. `false` rules a kind of media out; a missing
+   * or `undefined` value means it isn't ruled out.
+   */
+  public get mediaSupport(): MediaSupport {
+    return combineMediaSupport(this._transport.mediaSupport, this._botCapabilities);
   }
 
   // ------ Device methods
