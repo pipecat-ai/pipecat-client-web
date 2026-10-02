@@ -5,6 +5,14 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.2](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.1...client-js-v1.13.2) (2026-10-02)
+
+
+### Bug Fixes
+
+* **client-js:** reject pending requests on disconnect ([1625ed7](https://github.com/pipecat-ai/pipecat-client-web/commit/1625ed7bbaf679cc817bd17f718c398ecbbdddd0))
+* **client-js:** reject pending requests on disconnect ([6261ad1](https://github.com/pipecat-ai/pipecat-client-web/commit/6261ad1c50d2b89e944850648e5a34f1d3e95b1e))
+
 ## [1.13.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.0...client-js-v1.13.1) (2026-09-04)
 
 
