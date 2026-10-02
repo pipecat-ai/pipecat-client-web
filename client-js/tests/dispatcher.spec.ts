@@ -33,6 +33,22 @@ describe("MessageDispatcher", () => {
     });
   });
 
+  test("rejects pending requests on clearQueue", async () => {
+    dispatcher = new MessageDispatcher(() => {});
+
+    const pending = dispatcher.dispatch({ t: "get-config", d: { a: 1 } });
+    dispatcher.clearQueue();
+
+    const error = (await pending.catch((e) => e)) as RTVIMessage;
+    expect(error.type).toBe(RTVIMessageType.ERROR_RESPONSE);
+    expect(error.data).toEqual({
+      error: "Request cleared before response was received",
+      msgType: "get-config",
+      data: { a: 1 },
+      fatal: false,
+    });
+  });
+
   test("still resolves requests answered before disconnect", async () => {
     const sendMethod = jest.fn<(message: RTVIMessage) => void>();
     dispatcher = new MessageDispatcher(sendMethod);

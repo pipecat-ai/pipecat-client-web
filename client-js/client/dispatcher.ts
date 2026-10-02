@@ -26,22 +26,9 @@ export class MessageDispatcher {
   }
 
   public disconnect() {
-    const pending = this._queue;
-    this.clearQueue();
+    this.clearQueue("Disconnected before response was received");
     clearInterval(this._gcInterval);
     this._gcInterval = undefined;
-
-    // Settle any requests still waiting for a response so callers do not hang
-    pending.forEach((msg) => {
-      msg.reject(
-        new RTVIMessage(RTVIMessageType.ERROR_RESPONSE, {
-          error: "Disconnected before response was received",
-          msgType: (msg.message.data as ClientMessageData)?.t,
-          data: (msg.message.data as ClientMessageData)?.d,
-          fatal: false,
-        })
-      );
-    });
   }
 
   public dispatch(
@@ -81,7 +68,18 @@ export class MessageDispatcher {
     return promise as Promise<RTVIMessage>;
   }
 
-  public clearQueue() {
+  public clearQueue(reason = "Request cleared before response was received") {
+    // Settle any requests still waiting for a response so callers do not hang
+    this._queue.forEach((msg) => {
+      msg.reject(
+        new RTVIMessage(RTVIMessageType.ERROR_RESPONSE, {
+          error: reason,
+          msgType: (msg.message.data as ClientMessageData)?.t,
+          data: (msg.message.data as ClientMessageData)?.d,
+          fatal: false,
+        })
+      );
+    });
     this._queue = [];
   }
 
