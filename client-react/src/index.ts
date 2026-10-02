@@ -25,6 +25,7 @@ import {
   useToastHandler,
 } from "./defaultUICommandHandlers";
 import { PipecatClientAudio } from "./PipecatClientAudio";
+import { useBotCapabilities } from "./PipecatClientBotCapabilities";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
 import { useMediaState } from "./PipecatClientMediaState";
 import { useMediaSupport } from "./PipecatClientMediaSupport";
@@ -34,7 +35,6 @@ import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle
 import { PipecatClientVideo } from "./PipecatClientVideo";
 import { UIJobGroupsContext } from "./UIJobGroupsContext";
 import { UIJobGroupsProvider } from "./UIJobGroupsProvider";
-import { useBotCapabilities } from "./useBotCapabilities";
 import { useDTMF } from "./useDTMF";
 import { usePipecatClient } from "./usePipecatClient";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";

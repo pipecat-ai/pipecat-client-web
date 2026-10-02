@@ -7,10 +7,14 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { type BotCapabilities, RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
+import { createStore, Provider as JotaiProvider } from "jotai";
 import React from "react";
 
+import {
+  PipecatClientBotCapabilitiesProvider,
+  useBotCapabilities,
+} from "../../src/PipecatClientBotCapabilities";
 import { RTVIEventContext } from "../../src/RTVIEventContext";
-import { useBotCapabilities } from "../../src/useBotCapabilities";
 import { usePipecatClient } from "../../src/usePipecatClient";
 
 jest.mock("../../src/usePipecatClient", () => ({
@@ -42,12 +46,16 @@ function renderHook() {
   };
 
   render(
-    <RTVIEventContext.Provider
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      value={{ on: on as any, off: off as any }}
-    >
-      <Probe />
-    </RTVIEventContext.Provider>,
+    <JotaiProvider store={createStore()}>
+      <RTVIEventContext.Provider
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        value={{ on: on as any, off: off as any }}
+      >
+        <PipecatClientBotCapabilitiesProvider>
+          <Probe />
+        </PipecatClientBotCapabilitiesProvider>
+      </RTVIEventContext.Provider>
+    </JotaiProvider>,
   );
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

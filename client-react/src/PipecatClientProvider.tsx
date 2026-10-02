@@ -19,6 +19,7 @@ import {
   version as packageVersion,
 } from "../package.json";
 import { PipecatConversationProvider } from "./conversation/PipecatConversationProvider";
+import { PipecatClientBotCapabilitiesProvider } from "./PipecatClientBotCapabilities";
 import { PipecatClientMediaStateProvider } from "./PipecatClientMediaState";
 import { PipecatClientMediaSupportProvider } from "./PipecatClientMediaSupport";
 import { PipecatClientStateProvider } from "./PipecatClientState";
@@ -146,9 +147,11 @@ export const PipecatClientProvider: React.FC<
           <PipecatClientStateProvider>
             <PipecatClientMediaStateProvider>
               <PipecatClientMediaSupportProvider>
-                <PipecatConversationProvider>
-                  {children}
-                </PipecatConversationProvider>
+                <PipecatClientBotCapabilitiesProvider>
+                  <PipecatConversationProvider>
+                    {children}
+                  </PipecatConversationProvider>
+                </PipecatClientBotCapabilitiesProvider>
               </PipecatClientMediaSupportProvider>
             </PipecatClientMediaStateProvider>
           </PipecatClientStateProvider>
