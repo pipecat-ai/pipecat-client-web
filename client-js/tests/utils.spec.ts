@@ -6,7 +6,8 @@
 
 import { describe, expect, test } from "@jest/globals";
 
-import { combineMediaSupport, messageSizeWithinLimit } from "./../client/utils";
+import { combineMediaSupport } from "./../client/mediaSupport";
+import { messageSizeWithinLimit } from "./../client/utils";
 
 describe("messageSizeWithinLimit", () => {
   test("returns true for simple string within limit", () => {

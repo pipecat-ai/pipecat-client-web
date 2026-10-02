@@ -57,6 +57,7 @@ import {
 import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
+import { combineMediaSupport } from "./mediaSupport";
 import {
   APIRequest,
   ConnectionEndpoint,
@@ -69,7 +70,7 @@ import {
   TransportConnectionParams,
   TransportWrapper,
 } from "./transport";
-import { combineMediaSupport, learnAboutClient, messageSizeWithinLimit } from "./utils";
+import { learnAboutClient, messageSizeWithinLimit } from "./utils";
 
 export type FunctionCallParams = {
   functionName: string;
