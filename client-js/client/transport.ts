@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { RTVIError, RTVIMessage, TransportState } from "../rtvi";
+import { MediaSupport, RTVIError, RTVIMessage, TransportState } from "../rtvi";
 import { PipecatClientOptions, RTVIEventCallbacks } from "./client";
 import { APIRequest } from "./rest_helpers.ts";
 
@@ -155,6 +155,14 @@ export abstract class Transport {
    */
   get maxMessageSize(): number {
     return this._maxMessageSize;
+  }
+
+  /**
+   * The media this transport, in this environment, can carry. Known before
+   * connecting. Transports override this; the default rules nothing out.
+   */
+  get mediaSupport(): MediaSupport {
+    return {};
   }
 
   abstract tracks(): Tracks;

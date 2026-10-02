@@ -6,6 +6,7 @@
 
 import { describe, expect, test } from "@jest/globals";
 
+import { combineMediaSupport } from "./../client/mediaSupport";
 import { messageSizeWithinLimit } from "./../client/utils";
 
 describe("messageSizeWithinLimit", () => {
@@ -166,5 +167,59 @@ describe("messageSizeWithinLimit", () => {
     const size = new TextEncoder().encode(JSON.stringify(message)).length;
     expect(messageSizeWithinLimit(message, size)).toBe(true);
     expect(messageSizeWithinLimit(message, size - 1)).toBe(false);
+  });
+});
+
+describe("combineMediaSupport", () => {
+  test("nothing known leaves everything undefined", () => {
+    expect(combineMediaSupport({}, undefined)).toEqual({
+      mic: undefined,
+      cam: undefined,
+      screenShare: undefined,
+      botAudio: undefined,
+      botVideo: undefined,
+    });
+  });
+
+  test("the transport alone can rule media out, but not in", () => {
+    const support = combineMediaSupport({ mic: true, cam: false }, undefined);
+    expect(support.mic).toBeUndefined();
+    expect(support.cam).toBe(false);
+  });
+
+  test("the bot alone can rule media out, but not in", () => {
+    const support = combineMediaSupport({}, { audio_in: true, video_out: false });
+    expect(support.mic).toBeUndefined();
+    expect(support.botVideo).toBe(false);
+  });
+
+  test("true only when both sides support it", () => {
+    const support = combineMediaSupport(
+      { mic: true, cam: true, botAudio: true, botVideo: true },
+      { audio_in: true, video_in: false, audio_out: true, video_out: true }
+    );
+    expect(support).toMatchObject({
+      mic: true,
+      cam: false,
+      botAudio: true,
+      botVideo: true,
+    });
+  });
+
+  test("screen share needs the bot's video and screen input", () => {
+    const transport = { screenShare: true };
+    expect(
+      combineMediaSupport(transport, { video_in: true, screen_in: true }).screenShare
+    ).toBe(true);
+    expect(
+      combineMediaSupport(transport, { video_in: true, screen_in: false }).screenShare
+    ).toBe(false);
+    expect(
+      combineMediaSupport(transport, { video_in: false }).screenShare
+    ).toBe(false);
+    // A bot that captures its sources itself doesn't report screen_in.
+    expect(
+      combineMediaSupport(transport, { video_in: true }).screenShare
+    ).toBeUndefined();
   });
 });

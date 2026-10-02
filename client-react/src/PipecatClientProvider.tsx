@@ -19,7 +19,9 @@ import {
   version as packageVersion,
 } from "../package.json";
 import { PipecatConversationProvider } from "./conversation/PipecatConversationProvider";
+import { PipecatClientBotCapabilitiesProvider } from "./PipecatClientBotCapabilities";
 import { PipecatClientMediaStateProvider } from "./PipecatClientMediaState";
+import { PipecatClientMediaSupportProvider } from "./PipecatClientMediaSupport";
 import { PipecatClientStateProvider } from "./PipecatClientState";
 import { RTVIEventContext } from "./RTVIEventContext";
 
@@ -144,9 +146,13 @@ export const PipecatClientProvider: React.FC<
         <RTVIEventContext.Provider value={{ on, off }}>
           <PipecatClientStateProvider>
             <PipecatClientMediaStateProvider>
-              <PipecatConversationProvider>
-                {children}
-              </PipecatConversationProvider>
+              <PipecatClientMediaSupportProvider>
+                <PipecatClientBotCapabilitiesProvider>
+                  <PipecatConversationProvider>
+                    {children}
+                  </PipecatConversationProvider>
+                </PipecatClientBotCapabilitiesProvider>
+              </PipecatClientMediaSupportProvider>
             </PipecatClientMediaStateProvider>
           </PipecatClientStateProvider>
         </RTVIEventContext.Provider>
