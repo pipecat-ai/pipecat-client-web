@@ -27,6 +27,7 @@ import {
 import { PipecatClientAudio } from "./PipecatClientAudio";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
 import { useMediaState } from "./PipecatClientMediaState";
+import { useMediaSupport } from "./PipecatClientMediaSupport";
 import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
 import { PipecatClientProvider } from "./PipecatClientProvider";
 import { PipecatClientScreenShareToggle } from "./PipecatClientScreenShareToggle";
@@ -77,6 +78,7 @@ export {
   useDefaultUICommandHandlers,
   useDTMF,
   useMediaState,
+  useMediaSupport,
   useNavigateHandler,
   usePipecatClient,
   usePipecatClientCamControl,

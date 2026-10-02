@@ -20,6 +20,7 @@ import {
 } from "../package.json";
 import { PipecatConversationProvider } from "./conversation/PipecatConversationProvider";
 import { PipecatClientMediaStateProvider } from "./PipecatClientMediaState";
+import { PipecatClientMediaSupportProvider } from "./PipecatClientMediaSupport";
 import { PipecatClientStateProvider } from "./PipecatClientState";
 import { RTVIEventContext } from "./RTVIEventContext";
 
@@ -144,9 +145,11 @@ export const PipecatClientProvider: React.FC<
         <RTVIEventContext.Provider value={{ on, off }}>
           <PipecatClientStateProvider>
             <PipecatClientMediaStateProvider>
-              <PipecatConversationProvider>
-                {children}
-              </PipecatConversationProvider>
+              <PipecatClientMediaSupportProvider>
+                <PipecatConversationProvider>
+                  {children}
+                </PipecatConversationProvider>
+              </PipecatClientMediaSupportProvider>
             </PipecatClientMediaStateProvider>
           </PipecatClientStateProvider>
         </RTVIEventContext.Provider>
