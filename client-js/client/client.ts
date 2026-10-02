@@ -134,6 +134,7 @@ export type RTVIEventCallbacks = Partial<{
   onSpeakerUpdated: (speaker: MediaDeviceInfo) => void;
   onDeviceError: (error: RTVIErrors.DeviceError) => void;
   onMediaStateChanged: (mediaState: MediaState) => void;
+  onMediaSupportChanged: (mediaSupport: MediaSupport) => void;
   onTrackStarted: (track: MediaStreamTrack, participant?: Participant) => void;
   onTrackStopped: (track: MediaStreamTrack, participant?: Participant) => void;
   onScreenTrackStarted: (
@@ -687,7 +688,7 @@ export class PipecatClient extends RTVIEventEmitter {
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
     this._botVersion = [0, 0, 0];
-    this._botCapabilities = undefined;
+    this._setBotCapabilities(undefined);
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -703,6 +704,22 @@ export class PipecatClient extends RTVIEventEmitter {
     this._messageDispatcher = new MessageDispatcher(
       this._sendMessage.bind(this)
     );
+  }
+
+  /**
+   * Set the bot's capabilities and emit MediaSupportUpdated if that changes
+   * mediaSupport. The callback always receives a fresh object.
+   */
+  private _setBotCapabilities(capabilities: BotCapabilities | undefined): void {
+    const previous = this.mediaSupport;
+    this._botCapabilities = capabilities;
+    const next = this.mediaSupport;
+    const keys = Object.keys({ ...previous, ...next }) as (keyof MediaSupport)[];
+    if (keys.every((key) => previous[key] === next[key])) {
+      return;
+    }
+    this._options.callbacks?.onMediaSupportChanged?.(this.mediaSupport);
+    this.emit(RTVIEvent.MediaSupportUpdated, this.mediaSupport);
   }
 
   /**
@@ -904,10 +921,16 @@ export class PipecatClient extends RTVIEventEmitter {
    * Whether each kind of media can flow in this session, combining what the
    * transport supports with the bot's capabilities. Before `bot-ready` it
    * reflects only the transport. `false` rules a kind of media out; a missing
-   * or `undefined` value means it isn't ruled out.
+   * or `undefined` value means it isn't ruled out. Returns a snapshot — to
+   * track changes, subscribe to RTVIEvent.MediaSupportUpdated or pass an
+   * onMediaSupportChanged callback in the client constructor.
    */
   public get mediaSupport(): MediaSupport {
-    return combineMediaSupport(this._transport.mediaSupport, this._botCapabilities);
+    // A transport built against an older client-js has no mediaSupport.
+    return combineMediaSupport(
+      this._transport.mediaSupport ?? {},
+      this._botCapabilities
+    );
   }
 
   // ------ Device methods
@@ -1200,7 +1223,7 @@ export class PipecatClient extends RTVIEventEmitter {
           ? data.version.split(".").map(Number)
           : [0, 0, 0];
         this._botVersion = botVersion;
-        this._botCapabilities = data.capabilities;
+        this._setBotCapabilities(data.capabilities);
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
         if (botVersion[0] < 2) {
           logger.warn(

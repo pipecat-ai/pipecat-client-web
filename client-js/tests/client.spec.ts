@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, test } from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
-import { BotReadyData, RTVIEvent, RTVIMessage } from "./../rtvi";
+import { BotReadyData, MediaSupport, RTVIEvent, RTVIMessage } from "./../rtvi";
 import { MessageTooLargeError, UnsupportedFeatureError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
@@ -842,6 +842,55 @@ describe("Media support", () => {
       botAudio: true,
       botVideo: false,
     });
+  });
+
+  test("bot-ready that changes mediaSupport emits the event and callback", async () => {
+    const changes: MediaSupport[] = [];
+    const client = new PipecatClient({
+      transport: new VideoLessTransport(),
+      callbacks: { onMediaSupportChanged: (support) => changes.push(support) },
+    });
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+    await client.connect();
+
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true } })
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0].mic).toBe(true);
+    expect(changes).toEqual(events);
+  });
+
+  test("bot-ready that leaves mediaSupport unchanged emits nothing", async () => {
+    // With a transport that rules nothing out, a bot that only reports `true`
+    // values leaves every kind of media undefined.
+    const client = new PipecatClient({ transport: TransportStub.create() });
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+    await client.connect();
+
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true, video_in: true } })
+    );
+
+    expect(events).toHaveLength(0);
+  });
+
+  test("disconnect emits when it changes mediaSupport", async () => {
+    const client = new PipecatClient({ transport: TransportStub.create() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { video_out: false } })
+    );
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+
+    await client.disconnect();
+
+    expect(events).toHaveLength(1);
+    expect(events[0].botVideo).toBeUndefined();
   });
 
   test("falls back to the transport after disconnect", async () => {
