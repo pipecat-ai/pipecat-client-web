@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { MediaState, Participant, TransportState } from "./common_types";
+import {
+  MediaState,
+  MediaSupport,
+  Participant,
+  TransportState,
+} from "./common_types";
 import { DeviceError, UnsupportedFeatureError } from "./errors";
 import {
   BotLLMSearchResponseData,
@@ -107,6 +112,7 @@ export enum RTVIEvent {
   SpeakerUpdated = "speakerUpdated",
   DeviceError = "deviceError",
   MediaStateUpdated = "mediaStateUpdated",
+  MediaSupportUpdated = "mediaSupportUpdated",
   UnsupportedFeature = "unsupportedFeature",
 }
 
@@ -194,6 +200,7 @@ export type RTVIEvents = Partial<{
   speakerUpdated: (speaker: MediaDeviceInfo) => void;
   deviceError: (error: DeviceError) => void;
   mediaStateUpdated: (mediaState: MediaState) => void;
+  mediaSupportUpdated: (mediaSupport: MediaSupport) => void;
   unsupportedFeature: (error: UnsupportedFeatureError) => void;
 }>;
 

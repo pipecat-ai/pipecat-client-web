@@ -10,6 +10,7 @@ import TypedEmitter from "typed-emitter";
 import packageJson from "../package.json";
 import {
   A11ySnapshot,
+  BotCapabilities,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -29,6 +30,7 @@ import {
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
   MediaState,
+  MediaSupport,
   Participant,
   PipecatMetricsData,
   RTVI_PROTOCOL_VERSION,
@@ -55,6 +57,7 @@ import {
 import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
+import { combineMediaSupport } from "./mediaSupport";
 import {
   APIRequest,
   ConnectionEndpoint,
@@ -132,6 +135,7 @@ export type RTVIEventCallbacks = Partial<{
   onSpeakerUpdated: (speaker: MediaDeviceInfo) => void;
   onDeviceError: (error: RTVIErrors.DeviceError) => void;
   onMediaStateChanged: (mediaState: MediaState) => void;
+  onMediaSupportChanged: (mediaSupport: MediaSupport) => void;
   onTrackStarted: (track: MediaStreamTrack, participant?: Participant) => void;
   onTrackStopped: (track: MediaStreamTrack, participant?: Participant) => void;
   onScreenTrackStarted: (
@@ -233,6 +237,9 @@ export class PipecatClient extends RTVIEventEmitter {
 
   // Bot's RTVI protocol version, parsed from bot-ready. [0, 0, 0] until known.
   private _botVersion: number[] = [0, 0, 0];
+  // Bot's capabilities from bot-ready, cleared on disconnect. Undefined for bots
+  // that don't send them.
+  private _botCapabilities: BotCapabilities | undefined;
 
   // Per-device device state. Independent of TransportState — driven by
   // initDevices() and DeviceError events, never by transport connect/disconnect.
@@ -682,6 +689,7 @@ export class PipecatClient extends RTVIEventEmitter {
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
     this._botVersion = [0, 0, 0];
+    this._setBotCapabilities(undefined);
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -697,6 +705,22 @@ export class PipecatClient extends RTVIEventEmitter {
     this._messageDispatcher = new MessageDispatcher(
       this._sendMessage.bind(this)
     );
+  }
+
+  /**
+   * Set the bot's capabilities and emit MediaSupportUpdated if that changes
+   * mediaSupport. The callback always receives a fresh object.
+   */
+  private _setBotCapabilities(capabilities: BotCapabilities | undefined): void {
+    const previous = this.mediaSupport;
+    this._botCapabilities = capabilities;
+    const next = this.mediaSupport;
+    const keys = Object.keys({ ...previous, ...next }) as (keyof MediaSupport)[];
+    if (keys.every((key) => previous[key] === next[key])) {
+      return;
+    }
+    this._options.callbacks?.onMediaSupportChanged?.(this.mediaSupport);
+    this.emit(RTVIEvent.MediaSupportUpdated, this.mediaSupport);
   }
 
   /**
@@ -881,6 +905,33 @@ export class PipecatClient extends RTVIEventEmitter {
 
   public get version(): string {
     return packageJson.version;
+  }
+
+  /**
+   * What the bot does in this session, from its `bot-ready` message.
+   *
+   * Undefined before `bot-ready`, after disconnecting, and for bots that don't
+   * send capabilities (RTVI protocol older than 2.2.0). Within the object, a
+   * missing field means the bot can't tell.
+   */
+  public get botCapabilities(): BotCapabilities | undefined {
+    return this._botCapabilities;
+  }
+
+  /**
+   * Whether each kind of media can flow in this session, combining what the
+   * transport supports with the bot's capabilities. Before `bot-ready` it
+   * reflects only the transport. `false` rules a kind of media out; a missing
+   * or `undefined` value means it isn't ruled out. Returns a snapshot — to
+   * track changes, subscribe to RTVIEvent.MediaSupportUpdated or pass an
+   * onMediaSupportChanged callback in the client constructor.
+   */
+  public get mediaSupport(): MediaSupport {
+    // A transport built against an older client-js has no mediaSupport.
+    return combineMediaSupport(
+      this._transport.mediaSupport ?? {},
+      this._botCapabilities
+    );
   }
 
   // ------ Device methods
@@ -1173,6 +1224,7 @@ export class PipecatClient extends RTVIEventEmitter {
           ? data.version.split(".").map(Number)
           : [0, 0, 0];
         this._botVersion = botVersion;
+        this._setBotCapabilities(data.capabilities);
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
         if (botVersion[0] < 2) {
           logger.warn(

@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, test } from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
-import { RTVIEvent, RTVIMessage } from "./../rtvi";
+import { BotReadyData, MediaSupport, RTVIEvent, RTVIMessage } from "./../rtvi";
 import { MessageTooLargeError, UnsupportedFeatureError } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
@@ -739,5 +739,167 @@ describe("UnsupportedFeatureError handling", () => {
     expect(() => client.enableScreenShare(true)).toThrow(
       "unexpected transport failure"
     );
+  });
+});
+
+describe("Bot capabilities", () => {
+  let client: PipecatClient;
+
+  const botReady = (data: Record<string, unknown>): RTVIMessage => ({
+    id: "1",
+    label: "rtvi-ai",
+    type: "bot-ready",
+    data,
+  });
+
+  beforeEach(() => {
+    client = new PipecatClient({
+      transport: TransportStub.create(),
+    });
+  });
+
+  test("botCapabilities is undefined before bot-ready", () => {
+    expect(client.botCapabilities).toBeUndefined();
+  });
+
+  test("botCapabilities holds the capabilities from bot-ready", async () => {
+    await client.connect();
+    const capabilities = {
+      audio_in: true,
+      audio_out: true,
+      video_in: true,
+      screen_in: false,
+    };
+    let eventData: BotReadyData | undefined;
+    client.on(RTVIEvent.BotReady, (data) => {
+      eventData = data;
+    });
+
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities })
+    );
+
+    expect(client.botCapabilities).toEqual(capabilities);
+    expect(eventData?.capabilities).toEqual(capabilities);
+  });
+
+  test("botCapabilities is undefined for a bot that doesn't send them", async () => {
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.1.0" })
+    );
+    expect(client.botCapabilities).toBeUndefined();
+  });
+
+  test("disconnect() clears botCapabilities", async () => {
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { video_out: true } })
+    );
+    await client.disconnect();
+    expect(client.botCapabilities).toBeUndefined();
+  });
+});
+
+describe("Media support", () => {
+  class VideoLessTransport extends TransportStub {
+    get mediaSupport() {
+      return { mic: true, cam: false, screenShare: false, botAudio: true, botVideo: false };
+    }
+  }
+
+  const botReady = (data: Record<string, unknown>): RTVIMessage => ({
+    id: "1",
+    label: "rtvi-ai",
+    type: "bot-ready",
+    data,
+  });
+
+  test("a transport that rules nothing out leaves everything unknown before bot-ready", () => {
+    const client = new PipecatClient({ transport: TransportStub.create() });
+    expect(Object.values(client.mediaSupport).every((v) => v === undefined)).toBe(true);
+  });
+
+  test("reflects the transport before bot-ready", () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    expect(client.mediaSupport.cam).toBe(false);
+    expect(client.mediaSupport.screenShare).toBe(false);
+    expect(client.mediaSupport.mic).toBeUndefined();
+  });
+
+  test("combines the transport with the bot's capabilities after bot-ready", async () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({
+        version: "2.2.0",
+        capabilities: { audio_in: true, audio_out: true, video_in: true },
+      })
+    );
+    expect(client.mediaSupport).toMatchObject({
+      mic: true,
+      cam: false,
+      botAudio: true,
+      botVideo: false,
+    });
+  });
+
+  test("bot-ready that changes mediaSupport emits the event and callback", async () => {
+    const changes: MediaSupport[] = [];
+    const client = new PipecatClient({
+      transport: new VideoLessTransport(),
+      callbacks: { onMediaSupportChanged: (support) => changes.push(support) },
+    });
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+    await client.connect();
+
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true } })
+    );
+
+    expect(events).toHaveLength(1);
+    expect(events[0].mic).toBe(true);
+    expect(changes).toEqual(events);
+  });
+
+  test("bot-ready that leaves mediaSupport unchanged emits nothing", async () => {
+    // With a transport that rules nothing out, a bot that only reports `true`
+    // values leaves every kind of media undefined.
+    const client = new PipecatClient({ transport: TransportStub.create() });
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+    await client.connect();
+
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true, video_in: true } })
+    );
+
+    expect(events).toHaveLength(0);
+  });
+
+  test("disconnect emits when it changes mediaSupport", async () => {
+    const client = new PipecatClient({ transport: TransportStub.create() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { video_out: false } })
+    );
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+
+    await client.disconnect();
+
+    expect(events).toHaveLength(1);
+    expect(events[0].botVideo).toBeUndefined();
+  });
+
+  test("falls back to the transport after disconnect", async () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true } })
+    );
+    await client.disconnect();
+    expect(client.mediaSupport.mic).toBeUndefined();
   });
 });
