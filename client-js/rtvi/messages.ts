@@ -362,7 +362,7 @@ export const MimeTypeMapping: Record<RTVIFileFormat, string> = {
   avi: "video/x-msvideo",
 };
 
-export type FileSourceType = "bytes" | "url" | "id";
+export type FileSourceType = "bytes" | "url";
 
 export type FileBytes = {
   type: Extract<FileSourceType, "bytes">;
@@ -376,11 +376,6 @@ export type ImageFileBytes = FileBytes & {
 export type FileUrl = {
   type: Extract<FileSourceType, "url">;
   url: string | URL;
-  public?: boolean;
-};
-export type FileId = {
-  type: Extract<FileSourceType, "id">;
-  id: string;
 };
 
 export type RTVIFile = {
@@ -388,7 +383,7 @@ export type RTVIFile = {
   // RTVI definition takes the Mime type here, but in client-js, we support
   // clients providing shorthands defined above and we map them to Mime types
   format: string;
-  source: FileBytes | FileUrl | FileId;
+  source: FileBytes | FileUrl;
 };
 
 export type SendFileOptions = {

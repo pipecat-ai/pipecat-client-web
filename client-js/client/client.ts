@@ -220,6 +220,15 @@ export interface PipecatClientOptions {
    * Default to true
    */
   disconnectOnBotDisconnect?: boolean;
+
+  /**
+   * The endpoint to POST file uploads to when a file passed to sendFile()
+   * is too large to send inline. A fileUploadUrl advertised by the
+   * start-bot response takes precedence over this, since the backend may
+   * mint a session-scoped route per call to /start. Relative URLs are
+   * resolved against the startBot endpoint.
+   */
+  fileUploadEndpoint?: string | URL;
 }
 
 abstract class RTVIEventEmitter extends (EventEmitter as unknown as new () => TypedEmitter<RTVIEvents>) {}
@@ -628,6 +637,7 @@ export class PipecatClient extends RTVIEventEmitter {
       throw new RTVIErrors.StartBotError(errMsg, status);
     }
     this._transport.state = "authenticated";
+    this._transport.startBotResponse = response;
     this._options.callbacks?.onBotStarted?.(response);
     return response;
   }
@@ -693,6 +703,7 @@ export class PipecatClient extends RTVIEventEmitter {
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
     this._botVersion = [0, 0, 0];
+    this._transport.startBotResponse = undefined;
     this._setBotCapabilities(undefined);
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
@@ -1254,7 +1265,7 @@ export class PipecatClient extends RTVIEventEmitter {
     // Estimate base64 size (~33% overhead) + message wrapper before reading into memory.
     const estimatedEncodedSize = Math.ceil(file.size * 1.37) + 1000;
     if (estimatedEncodedSize > this._transport.maxMessageSize) {
-      return this.uploadFile(file);
+      return this._uploadFile(file);
     }
     return new Promise<RTVIFile>((resolve, reject) => {
       const reader = new FileReader();
@@ -1298,83 +1309,76 @@ export class PipecatClient extends RTVIEventEmitter {
     }
     const blob = new Blob([ab], { type: mimeType });
     const uploadable = new File([blob], file.name || "uploaded_file", { type: mimeType });
-    return this.uploadFile(uploadable);
+    return this._uploadFile(uploadable);
   }
 
   /**
-   * Upload a file to a specified endpoint or the default files endpoint.
+   * Parse the file-upload endpoint advertised by the start-bot response,
+   * tolerating both the camelCase key the pipecat runner and Pipecat Cloud
+   * return and a snake_case variant. Not part of the RTVI contract — a
+   * backend that doesn't support uploads simply doesn't advertise one.
+   */
+  private get _advertisedFileUploadUrl(): string | undefined {
+    const response = this._transport.startBotResponse;
+    if (!response || typeof response !== "object") return undefined;
+    const record = response as Record<string, unknown>;
+    const url = record.fileUploadUrl ?? record.file_upload_url;
+    return typeof url === "string" ? url : undefined;
+  }
+
+  /**
+   * Upload a file to the uploads endpoint the start-bot response advertised
+   * or, failing that, the fileUploadEndpoint client option. Called by
+   * sendFile() when a file is too large to send inline; the returned
+   * RTVIFile carries the url source the send-file message then uses.
    * @param file - The File to upload
-   * @param uploadFileParams - Optional APIRequest. If not provided, constructs
-   *   endpoint from startBotParams.endpoint by replacing the path with /files
    * @returns Promise resolving to RTVIFile with name, format, and FileUrl source
    */
-  public async uploadFile(
-    file: File,
-    uploadFileParams?: APIRequest
-  ): Promise<RTVIFile> {
-    let uploadUrl: string;
+  private async _uploadFile(file: File): Promise<RTVIFile> {
+    // The backend's advertisement wins over static client config: only the
+    // backend can mint a session-scoped route.
+    const endpoint =
+      this._advertisedFileUploadUrl ?? this._options.fileUploadEndpoint;
+    if (!endpoint) {
+      throw new RTVIErrors.RTVIError(
+        "Unable to determine upload URL: the start-bot response did not advertise a fileUploadUrl and no fileUploadEndpoint is set in PipecatClientOptions (file uploads may be disabled on the server)"
+      );
+    }
+
+    // Borrow auth headers, timeout, and the base URL for resolving a
+    // relative upload endpoint from startBotParams.
+    const startBotParams = this._transport.startBotParams;
     let headers: Headers | undefined;
     let timeout: number | undefined;
-
-    if (uploadFileParams) {
-      const { endpoint } = uploadFileParams;
-      headers = uploadFileParams.headers;
-      timeout = uploadFileParams.timeout;
-
-      if (endpoint instanceof URL) {
-        uploadUrl = endpoint.toString();
-      } else if (typeof endpoint === "string") {
-        uploadUrl = endpoint;
-      } else if (
-        typeof Request !== "undefined" &&
-        endpoint instanceof Request
-      ) {
-        uploadUrl = endpoint.url;
-      } else {
-        throw new RTVIErrors.RTVIError(
-          "Unable to determine URL from uploadFileParams.endpoint"
-        );
-      }
-    } else {
-      // Construct from startBotParams
-      const startBotParams = this._transport.startBotParams;
-      if (!startBotParams?.endpoint) {
-        throw new RTVIErrors.RTVIError(
-          "No uploadFileParams provided and no startBotParams.endpoint available"
-        );
-      }
-
+    let base: string | undefined;
+    if (startBotParams) {
       timeout = startBotParams.timeout;
-
-      let baseUrl: URL;
-      if (startBotParams.endpoint instanceof URL) {
-        baseUrl = startBotParams.endpoint;
-        headers = startBotParams.headers;
-      } else if (typeof startBotParams.endpoint === "string") {
-        baseUrl = new URL(startBotParams.endpoint);
-        headers = startBotParams.headers;
-      } else if (
+      if (
         typeof Request !== "undefined" &&
         startBotParams.endpoint instanceof Request
       ) {
-        baseUrl = new URL(startBotParams.endpoint.url);
         headers = new Headers(startBotParams.endpoint.headers);
+        base = startBotParams.endpoint.url;
       } else {
-        throw new RTVIErrors.RTVIError(
-          "Unable to determine base URL from startBotParams.endpoint"
-        );
+        headers = startBotParams.headers;
+        base = startBotParams.endpoint?.toString();
       }
-
-      // Change the path to /files
-      uploadUrl = `${baseUrl.origin}/files`;
     }
 
-    // Create FormData with the file
+    let uploadUrl: string;
+    try {
+      uploadUrl = new URL(endpoint, base).toString();
+    } catch {
+      throw new RTVIErrors.RTVIError(
+        `Unable to resolve upload URL "${endpoint}"` +
+          (base ? ` against "${base}"` : " without a startBot endpoint")
+      );
+    }
+
     const formData = new FormData();
     formData.append("file", file);
-
-    // Create the Request object
-    // Note: Don't set Content-Type header - browser sets it automatically with boundary
+    // Note: Don't set Content-Type header - browser sets it automatically
+    // with the multipart boundary
     const request = new Request(uploadUrl, {
       method: "POST",
       mode: "cors",

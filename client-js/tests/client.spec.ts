@@ -30,6 +30,12 @@ import {
 } from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
 
+// _uploadFile is private — tests reach it through a structural cast (for
+// spies) or bracket notation (for direct calls).
+type UploadCapable = { _uploadFile: (file: File) => Promise<RTVIFile> };
+const spyOnUploadFile = (client: PipecatClient) =>
+  jest.spyOn(client as unknown as UploadCapable, "_uploadFile");
+
 describe("PipecatClient Methods", () => {
   let client: PipecatClient;
 
@@ -1061,7 +1067,7 @@ describe("sendFile", () => {
 
     test("large file is uploaded instead of read inline", async () => {
       const { client } = await connectWithBotVersion();
-      const uploadSpy = jest.spyOn(client, "uploadFile").mockResolvedValue({
+      const uploadSpy = spyOnUploadFile(client).mockResolvedValue({
         name: "large.jpg",
         format: "image/jpeg",
         source: { type: "url", url: "https://cdn.example.com/large.jpg" },
@@ -1107,7 +1113,7 @@ describe("sendFile", () => {
         sentMessages.push(msg);
         return true;
       });
-      const uploadSpy = jest.spyOn(client, "uploadFile");
+      const uploadSpy = spyOnUploadFile(client);
 
       const rtviFile: RTVIFile = {
         name: "photo.jpg",
@@ -1122,28 +1128,6 @@ describe("sendFile", () => {
       ).toBe("url");
     });
 
-    test("id source passes through without upload", async () => {
-      const { client, stub } = await connectWithBotVersion();
-      const sentMessages: RTVIMessage[] = [];
-      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
-        sentMessages.push(msg);
-        return true;
-      });
-      const uploadSpy = jest.spyOn(client, "uploadFile");
-
-      const rtviFile: RTVIFile = {
-        name: "doc.pdf",
-        format: "application/pdf",
-        source: { type: "id", id: "file-abc-123" },
-      };
-      await client.sendFile(rtviFile, "caption");
-
-      expect(uploadSpy).not.toHaveBeenCalled();
-      expect(
-        (sentMessages[0].data as { file: RTVIFile }).file.source.type
-      ).toBe("id");
-    });
-
     test("small bytes source is sent inline", async () => {
       const { client, stub } = await connectWithBotVersion();
       const sentMessages: RTVIMessage[] = [];
@@ -1151,7 +1135,7 @@ describe("sendFile", () => {
         sentMessages.push(msg);
         return true;
       });
-      const uploadSpy = jest.spyOn(client, "uploadFile");
+      const uploadSpy = spyOnUploadFile(client);
 
       const rtviFile: RTVIFile = {
         name: "photo.jpg",
@@ -1169,7 +1153,7 @@ describe("sendFile", () => {
 
     test("large bytes source is uploaded", async () => {
       const { client } = await connectWithBotVersion();
-      const uploadSpy = jest.spyOn(client, "uploadFile").mockResolvedValue({
+      const uploadSpy = spyOnUploadFile(client).mockResolvedValue({
         name: "large.jpg",
         format: "image/jpeg",
         source: { type: "url", url: "https://cdn.example.com/large.jpg" },
@@ -1204,5 +1188,162 @@ describe("sendFile", () => {
         "image/jpeg"
       );
     });
+  });
+});
+
+describe("uploadFile endpoint selection", () => {
+  const uploadResponse = JSON.stringify({
+    name: "photo.jpg",
+    format: "image/jpeg",
+    source: { type: "url", url: "pipecat:abc-123" },
+  });
+
+  let client: PipecatClient;
+  let fetchMock: jest.SpiedFunction<typeof fetch>;
+
+  const fetchedUrls = () =>
+    fetchMock.mock.calls.map((call) => (call[0] as Request).url);
+
+  beforeEach(() => {
+    client = new PipecatClient({ transport: new TransportStub() });
+    fetchMock = jest.spyOn(globalThis, "fetch");
+  });
+
+  afterEach(() => {
+    fetchMock.mockRestore();
+  });
+
+  const startBotReturning = async (startResponse: Record<string, unknown>) => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(startResponse), { status: 200 })
+    );
+    await client.startBot({ endpoint: "https://example.invalid/start" });
+  };
+
+  test("resolves a relative advertised fileUploadUrl against the start endpoint", async () => {
+    await startBotReturning({
+      sessionId: "sess-123",
+      fileUploadUrl: "/sessions/sess-123/files",
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    const result = await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe(
+      "https://example.invalid/sessions/sess-123/files"
+    );
+    expect(result.source).toEqual({ type: "url", url: "pipecat:abc-123" });
+  });
+
+  test("uses an absolute advertised fileUploadUrl as-is", async () => {
+    await startBotReturning({
+      fileUploadUrl: "https://uploads.example.invalid/u/files",
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe("https://uploads.example.invalid/u/files");
+  });
+
+  test("rejects when the start-bot response advertised no fileUploadUrl", async () => {
+    await startBotReturning({ sessionId: "sess-123" });
+
+    await expect(
+      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+    ).rejects.toThrow("did not advertise a fileUploadUrl");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("upload errors propagate", async () => {
+    await startBotReturning({ fileUploadUrl: "/files" });
+    fetchMock.mockResolvedValueOnce(new Response("boom", { status: 500 }));
+
+    await expect(
+      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+    ).rejects.toMatchObject({ status: 500 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("disconnect clears the start-bot response used for uploads", async () => {
+    await startBotReturning({ fileUploadUrl: "/files" });
+    await client.disconnect();
+
+    await expect(
+      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+    ).rejects.toThrow("did not advertise a fileUploadUrl");
+  });
+
+  test("falls back to the fileUploadEndpoint option when nothing is advertised", async () => {
+    client = new PipecatClient({
+      transport: new TransportStub(),
+      fileUploadEndpoint: "https://uploads.example.invalid/custom",
+    });
+    await startBotReturning({ sessionId: "sess-123" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe("https://uploads.example.invalid/custom");
+  });
+
+  test("an advertised fileUploadUrl overrides the fileUploadEndpoint option", async () => {
+    client = new PipecatClient({
+      transport: new TransportStub(),
+      fileUploadEndpoint: "https://uploads.example.invalid/custom",
+    });
+    await startBotReturning({ fileUploadUrl: "/sessions/sess-123/files" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe(
+      "https://example.invalid/sessions/sess-123/files"
+    );
+  });
+
+  test("an absolute fileUploadEndpoint option works without startBot", async () => {
+    client = new PipecatClient({
+      transport: new TransportStub(),
+      fileUploadEndpoint: new URL("https://uploads.example.invalid/custom"),
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[0]).toBe("https://uploads.example.invalid/custom");
+  });
+
+  test("accepts a snake_case file_upload_url in the /start response", async () => {
+    await startBotReturning({ file_upload_url: "/files" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe("https://example.invalid/files");
   });
 });
