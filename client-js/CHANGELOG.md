@@ -5,6 +5,24 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.1...client-js-v1.14.0) (2026-10-08)
+
+
+### Features
+
+* add bot capabilities and media support ([c4331d5](https://github.com/pipecat-ai/pipecat-client-web/commit/c4331d5e28b2e43a397ce2c85252af8706d94150))
+* **client-js:** add bot capabilities from bot-ready ([6b07067](https://github.com/pipecat-ai/pipecat-client-web/commit/6b07067de0394d737260118699edb9e5ae92b7e1))
+* **client-js:** add mediaSupport ([ee523f2](https://github.com/pipecat-ai/pipecat-client-web/commit/ee523f25f74be0ac2884aad7e4af87b96aa28b96))
+* **client-js:** add MediaSupportUpdated event ([0ca12d2](https://github.com/pipecat-ai/pipecat-client-web/commit/0ca12d27cc2c40aa32a9a516b4c2a1cb1234fbac))
+* **client-js:** add screen_in to bot capabilities ([5194493](https://github.com/pipecat-ai/pipecat-client-web/commit/5194493a712052b6386765711e3cbc643d608e3e))
+* **js:** Added support for new RTVI send-file feature ([11ada06](https://github.com/pipecat-ai/pipecat-client-web/commit/11ada06d71f7f201be669ce8f785e3e928a104f8))
+
+
+### Bug Fixes
+
+* **client-js:** reject pending requests on disconnect ([1625ed7](https://github.com/pipecat-ai/pipecat-client-web/commit/1625ed7bbaf679cc817bd17f718c398ecbbdddd0))
+* **client-js:** reject pending requests on disconnect ([6261ad1](https://github.com/pipecat-ai/pipecat-client-web/commit/6261ad1c50d2b89e944850648e5a34f1d3e95b1e))
+
 ## [1.13.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.0...client-js-v1.13.1) (2026-09-04)
 
 
