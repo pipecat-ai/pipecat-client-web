@@ -22,8 +22,13 @@
     "@parcel/validator-typescript": "^2.16.4",
     "@swc/helpers": "^0.5.13",
     "husky": "^9.1.7",
-    "lint-staged": "^16.0.0",
+    "lint-staged": "^17.6.0",
     "parcel": "^2.16.4",
     "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^4.1.0"
+    }
   }
 }
