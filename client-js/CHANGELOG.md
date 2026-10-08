@@ -10,18 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 
-* add bot capabilities and media support ([c4331d5](https://github.com/pipecat-ai/pipecat-client-web/commit/c4331d5e28b2e43a397ce2c85252af8706d94150))
-* **client-js:** add bot capabilities from bot-ready ([6b07067](https://github.com/pipecat-ai/pipecat-client-web/commit/6b07067de0394d737260118699edb9e5ae92b7e1))
-* **client-js:** add mediaSupport ([ee523f2](https://github.com/pipecat-ai/pipecat-client-web/commit/ee523f25f74be0ac2884aad7e4af87b96aa28b96))
-* **client-js:** add MediaSupportUpdated event ([0ca12d2](https://github.com/pipecat-ai/pipecat-client-web/commit/0ca12d27cc2c40aa32a9a516b4c2a1cb1234fbac))
-* **client-js:** add screen_in to bot capabilities ([5194493](https://github.com/pipecat-ai/pipecat-client-web/commit/5194493a712052b6386765711e3cbc643d608e3e))
-* **js:** Added support for new RTVI send-file feature ([11ada06](https://github.com/pipecat-ai/pipecat-client-web/commit/11ada06d71f7f201be669ce8f785e3e928a104f8))
+* Added support for new `botCapabilities` field in the `bot-ready` event. With this, introduced a new method, `mediaSupport()` which returns a mapping of media type to whether that media is supported in the call. This takes into consideration both what the Transport can support as well as what capabilities were returned by the bot. See [docs for more](https://docs.pipecat.ai/api-reference/client/js/client-methods#mediasupport). This also includes a new [`MediaSupportUpdated` event](https://docs.pipecat.ai/api-reference/client/js/callbacks#media-events) ([c4331d5](https://github.com/pipecat-ai/pipecat-client-web/commit/c4331d5e28b2e43a397ce2c85252af8706d94150))
+* Added File and image upload support. Clients can now send files and images into the conversation with the new [sendFile() method](https://docs.pipecat.ai/api-reference/client/js/client-methods#sendfile), which delivers an RTVI send-file message the bot incorporates into its LLM context. Hand it a local file or a URL reference: small files are sent inline, larger ones are automatically uploaded first to the endpoint if provided either via the new constructor parameter, [`fileUploadEndpoint`](https://docs.pipecat.ai/api-reference/client/js/client-constructor#param-file-upload-endpoint), or via a new field, `fileUploadUrl`, in your server's `/start` response. The SDK handles the upload and URL plumbing, so you don't have to construct upload routes yourself. An optional text prompt can accompany the file to guide the model's response, and options control whether the bot responds immediately and whether it replies with audio. Requires a server running Pipecat ≥ 1.13.0, with uploads enabled (-u/--uploads-folder or a custom storage backend) for files beyond the inline size. ([11ada06](https://github.com/pipecat-ai/pipecat-client-web/commit/11ada06d71f7f201be669ce8f785e3e928a104f8))
 
 
 ### Bug Fixes
 
-* **client-js:** reject pending requests on disconnect ([1625ed7](https://github.com/pipecat-ai/pipecat-client-web/commit/1625ed7bbaf679cc817bd17f718c398ecbbdddd0))
-* **client-js:** reject pending requests on disconnect ([6261ad1](https://github.com/pipecat-ai/pipecat-client-web/commit/6261ad1c50d2b89e944850648e5a34f1d3e95b1e))
+* Fixed issue where pending requests continued to hang on disconnect ([1625ed7](https://github.com/pipecat-ai/pipecat-client-web/commit/1625ed7bbaf679cc817bd17f718c398ecbbdddd0))
 
 ## [1.13.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.0...client-js-v1.13.1) (2026-09-04)
 
