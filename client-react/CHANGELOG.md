@@ -5,6 +5,15 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.2...client-react-v1.9.0) (2026-10-08)
+
+
+### Features
+
+* add bot capabilities and media support ([c4331d5](https://github.com/pipecat-ai/pipecat-client-web/commit/c4331d5e28b2e43a397ce2c85252af8706d94150))
+* **client-react:** add useBotCapabilities hook ([7691c60](https://github.com/pipecat-ai/pipecat-client-web/commit/7691c60dce257df6ec44abd23336ffd440afa2e1))
+* **client-react:** add useMediaSupport hook ([393adeb](https://github.com/pipecat-ai/pipecat-client-web/commit/393adeb34a35dc5a9f2529cdd684a817786618a3))
+
 ## [1.8.2](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.1...client-react-v1.8.2) (2026-08-25)
 
 
