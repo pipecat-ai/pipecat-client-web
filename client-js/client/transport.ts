@@ -32,6 +32,7 @@ export abstract class Transport {
   declare protected _abortController: AbortController | undefined;
   protected _state: TransportState = "disconnected";
   protected _startBotParams: APIRequest | undefined;
+  protected _startBotResponse: unknown;
   /**
    * Maximum allowed size in bytes for a single signaling/message payload.
    *
@@ -107,6 +108,21 @@ export abstract class Transport {
       return;
     }
     this._startBotParams = startBotParams;
+  }
+
+  /**
+   * The raw response from the start-bot endpoint, stored alongside
+   * startBotParams by PipecatClient.startBot() and cleared on disconnect.
+   * Consumers parse what they need from it lazily (e.g. the advertised
+   * fileUploadUrl); its shape is backend-specific and not part of the RTVI
+   * contract.
+   */
+  get startBotResponse(): unknown {
+    return this._startBotResponse;
+  }
+
+  set startBotResponse(response: unknown) {
+    this._startBotResponse = response;
   }
 
   abstract _validateConnectionParams(connectParams?: unknown): unknown;

@@ -4,13 +4,37 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { beforeEach, describe, expect, test } from "@jest/globals";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from "@jest/globals";
 
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
-import { BotReadyData, MediaSupport, RTVIEvent, RTVIMessage } from "./../rtvi";
-import { MessageTooLargeError, UnsupportedFeatureError } from "./../rtvi/errors";
+import {
+  BotReadyData,
+  FileBytes,
+  MediaSupport,
+  RTVIEvent,
+  RTVIFile,
+  RTVIMessage,
+  RTVIMessageType,
+} from "./../rtvi";
+import {
+  MessageTooLargeError,
+  UnsupportedFeatureError,
+} from "./../rtvi/errors";
 import { TransportStub } from "./stubs/transport";
+
+// _uploadFile is private — tests reach it through a structural cast (for
+// spies) or bracket notation (for direct calls).
+type UploadCapable = { _uploadFile: (file: File) => Promise<RTVIFile> };
+const spyOnUploadFile = (client: PipecatClient) =>
+  jest.spyOn(client as unknown as UploadCapable, "_uploadFile");
 
 describe("PipecatClient Methods", () => {
   let client: PipecatClient;
@@ -634,7 +658,9 @@ describe("UnsupportedFeatureError handling", () => {
     void client.selectedCam;
 
     expect(received).toBeInstanceOf(UnsupportedFeatureError);
-    expect((received as unknown as UnsupportedFeatureError).feature).toBe("selectedCam");
+    expect((received as unknown as UnsupportedFeatureError).feature).toBe(
+      "selectedCam"
+    );
   });
 
   test("selectedCam emits RTVIEvent.UnsupportedFeature", () => {
@@ -663,7 +689,9 @@ describe("UnsupportedFeatureError handling", () => {
     client.enableCam(true);
 
     expect(received).toBeInstanceOf(UnsupportedFeatureError);
-    expect((received as unknown as UnsupportedFeatureError).feature).toBe("enableCam");
+    expect((received as unknown as UnsupportedFeatureError).feature).toBe(
+      "enableCam"
+    );
   });
 
   test("enableCam emits RTVIEvent.UnsupportedFeature", () => {
@@ -692,7 +720,9 @@ describe("UnsupportedFeatureError handling", () => {
     client.enableScreenShare(true);
 
     expect(received).toBeInstanceOf(UnsupportedFeatureError);
-    expect((received as unknown as UnsupportedFeatureError).feature).toBe("enableScreenShare");
+    expect((received as unknown as UnsupportedFeatureError).feature).toBe(
+      "enableScreenShare"
+    );
   });
 
   test("enableScreenShare emits RTVIEvent.UnsupportedFeature", () => {
@@ -725,7 +755,9 @@ describe("UnsupportedFeatureError handling", () => {
       }
     }
     const client = new PipecatClient({ transport: new ErrorTransportStub() });
-    expect(() => client.enableCam(true)).toThrow("unexpected transport failure");
+    expect(() => client.enableCam(true)).toThrow(
+      "unexpected transport failure"
+    );
   });
 
   test("enableScreenShare re-throws non-UnsupportedFeatureError errors", () => {
@@ -804,7 +836,13 @@ describe("Bot capabilities", () => {
 describe("Media support", () => {
   class VideoLessTransport extends TransportStub {
     get mediaSupport() {
-      return { mic: true, cam: false, screenShare: false, botAudio: true, botVideo: false };
+      return {
+        mic: true,
+        cam: false,
+        screenShare: false,
+        botAudio: true,
+        botVideo: false,
+      };
     }
   }
 
@@ -817,7 +855,9 @@ describe("Media support", () => {
 
   test("a transport that rules nothing out leaves everything unknown before bot-ready", () => {
     const client = new PipecatClient({ transport: TransportStub.create() });
-    expect(Object.values(client.mediaSupport).every((v) => v === undefined)).toBe(true);
+    expect(
+      Object.values(client.mediaSupport).every((v) => v === undefined)
+    ).toBe(true);
   });
 
   test("reflects the transport before bot-ready", () => {
@@ -872,7 +912,10 @@ describe("Media support", () => {
     await client.connect();
 
     (client.transport as TransportStub).handleMessage(
-      botReady({ version: "2.2.0", capabilities: { audio_in: true, video_in: true } })
+      botReady({
+        version: "2.2.0",
+        capabilities: { audio_in: true, video_in: true },
+      })
     );
 
     expect(events).toHaveLength(0);
@@ -901,5 +944,406 @@ describe("Media support", () => {
     );
     await client.disconnect();
     expect(client.mediaSupport.mic).toBeUndefined();
+  });
+});
+
+describe("sendFile", () => {
+  const DEFAULT_MAX_MESSAGE_SIZE = 64 * 1024;
+
+  // Connect a client and override the bot version by injecting a second BOT_READY.
+  const connectWithBotVersion = async (
+    version = "2.2.0"
+  ): Promise<{ client: PipecatClient; stub: TransportStub }> => {
+    const stub = new TransportStub();
+    const client = new PipecatClient({ transport: stub });
+    await client.connect();
+    stub.handleMessage({
+      label: "rtvi-ai",
+      id: "bot-ready-override",
+      type: RTVIMessageType.BOT_READY,
+      data: { version },
+    } as RTVIMessage);
+    return { client, stub };
+  };
+
+  interface MockFileReader {
+    readAsDataURL: ReturnType<typeof jest.fn>;
+    onload: ((e: { target: { result: string | null } | null }) => void) | null;
+    onerror: (() => void) | null;
+  }
+
+  let mockFileReaderInstance: MockFileReader;
+  let OriginalFileReader: typeof FileReader;
+
+  beforeEach(() => {
+    OriginalFileReader = globalThis.FileReader;
+    mockFileReaderInstance = {
+      readAsDataURL: jest.fn(),
+      onload: null,
+      onerror: null,
+    };
+    globalThis.FileReader = jest.fn(
+      () => mockFileReaderInstance
+    ) as unknown as typeof FileReader;
+  });
+
+  afterEach(() => {
+    globalThis.FileReader = OriginalFileReader;
+    jest.restoreAllMocks();
+  });
+
+  describe("version guard", () => {
+    test("throws UnsupportedFeatureError for bot version 1.x", async () => {
+      const { client } = await connectWithBotVersion("1.0.0");
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      await expect(client.sendFile(file, "caption")).rejects.toThrow(
+        UnsupportedFeatureError
+      );
+    });
+
+    test("throws UnsupportedFeatureError for bot version 2.1.x", async () => {
+      const { client } = await connectWithBotVersion("2.1.0");
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      await expect(client.sendFile(file, "caption")).rejects.toThrow(
+        UnsupportedFeatureError
+      );
+    });
+
+    test("proceeds for bot version 2.2.0", async () => {
+      const { client } = await connectWithBotVersion("2.2.0");
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "caption");
+      mockFileReaderInstance.onload?.({
+        target: { result: "data:image/jpeg;base64,dGVzdA==" },
+      });
+      await expect(pending).resolves.toBeUndefined();
+    });
+  });
+
+  describe("Browser File input", () => {
+    test("small file is read as base64 and sent inline", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+
+      const file = new File(["hello"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "what is this?");
+      mockFileReaderInstance.onload?.({
+        target: { result: "data:image/jpeg;base64,aGVsbG8=" },
+      });
+      await pending;
+
+      expect(sentMessages).toHaveLength(1);
+      const payload = sentMessages[0].data as { file: RTVIFile };
+      expect(payload.file.source.type).toBe("bytes");
+      expect((payload.file.source as FileBytes).bytes).toBe("aGVsbG8=");
+      expect(payload.file.format).toBe("image/jpeg");
+      expect(payload.file.name).toBe("photo.jpg");
+    });
+
+    test("strips data-URL prefix from base64 result", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+
+      const file = new File(["data"], "photo.png", { type: "image/png" });
+      const pending = client.sendFile(file, "caption");
+      mockFileReaderInstance.onload?.({
+        target: { result: "data:image/png;base64,dGVzdA==" },
+      });
+      await pending;
+
+      const source = (sentMessages[0].data as { file: RTVIFile }).file
+        .source as FileBytes;
+      expect(source.bytes).toBe("dGVzdA==");
+      expect(source.bytes).not.toContain("data:");
+    });
+
+    test("large file is uploaded instead of read inline", async () => {
+      const { client } = await connectWithBotVersion();
+      const uploadSpy = spyOnUploadFile(client).mockResolvedValue({
+        name: "large.jpg",
+        format: "image/jpeg",
+        source: { type: "url", url: "https://cdn.example.com/large.jpg" },
+      });
+
+      // size * 1.37 + 1000 exceeds 64 KiB
+      const largeContent = new Uint8Array(DEFAULT_MAX_MESSAGE_SIZE);
+      const file = new File([largeContent], "large.jpg", {
+        type: "image/jpeg",
+      });
+      await client.sendFile(file, "caption");
+
+      expect(uploadSpy).toHaveBeenCalledWith(file);
+      expect(mockFileReaderInstance.readAsDataURL).not.toHaveBeenCalled();
+    });
+
+    test("FileReader onerror rejects with RTVIError", async () => {
+      const { client } = await connectWithBotVersion();
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "caption");
+
+      mockFileReaderInstance.onerror?.();
+
+      await expect(pending).rejects.toThrow("Could not read file data");
+    });
+
+    test("null FileReader result rejects with RTVIError", async () => {
+      const { client } = await connectWithBotVersion();
+      const file = new File(["data"], "photo.jpg", { type: "image/jpeg" });
+      const pending = client.sendFile(file, "caption");
+
+      mockFileReaderInstance.onload?.({ target: { result: null } });
+
+      await expect(pending).rejects.toThrow("Could not read file data");
+    });
+  });
+
+  describe("RTVIFile input", () => {
+    test("url source passes through without upload", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+      const uploadSpy = spyOnUploadFile(client);
+
+      const rtviFile: RTVIFile = {
+        name: "photo.jpg",
+        format: "image/jpeg",
+        source: { type: "url", url: "https://example.com/photo.jpg" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(
+        (sentMessages[0].data as { file: RTVIFile }).file.source.type
+      ).toBe("url");
+    });
+
+    test("small bytes source is sent inline", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+      const uploadSpy = spyOnUploadFile(client);
+
+      const rtviFile: RTVIFile = {
+        name: "photo.jpg",
+        format: "image/jpeg",
+        source: { type: "bytes", bytes: "aGVsbG8=" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      expect(
+        ((sentMessages[0].data as { file: RTVIFile }).file.source as FileBytes)
+          .bytes
+      ).toBe("aGVsbG8=");
+    });
+
+    test("large bytes source is uploaded", async () => {
+      const { client } = await connectWithBotVersion();
+      const uploadSpy = spyOnUploadFile(client).mockResolvedValue({
+        name: "large.jpg",
+        format: "image/jpeg",
+        source: { type: "url", url: "https://cdn.example.com/large.jpg" },
+      });
+
+      const rtviFile: RTVIFile = {
+        name: "large.jpg",
+        format: "image/jpeg",
+        source: { type: "bytes", bytes: "x".repeat(DEFAULT_MAX_MESSAGE_SIZE) },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect(uploadSpy).toHaveBeenCalled();
+    });
+
+    test("shorthand format is normalized to MIME type", async () => {
+      const { client, stub } = await connectWithBotVersion();
+      const sentMessages: RTVIMessage[] = [];
+      jest.spyOn(stub, "sendMessage").mockImplementation((msg) => {
+        sentMessages.push(msg);
+        return true;
+      });
+
+      const rtviFile: RTVIFile = {
+        name: "photo.jpg",
+        format: "jpg" as string,
+        source: { type: "url", url: "https://example.com/photo.jpg" },
+      };
+      await client.sendFile(rtviFile, "caption");
+
+      expect((sentMessages[0].data as { file: RTVIFile }).file.format).toBe(
+        "image/jpeg"
+      );
+    });
+  });
+});
+
+describe("uploadFile endpoint selection", () => {
+  const uploadResponse = JSON.stringify({
+    name: "photo.jpg",
+    format: "image/jpeg",
+    source: { type: "url", url: "pipecat:abc-123" },
+  });
+
+  let client: PipecatClient;
+  let fetchMock: jest.SpiedFunction<typeof fetch>;
+
+  const fetchedUrls = () =>
+    fetchMock.mock.calls.map((call) => (call[0] as Request).url);
+
+  beforeEach(() => {
+    client = new PipecatClient({ transport: new TransportStub() });
+    fetchMock = jest.spyOn(globalThis, "fetch");
+  });
+
+  afterEach(() => {
+    fetchMock.mockRestore();
+  });
+
+  const startBotReturning = async (startResponse: Record<string, unknown>) => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify(startResponse), { status: 200 })
+    );
+    await client.startBot({ endpoint: "https://example.invalid/start" });
+  };
+
+  test("resolves a relative advertised fileUploadUrl against the start endpoint", async () => {
+    await startBotReturning({
+      sessionId: "sess-123",
+      fileUploadUrl: "/sessions/sess-123/files",
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    const result = await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe(
+      "https://example.invalid/sessions/sess-123/files"
+    );
+    expect(result.source).toEqual({ type: "url", url: "pipecat:abc-123" });
+  });
+
+  test("uses an absolute advertised fileUploadUrl as-is", async () => {
+    await startBotReturning({
+      fileUploadUrl: "https://uploads.example.invalid/u/files",
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe("https://uploads.example.invalid/u/files");
+  });
+
+  test("rejects when the start-bot response advertised no fileUploadUrl", async () => {
+    await startBotReturning({ sessionId: "sess-123" });
+
+    await expect(
+      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+    ).rejects.toThrow("did not advertise a fileUploadUrl");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("upload errors propagate", async () => {
+    await startBotReturning({ fileUploadUrl: "/files" });
+    fetchMock.mockResolvedValueOnce(new Response("boom", { status: 500 }));
+
+    await expect(
+      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+    ).rejects.toMatchObject({ status: 500 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("disconnect clears the start-bot response used for uploads", async () => {
+    await startBotReturning({ fileUploadUrl: "/files" });
+    await client.disconnect();
+
+    await expect(
+      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+    ).rejects.toThrow("did not advertise a fileUploadUrl");
+  });
+
+  test("falls back to the fileUploadEndpoint option when nothing is advertised", async () => {
+    client = new PipecatClient({
+      transport: new TransportStub(),
+      fileUploadEndpoint: "https://uploads.example.invalid/custom",
+    });
+    await startBotReturning({ sessionId: "sess-123" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe("https://uploads.example.invalid/custom");
+  });
+
+  test("an advertised fileUploadUrl overrides the fileUploadEndpoint option", async () => {
+    client = new PipecatClient({
+      transport: new TransportStub(),
+      fileUploadEndpoint: "https://uploads.example.invalid/custom",
+    });
+    await startBotReturning({ fileUploadUrl: "/sessions/sess-123/files" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe(
+      "https://example.invalid/sessions/sess-123/files"
+    );
+  });
+
+  test("an absolute fileUploadEndpoint option works without startBot", async () => {
+    client = new PipecatClient({
+      transport: new TransportStub(),
+      fileUploadEndpoint: new URL("https://uploads.example.invalid/custom"),
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[0]).toBe("https://uploads.example.invalid/custom");
+  });
+
+  test("accepts a snake_case file_upload_url in the /start response", async () => {
+    await startBotReturning({ file_upload_url: "/files" });
+    fetchMock.mockResolvedValueOnce(
+      new Response(uploadResponse, { status: 200 })
+    );
+
+    await client["_uploadFile"](
+      new File(["data"], "photo.jpg", { type: "image/jpeg" })
+    );
+
+    expect(fetchedUrls()[1]).toBe("https://example.invalid/files");
   });
 });

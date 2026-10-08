@@ -31,13 +31,17 @@ import {
   LLMFunctionCallStoppedData,
   MediaState,
   MediaSupport,
+  MimeTypeMapping,
   Participant,
   PipecatMetricsData,
   RTVI_PROTOCOL_VERSION,
   RTVIEvent,
   RTVIEvents,
+  RTVIFile,
+  RTVIFileFormat,
   RTVIMessage,
   RTVIMessageType,
+  SendFileOptions,
   SendTextOptions,
   setAboutClient,
   TranscriptData,
@@ -216,6 +220,15 @@ export interface PipecatClientOptions {
    * Default to true
    */
   disconnectOnBotDisconnect?: boolean;
+
+  /**
+   * The endpoint to POST file uploads to when a file passed to sendFile()
+   * is too large to send inline. A fileUploadUrl advertised by the
+   * start-bot response takes precedence over this, since the backend may
+   * mint a session-scoped route per call to /start. Relative URLs are
+   * resolved against the startBot endpoint.
+   */
+  fileUploadEndpoint?: string | URL;
 }
 
 abstract class RTVIEventEmitter extends (EventEmitter as unknown as new () => TypedEmitter<RTVIEvents>) {}
@@ -624,6 +637,7 @@ export class PipecatClient extends RTVIEventEmitter {
       throw new RTVIErrors.StartBotError(errMsg, status);
     }
     this._transport.state = "authenticated";
+    this._transport.startBotResponse = response;
     this._options.callbacks?.onBotStarted?.(response);
     return response;
   }
@@ -689,6 +703,7 @@ export class PipecatClient extends RTVIEventEmitter {
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
     this._botVersion = [0, 0, 0];
+    this._transport.startBotResponse = undefined;
     this._setBotCapabilities(undefined);
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
@@ -715,7 +730,10 @@ export class PipecatClient extends RTVIEventEmitter {
     const previous = this.mediaSupport;
     this._botCapabilities = capabilities;
     const next = this.mediaSupport;
-    const keys = Object.keys({ ...previous, ...next }) as (keyof MediaSupport)[];
+    const keys = Object.keys({
+      ...previous,
+      ...next,
+    }) as (keyof MediaSupport)[];
     if (keys.every((key) => previous[key] === next[key])) {
       return;
     }
@@ -1142,7 +1160,9 @@ export class PipecatClient extends RTVIEventEmitter {
   public cancelUIJobGroup(jobId: string, reason?: string): void {
     const payload: UICancelJobGroupData = { job_id: jobId };
     if (reason !== undefined) payload.reason = reason;
-    this._sendMessage(new RTVIMessage(RTVIMessageType.UI_CANCEL_JOB_GROUP, payload));
+    this._sendMessage(
+      new RTVIMessage(RTVIMessageType.UI_CANCEL_JOB_GROUP, payload)
+    );
   }
 
   /**
@@ -1206,6 +1226,173 @@ export class PipecatClient extends RTVIEventEmitter {
     );
   }
 
+  @transportReady
+  public async sendFile(
+    file: RTVIFile | File,
+    content: string,
+    options: SendFileOptions = {}
+  ) {
+    this._assertBotSupportsSendFile();
+
+    const rawMime = file instanceof File ? file.type : file.format.toLowerCase();
+    const mimeType = rawMime in MimeTypeMapping
+      ? MimeTypeMapping[rawMime as RTVIFileFormat]
+      : rawMime;
+
+    const resolved = file instanceof File
+      ? await this._resolveBrowserFile(file, mimeType)
+      : await this._resolveRTVIFile(file, mimeType);
+
+    await this._sendMessage(
+      new RTVIMessage(RTVIMessageType.SEND_FILE, { file: resolved, content, options })
+    );
+  }
+
+  private _assertBotSupportsSendFile() {
+    if (
+      this._botVersion[0] < 2 ||
+      (this._botVersion[0] === 2 && this._botVersion[1] < 2)
+    ) {
+      throw new RTVIErrors.UnsupportedFeatureError(
+        "sendFile",
+        "bot",
+        "requires RTVI protocol 2.2.0+"
+      );
+    }
+  }
+
+  private _resolveBrowserFile(file: File, mimeType: string): Promise<RTVIFile> {
+    // Estimate base64 size (~33% overhead) + message wrapper before reading into memory.
+    const estimatedEncodedSize = Math.ceil(file.size * 1.37) + 1000;
+    if (estimatedEncodedSize > this._transport.maxMessageSize) {
+      return this._uploadFile(file);
+    }
+    return new Promise<RTVIFile>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () =>
+        reject(new RTVIErrors.RTVIError("Could not read file data"));
+      reader.onload = async (e) => {
+        try {
+          if (!e.target?.result) {
+            throw new RTVIErrors.RTVIError("Could not read file data");
+          }
+          const dataUrl = e.target.result as string;
+          // FileBytes.bytes carries raw base64; strip the data-URL prefix.
+          const base64Data = dataUrl.split(",")[1] ?? dataUrl;
+          resolve({
+            name: file.name,
+            format: mimeType,
+            source: { type: "bytes", bytes: base64Data },
+          });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private async _resolveRTVIFile(file: RTVIFile, mimeType: string): Promise<RTVIFile> {
+    const normalized = { ...file, format: mimeType };
+    if (normalized.source.type !== "bytes") return normalized;
+
+    const estimatedSize = normalized.source.bytes.length + 1000;
+    if (estimatedSize <= this._transport.maxMessageSize) return normalized;
+
+    const byteString = atob(
+      normalized.source.bytes.split(",")[1] || normalized.source.bytes
+    );
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+    const uploadable = new File([blob], file.name || "uploaded_file", { type: mimeType });
+    return this._uploadFile(uploadable);
+  }
+
+  /**
+   * Parse the file-upload endpoint advertised by the start-bot response,
+   * tolerating both the camelCase key the pipecat runner and Pipecat Cloud
+   * return and a snake_case variant. Not part of the RTVI contract — a
+   * backend that doesn't support uploads simply doesn't advertise one.
+   */
+  private get _advertisedFileUploadUrl(): string | undefined {
+    const response = this._transport.startBotResponse;
+    if (!response || typeof response !== "object") return undefined;
+    const record = response as Record<string, unknown>;
+    const url = record.fileUploadUrl ?? record.file_upload_url;
+    return typeof url === "string" ? url : undefined;
+  }
+
+  /**
+   * Upload a file to the uploads endpoint the start-bot response advertised
+   * or, failing that, the fileUploadEndpoint client option. Called by
+   * sendFile() when a file is too large to send inline; the returned
+   * RTVIFile carries the url source the send-file message then uses.
+   * @param file - The File to upload
+   * @returns Promise resolving to RTVIFile with name, format, and FileUrl source
+   */
+  private async _uploadFile(file: File): Promise<RTVIFile> {
+    // The backend's advertisement wins over static client config: only the
+    // backend can mint a session-scoped route.
+    const endpoint =
+      this._advertisedFileUploadUrl ?? this._options.fileUploadEndpoint;
+    if (!endpoint) {
+      throw new RTVIErrors.RTVIError(
+        "Unable to determine upload URL: the start-bot response did not advertise a fileUploadUrl and no fileUploadEndpoint is set in PipecatClientOptions (file uploads may be disabled on the server)"
+      );
+    }
+
+    // Borrow auth headers, timeout, and the base URL for resolving a
+    // relative upload endpoint from startBotParams.
+    const startBotParams = this._transport.startBotParams;
+    let headers: Headers | undefined;
+    let timeout: number | undefined;
+    let base: string | undefined;
+    if (startBotParams) {
+      timeout = startBotParams.timeout;
+      if (
+        typeof Request !== "undefined" &&
+        startBotParams.endpoint instanceof Request
+      ) {
+        headers = new Headers(startBotParams.endpoint.headers);
+        base = startBotParams.endpoint.url;
+      } else {
+        headers = startBotParams.headers;
+        base = startBotParams.endpoint?.toString();
+      }
+    }
+
+    let uploadUrl: string;
+    try {
+      uploadUrl = new URL(endpoint, base).toString();
+    } catch {
+      throw new RTVIErrors.RTVIError(
+        `Unable to resolve upload URL "${endpoint}"` +
+          (base ? ` against "${base}"` : " without a startBot endpoint")
+      );
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    // Note: Don't set Content-Type header - browser sets it automatically
+    // with the multipart boundary
+    const request = new Request(uploadUrl, {
+      method: "POST",
+      mode: "cors",
+      body: formData,
+      headers: headers ? Object.fromEntries(headers.entries()) : undefined,
+    });
+
+    const response = await makeRequest(
+      { endpoint: request, timeout },
+      this._abortController
+    );
+    return response as RTVIFile;
+  }
+
   /**
    * Disconnects the bot, but keeps the session alive
    */
@@ -1226,7 +1413,7 @@ export class PipecatClient extends RTVIEventEmitter {
         this._botVersion = botVersion;
         this._setBotCapabilities(data.capabilities);
         logger.debug(`[Pipecat Client] Bot is ready. Version: ${data.version}`);
-        if (botVersion[0] < 2) {
+        if (this._botVersion[0] < 2) {
           logger.warn(
             `[Pipecat Client] Bot protocol version ${data.version} is older than this client (${RTVI_PROTOCOL_VERSION}). Compatibility issues may occur.`
           );
