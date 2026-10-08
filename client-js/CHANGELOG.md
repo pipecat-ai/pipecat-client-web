@@ -5,6 +5,19 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.1...client-js-v1.14.0) (2026-10-08)
+
+
+### Features
+
+* Added support for new `botCapabilities` field in the `bot-ready` event. With this, introduced a new method, `mediaSupport()` which returns a mapping of media type to whether that media is supported in the call. This takes into consideration both what the Transport can support as well as what capabilities were returned by the bot. See [docs for more](https://docs.pipecat.ai/api-reference/client/js/client-methods#mediasupport). This also includes a new [`MediaSupportUpdated` event](https://docs.pipecat.ai/api-reference/client/js/callbacks#media-events) ([c4331d5](https://github.com/pipecat-ai/pipecat-client-web/commit/c4331d5e28b2e43a397ce2c85252af8706d94150))
+* Added File and image upload support. Clients can now send files and images into the conversation with the new [sendFile() method](https://docs.pipecat.ai/api-reference/client/js/client-methods#sendfile), which delivers an RTVI send-file message the bot incorporates into its LLM context. Hand it a local file or a URL reference: small files are sent inline, larger ones are automatically uploaded first to the endpoint if provided either via the new constructor parameter, [`fileUploadEndpoint`](https://docs.pipecat.ai/api-reference/client/js/client-constructor#param-file-upload-endpoint), or via a new field, `fileUploadUrl`, in your server's `/start` response. The SDK handles the upload and URL plumbing, so you don't have to construct upload routes yourself. An optional text prompt can accompany the file to guide the model's response, and options control whether the bot responds immediately and whether it replies with audio. Requires a server running Pipecat ≥ 1.13.0, with uploads enabled (-u/--uploads-folder or a custom storage backend) for files beyond the inline size. ([11ada06](https://github.com/pipecat-ai/pipecat-client-web/commit/11ada06d71f7f201be669ce8f785e3e928a104f8))
+
+
+### Bug Fixes
+
+* Fixed issue where pending requests continued to hang on disconnect ([1625ed7](https://github.com/pipecat-ai/pipecat-client-web/commit/1625ed7bbaf679cc817bd17f718c398ecbbdddd0))
+
 ## [1.13.1](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.0...client-js-v1.13.1) (2026-09-04)
 
 
