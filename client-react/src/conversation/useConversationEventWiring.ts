@@ -34,6 +34,7 @@ import {
   upsertUserTranscript,
 } from "./conversationActions";
 import {
+  botAcknowledgesSentTextAtom,
   botOutputMessageStateAtom,
   botOutputProtocolAtom,
   botOutputSupportedAtom,
@@ -187,6 +188,7 @@ export function useConversationEventWiring() {
         clearMessages(get, set);
         set(botOutputSupportedAtom, null);
         set(botOutputProtocolAtom, null);
+        set(botAcknowledgesSentTextAtom, false);
         cancelFinalizeTimer();
         botOutputLastChunkRef.current = { spoken: "", unspoken: "" };
       }, [cancelFinalizeTimer])
@@ -202,6 +204,10 @@ export function useConversationEventWiring() {
         const isV2 = isMinVersion(rtviVersion, [2, 0, 0]);
         set(botOutputSupportedAtom, supportsBotOutput);
         set(botOutputProtocolAtom, isV2 ? "v2" : "legacy");
+        set(
+          botAcknowledgesSentTextAtom,
+          isMinVersion(rtviVersion, [2, 2, 0])
+        );
         if (isV2) {
           console.debug(`[Pipecat Client] Bot protocol version ${rtviVersion} — using RTVI 2.0.0 path (server-side speech progress).`);
         } else if (supportsBotOutput) {

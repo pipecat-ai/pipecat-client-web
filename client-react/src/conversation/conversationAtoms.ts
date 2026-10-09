@@ -39,6 +39,9 @@ export const messageCallbacksAtom = atom<Map<string, MessageCallbacks>>(
 /** Whether BotOutput events are supported (RTVI 1.1.0+): null = unknown, true/false = detected */
 export const botOutputSupportedAtom = atom<boolean | null>(null);
 
+/** Whether the bot acknowledges text sent with sendText() (RTVI 2.2.0+). */
+export const botAcknowledgesSentTextAtom = atom<boolean>(false);
+
 /** Which BotOutput protocol version is active. null = unknown (pre-BotReady). */
 export const botOutputProtocolAtom = atom<"legacy" | "v2" | null>(null);
 

@@ -74,6 +74,7 @@ interface Props {
  * This hook provides:
  * - The current list of conversation messages, ordered and merged for display.
  * - An `injectMessage` function to programmatically add a message to the conversation.
+ * - A `sendText` function that sends text to the bot and adds it as a user message.
  * - Lifecycle callbacks: `onMessageCreated`, `onMessageUpdated`.
  *
  * Internally, this hook:
@@ -94,7 +95,7 @@ export const usePipecatConversation = ({
   botOutputFilter,
   includeBackchannel = false,
 }: Props = {}) => {
-  const { injectMessage } = useConversationContext();
+  const { injectMessage, sendText } = useConversationContext();
 
   // Generate a unique ID for this hook instance
   const callbackId = useId();
@@ -256,6 +257,7 @@ export const usePipecatConversation = ({
   return {
     messages: filteredMessages,
     injectMessage,
+    sendText,
     botOutputEvents,
   };
 };
