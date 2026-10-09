@@ -15,6 +15,7 @@ import {
 } from "./botOutput";
 import type { MessageCallbacks } from "./conversationAtoms";
 import {
+  backchannelsAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
   messageCallbacksAtom,
@@ -207,10 +208,11 @@ const normalizeMessagesForUI = (
 
 const callCallbacks = (
   callbacksMap: Map<string, MessageCallbacks>,
-  type: keyof MessageCallbacks,
+  type: "onMessageCreated" | "onMessageUpdated",
   message: ConversationMessage
 ) => {
   callbacksMap.forEach((callbacks) => {
+    if (message.backchannel && !callbacks.includeBackchannel) return;
     try {
       callbacks[type]?.(message);
     } catch (error) {
@@ -246,6 +248,7 @@ export function unregisterMessageCallback(
 
 export function clearMessages(_get: Getter, set: Setter) {
   set(messagesAtom, []);
+  set(backchannelsAtom, []);
   set(botOutputMessageStateAtom, new Map());
   set(botOutputEventsAtom, new Map());
 }
@@ -268,6 +271,32 @@ export function addMessage(
 
   callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
   set(messagesAtom, processedMessages);
+}
+
+/**
+ * Records a backchannel: a short acknowledgment the user or the bot said while
+ * the other one talked.
+ */
+export function addBackchannel(
+  get: Getter,
+  set: Setter,
+  role: "user" | "assistant",
+  text: string
+) {
+  if (text.trim().length === 0) return;
+
+  const now = new Date().toISOString();
+  const message: ConversationMessage = {
+    role,
+    final: true,
+    backchannel: true,
+    parts: [{ text, final: true, createdAt: now }],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
+  set(backchannelsAtom, [...get(backchannelsAtom), message]);
 }
 
 export function updateLastMessage(

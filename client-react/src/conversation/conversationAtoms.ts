@@ -12,6 +12,12 @@ import type { BotOutputEvent, ConversationMessage } from "./types";
 /** Raw (pre-normalization) message list */
 export const messagesAtom = atom<ConversationMessage[]>([]);
 
+/**
+ * Backchannels the user or the bot said, kept out of `messagesAtom` so they
+ * never open, extend or end a turn.
+ */
+export const backchannelsAtom = atom<ConversationMessage[]>([]);
+
 /** Tracks speech-progress cursor per message (keyed by message createdAt) */
 export const botOutputMessageStateAtom = atom<
   Map<string, BotOutputMessageCursor>
@@ -21,6 +27,8 @@ export const botOutputMessageStateAtom = atom<
 export type MessageCallbacks = {
   onMessageCreated?: (message: ConversationMessage) => void;
   onMessageUpdated?: (message: ConversationMessage) => void;
+  /** Whether backchannels are reported to these callbacks. */
+  includeBackchannel?: boolean;
 };
 
 /** Registered callbacks invoked on message lifecycle events */

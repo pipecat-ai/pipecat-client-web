@@ -136,4 +136,10 @@ export interface ConversationMessage {
   updatedAt?: string;
   /** Function call data, present only when role is "function_call" */
   functionCall?: FunctionCallData;
+  /**
+   * True for a backchannel: a short acknowledgment said while the other side
+   * talks, such as the user's "mhm" or the bot's "Mm-hmm.". Backchannels are
+   * only in `usePipecatConversation`'s messages with `includeBackchannel`.
+   */
+  backchannel?: boolean;
 }

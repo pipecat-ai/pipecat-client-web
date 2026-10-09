@@ -11,6 +11,7 @@ import {
   type LLMFunctionCallStartedData,
   type LLMFunctionCallStoppedData,
   RTVIEvent,
+  type UserInputData,
 } from "@pipecat-ai/client-js";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRTVIClientEvent } from "../useRTVIClientEvent";
 import { hasUnspokenContent } from "./botOutput";
 import {
+  addBackchannel,
   addMessage,
   type BotOutputPayload,
   clearMessages,
@@ -216,6 +218,16 @@ export function useConversationEventWiring() {
     useAtomCallback(
       useCallback(
         (get, set, data: BotOutputData) => {
+          // The bot says a backchannel while the user talks, outside its own
+          // turns. Only its first event carries its text; the rest report how
+          // much of it has been spoken.
+          if ((data.text_type ?? data.aggregated_by) === "backchannel") {
+            if (!data.spoken_status || data.spoken_status === "new") {
+              addBackchannel(get, set, "assistant", data.text);
+            }
+            return;
+          }
+
           const protocol = get(botOutputProtocolAtom) ?? "legacy";
 
           if (protocol === "v2") {
@@ -371,6 +383,19 @@ export function useConversationEventWiring() {
 
         // If we got any transcript, cancel pending cleanup
         clearTimeout(userStoppedTimeout.current);
+      }, [])
+    )
+  );
+
+  useRTVIClientEvent(
+    RTVIEvent.UserInput,
+    useAtomCallback(
+      useCallback((get, set, data: UserInputData) => {
+        // Transcriptions arrive as UserTranscript too, which builds the
+        // user's turns.
+        if (data.input_type === "backchannel") {
+          addBackchannel(get, set, "user", data.text);
+        }
       }, [])
     )
   );
