@@ -31,15 +31,24 @@ export const ConversationContext =
 export const PipecatConversationProvider: React.FC<React.PropsWithChildren> = ({
   children,
 }) => {
-  useConversationEventWiring();
+  const { finalizeLastAssistantMessageIfPending } =
+    useConversationEventWiring();
 
   const injectMessage = useAtomCallback(
     useCallback((get, set, message: {
       role: "user" | "assistant" | "system";
       parts: ConversationMessagePart[];
     }) => {
+      // Text input through `sendText` produces no UserStartedSpeaking event,
+      // so injecting the user message must close the assistant's turn. This
+      // also emits onMessageUpdated when the assistant message is finalized.
+      // Assistant injections can still merge into the active bubble, and
+      // system injections retain their backdating behavior.
+      if (message.role === "user") {
+        finalizeLastAssistantMessageIfPending();
+      }
       injectMessageAction(get, set, message);
-    }, [])
+    }, [finalizeLastAssistantMessageIfPending])
   );
 
   const botOutputSupported = useAtomValue(botOutputSupportedAtom);
