@@ -63,6 +63,7 @@ export enum RTVIMessageType {
   USER_MUTE_STOPPED = "user-mute-stopped", // User unmuted server-side.
 
   USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
+  USER_INPUT = "user-input", // What the user said or typed: transcriptions, sent text and backchannels (RTVI 2.2.0+)
   BOT_OUTPUT = "bot-output", // A best effort aggregation of all bot output along with metadata like if it's spoken
   // DEPRECATED
   BOT_TRANSCRIPTION = "bot-transcription", // Bot full text transcription (sentence aggregated)
@@ -169,10 +170,52 @@ export type TranscriptData = {
   user_id: string;
 };
 
-export enum AggregationType {
-  WORD = "word",
+/**
+ * What kind of input a `user-input` message reports (RTVI 2.2.0+).
+ *
+ * - `transcription`: speech the bot transcribed.
+ * - `chat`: text sent with `sendText()`.
+ * - `backchannel`: a short acknowledgment the user said while the bot talked,
+ *   such as "mhm". It doesn't interrupt the bot or reach the LLM.
+ */
+export type UserInputType = "transcription" | "chat" | "backchannel";
+
+export type UserInputData = {
+  text: string;
+  input_type: UserInputType;
+  timestamp: string;
+  /** Whether the text is final. Only an interim transcription isn't. */
+  final: boolean;
+  /**
+   * The user who spoke or typed. For `chat`, set only when the transport knows
+   * the sender, such as Daily and LiveKit.
+   */
+  user_id?: string;
+  /** For `chat`, the id of the send-text message, as returned by `sendText()`. */
+  msg_id?: string;
+};
+
+/**
+ * What form bot output text is in. Bots can also send text types of their
+ * own, such as "code".
+ */
+export enum TextType {
+  /**
+   * A short acknowledgment the bot says while the user talks, such as
+   * "Mm-hmm." (RTVI 2.2.0+).
+   */
+  BACKCHANNEL = "backchannel",
   SENTENCE = "sentence",
+  TOKEN = "token",
+  WORD = "word",
 }
+
+/** @deprecated Use {@link TextType} instead. */
+export const AggregationType = TextType;
+/** @deprecated Use {@link TextType} instead. */
+// A value and a type can share a name; this keeps both uses of the old enum working.
+// eslint-disable-next-line no-redeclare
+export type AggregationType = TextType;
 
 export type SpokenStatus = "new" | "in-progress" | "completed";
 
@@ -183,7 +226,13 @@ export type SpokenProgressData = {
 
 export type BotOutputData = {
   text: string;
-  aggregated_by?: AggregationType | string;
+  /**
+   * What form the text is in. Bots that only send `aggregated_by` have it
+   * filled in from that.
+   */
+  text_type?: TextType | string;
+  /** @deprecated Use `text_type` instead. */
+  aggregated_by?: TextType | string;
   segment_id?: number;
   /** @deprecated Protocol 1.4.x only. Use `will_be_spoken` instead. */
   spoken?: boolean;

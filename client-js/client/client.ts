@@ -51,6 +51,7 @@ import {
   UIEventData,
   UIJobGroupData,
   UISnapshotData,
+  UserInputData,
   UserLLMTextData,
 } from "../rtvi";
 import * as RTVIErrors from "../rtvi/errors";
@@ -162,6 +163,7 @@ export type RTVIEventCallbacks = Partial<{
   onUserMuteStarted: () => void;
   onUserMuteStopped: () => void;
   onUserTranscript: (data: TranscriptData) => void;
+  onUserInput: (data: UserInputData) => void;
   onUserLlmText: (data: UserLLMTextData) => void;
   onBotOutput: (data: BotOutputData) => void;
   /** @deprecated Use onBotOutput instead */
@@ -440,6 +442,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onUserTranscript: (data) => {
         options?.callbacks?.onUserTranscript?.(data);
         this.emit(RTVIEvent.UserTranscript, data);
+      },
+      onUserInput: (data) => {
+        options?.callbacks?.onUserInput?.(data);
+        this.emit(RTVIEvent.UserInput, data);
       },
       onBotOutput: (data) => {
         options?.callbacks?.onBotOutput?.(data);
@@ -1216,14 +1222,24 @@ export class PipecatClient extends RTVIEventEmitter {
     return true;
   }
 
+  /**
+   * Sends text to the bot as if the user typed it.
+   *
+   * @returns The id of the send-text message. A bot of RTVI 2.2.0 or later
+   * acknowledges it with a `user-input` message of type `chat` that carries
+   * this id as `msg_id`.
+   */
   @transportReady
-  public async sendText(content: string, options: SendTextOptions = {}) {
-    await this._sendMessage(
-      new RTVIMessage(RTVIMessageType.SEND_TEXT, {
-        content,
-        options,
-      })
-    );
+  public async sendText(
+    content: string,
+    options: SendTextOptions = {}
+  ): Promise<string> {
+    const message = new RTVIMessage(RTVIMessageType.SEND_TEXT, {
+      content,
+      options,
+    });
+    await this._sendMessage(message);
+    return message.id;
   }
 
   @transportReady
@@ -1463,8 +1479,16 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.UserLlmText, llmTextData);
         break;
       }
+      case RTVIMessageType.USER_INPUT: {
+        this._options.callbacks?.onUserInput?.(ev.data as UserInputData);
+        break;
+      }
       case RTVIMessageType.BOT_OUTPUT: {
-        this._options.callbacks?.onBotOutput?.(ev.data as BotOutputData);
+        const data = ev.data as BotOutputData;
+        if (data.text_type === undefined) {
+          data.text_type = data.aggregated_by;
+        }
+        this._options.callbacks?.onBotOutput?.(data);
         break;
       }
       case RTVIMessageType.BOT_TRANSCRIPTION: {
