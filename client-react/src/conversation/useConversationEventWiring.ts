@@ -11,6 +11,7 @@ import {
   type LLMFunctionCallStartedData,
   type LLMFunctionCallStoppedData,
   RTVIEvent,
+  type UserInputData,
 } from "@pipecat-ai/client-js";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRTVIClientEvent } from "../useRTVIClientEvent";
 import { hasUnspokenContent } from "./botOutput";
 import {
+  addBackchannel,
   addMessage,
   type BotOutputPayload,
   clearMessages,
@@ -32,6 +34,7 @@ import {
   upsertUserTranscript,
 } from "./conversationActions";
 import {
+  botAcknowledgesSentTextAtom,
   botOutputMessageStateAtom,
   botOutputProtocolAtom,
   botOutputSupportedAtom,
@@ -185,6 +188,7 @@ export function useConversationEventWiring() {
         clearMessages(get, set);
         set(botOutputSupportedAtom, null);
         set(botOutputProtocolAtom, null);
+        set(botAcknowledgesSentTextAtom, false);
         cancelFinalizeTimer();
         botOutputLastChunkRef.current = { spoken: "", unspoken: "" };
       }, [cancelFinalizeTimer])
@@ -200,6 +204,10 @@ export function useConversationEventWiring() {
         const isV2 = isMinVersion(rtviVersion, [2, 0, 0]);
         set(botOutputSupportedAtom, supportsBotOutput);
         set(botOutputProtocolAtom, isV2 ? "v2" : "legacy");
+        set(
+          botAcknowledgesSentTextAtom,
+          isMinVersion(rtviVersion, [2, 2, 0])
+        );
         if (isV2) {
           console.debug(`[Pipecat Client] Bot protocol version ${rtviVersion} — using RTVI 2.0.0 path (server-side speech progress).`);
         } else if (supportsBotOutput) {
@@ -216,6 +224,16 @@ export function useConversationEventWiring() {
     useAtomCallback(
       useCallback(
         (get, set, data: BotOutputData) => {
+          // The bot says a backchannel while the user talks, outside its own
+          // turns. Only its first event carries its text; the rest report how
+          // much of it has been spoken.
+          if ((data.text_type ?? data.aggregated_by) === "backchannel") {
+            if (!data.spoken_status || data.spoken_status === "new") {
+              addBackchannel(get, set, "assistant", data.text);
+            }
+            return;
+          }
+
           const protocol = get(botOutputProtocolAtom) ?? "legacy";
 
           if (protocol === "v2") {
@@ -371,6 +389,19 @@ export function useConversationEventWiring() {
 
         // If we got any transcript, cancel pending cleanup
         clearTimeout(userStoppedTimeout.current);
+      }, [])
+    )
+  );
+
+  useRTVIClientEvent(
+    RTVIEvent.UserInput,
+    useAtomCallback(
+      useCallback((get, set, data: UserInputData) => {
+        // Transcriptions arrive as UserTranscript too, which builds the
+        // user's turns.
+        if (data.input_type === "backchannel") {
+          addBackchannel(get, set, "user", data.text);
+        }
       }, [])
     )
   );

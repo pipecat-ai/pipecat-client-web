@@ -16,6 +16,8 @@ import {
 import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
 import {
+  AggregationType,
+  BotOutputData,
   BotReadyData,
   FileBytes,
   MediaSupport,
@@ -23,6 +25,8 @@ import {
   RTVIFile,
   RTVIMessage,
   RTVIMessageType,
+  TextType,
+  UserInputData,
 } from "./../rtvi";
 import {
   MessageTooLargeError,
@@ -830,6 +834,90 @@ describe("Bot capabilities", () => {
     );
     await client.disconnect();
     expect(client.botCapabilities).toBeUndefined();
+  });
+});
+
+describe("User input and bot output", () => {
+  let client: PipecatClient;
+  let transport: TransportStub;
+
+  const serverMessage = (type: string, data: unknown): RTVIMessage => ({
+    id: "1",
+    label: "rtvi-ai",
+    type,
+    data,
+  });
+
+  beforeEach(async () => {
+    transport = TransportStub.create();
+    client = new PipecatClient({ transport });
+    await client.connect();
+  });
+
+  test("sendText() returns the id of the send-text message", async () => {
+    const sendMessage = jest.spyOn(transport, "sendMessage");
+
+    const id = await client.sendText("Hello.");
+
+    const sent = sendMessage.mock.calls[0][0];
+    expect(sent.type).toBe(RTVIMessageType.SEND_TEXT);
+    expect(id).toBe(sent.id);
+  });
+
+  test("a user-input message is reported as user input", () => {
+    const data: UserInputData = {
+      text: "Hello.",
+      input_type: "chat",
+      timestamp: "2026-10-09T00:00:00.000Z",
+      final: true,
+      msg_id: "abc12345",
+    };
+    let eventData: UserInputData | undefined;
+    client.on(RTVIEvent.UserInput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(serverMessage(RTVIMessageType.USER_INPUT, data));
+
+    expect(eventData).toEqual(data);
+  });
+
+  test("bot output from a bot that only sends aggregated_by has its text_type", () => {
+    let eventData: BotOutputData | undefined;
+    client.on(RTVIEvent.BotOutput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_OUTPUT, {
+        text: "Hello.",
+        aggregated_by: "sentence",
+      })
+    );
+
+    expect(eventData?.text_type).toBe(TextType.SENTENCE);
+  });
+
+  test("bot output keeps the text_type the bot sends", () => {
+    let eventData: BotOutputData | undefined;
+    client.on(RTVIEvent.BotOutput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_OUTPUT, {
+        text: "Mm-hmm.",
+        text_type: "backchannel",
+        aggregated_by: "backchannel",
+      })
+    );
+
+    expect(eventData?.text_type).toBe(TextType.BACKCHANNEL);
+  });
+
+  test("AggregationType is an alias of TextType", () => {
+    expect(AggregationType.WORD).toBe(TextType.WORD);
+    expect(AggregationType.SENTENCE).toBe(TextType.SENTENCE);
   });
 });
 

@@ -115,6 +115,7 @@ export type {
   ConversationMessagePart,
   FunctionCallData,
   FunctionCallRenderer,
+  SentTextStatus,
 } from "./conversation/types";
 export type {
   DefaultFocusOptions,

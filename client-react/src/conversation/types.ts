@@ -128,6 +128,17 @@ export interface ConversationMessagePart {
   displayMode?: "inline" | "block";
 }
 
+/**
+ * What is known about text sent with the conversation's `sendText()`:
+ *
+ * - `sent`: it went out to the bot, which hasn't acknowledged it. Bots before
+ *   RTVI 2.2.0 never acknowledge text, so their messages stay `sent`.
+ * - `received`: the bot acknowledged it.
+ * - `failed`: it couldn't be sent, the client disconnected before the bot
+ *   acknowledged it, or the bot didn't acknowledge it in time.
+ */
+export type SentTextStatus = "sent" | "received" | "failed";
+
 export interface ConversationMessage {
   role: "user" | "assistant" | "system" | "function_call";
   final?: boolean;
@@ -136,4 +147,17 @@ export interface ConversationMessage {
   updatedAt?: string;
   /** Function call data, present only when role is "function_call" */
   functionCall?: FunctionCallData;
+  /**
+   * True for a backchannel: a short acknowledgment said while the other side
+   * talks, such as the user's "mhm" or the bot's "Mm-hmm.". Backchannels are
+   * only in `usePipecatConversation`'s messages with `includeBackchannel`.
+   */
+  backchannel?: boolean;
+  /**
+   * For a user message added by the conversation's `sendText()`, the id of
+   * its send-text message.
+   */
+  msgId?: string;
+  /** For a user message added by the conversation's `sendText()`, whether the bot received it. */
+  status?: SentTextStatus;
 }
