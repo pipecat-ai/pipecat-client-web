@@ -21,9 +21,12 @@ import {
   LLMFunctionCallInProgressData,
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
+  LLMRawTextData,
   PipecatMetricsData,
   RTVIMessage,
+  STTRawTextData,
   TranscriptData,
+  TTSRawTextData,
   UICommandData,
   UIJobGroupData,
   UserInputData,
@@ -66,6 +69,7 @@ export enum RTVIEvent {
   UserMuteStopped = "userMuteStopped",
 
   // stt events
+  /** @deprecated Use `UserInput` or `SttRawText` instead. */
   UserTranscript = "userTranscript",
   UserInput = "userInput",
   BotOutput = "botOutput",
@@ -74,6 +78,7 @@ export enum RTVIEvent {
 
   // llm events
   UserLlmText = "userLlmText",
+  /** @deprecated Use `LlmRawText` instead. */
   BotLlmText = "botLlmText",
   BotLlmStarted = "botLlmStarted",
   BotLlmStopped = "botLlmStopped",
@@ -87,9 +92,15 @@ export enum RTVIEvent {
   BotLlmSearchResponse = "botLlmSearchResponse",
 
   // tts events
+  /** @deprecated Use `TtsRawText` instead. */
   BotTtsText = "botTtsText",
   BotTtsStarted = "botTtsStarted",
   BotTtsStopped = "botTtsStopped",
+
+  // raw text events (RTVI 2.2.0+), sent only when the bot enables them
+  SttRawText = "sttRawText",
+  LlmRawText = "llmRawText",
+  TtsRawText = "ttsRawText",
 
   /** participant events */
   ParticipantConnected = "participantConnected",
@@ -156,6 +167,7 @@ export type RTVIEvents = Partial<{
   userMuteStopped: () => void;
 
   // stt events
+  /** @deprecated Use `userInput` or `sttRawText` instead. */
   userTranscript: (data: TranscriptData) => void;
   userInput: (data: UserInputData) => void;
   botOutput: (data: BotOutputData) => void;
@@ -163,6 +175,7 @@ export type RTVIEvents = Partial<{
 
   // llm events
   userLlmText: (data: UserLLMTextData) => void;
+  /** @deprecated Use `llmRawText` instead. */
   botLlmText: (data: BotLLMTextData) => void;
   botLlmStarted: () => void;
   botLlmStopped: () => void;
@@ -176,9 +189,15 @@ export type RTVIEvents = Partial<{
   botLlmSearchResponse: (data: BotLLMSearchResponseData) => void;
 
   // tts events
+  /** @deprecated Use `ttsRawText` instead. */
   botTtsText: (data: BotTTSTextData) => void;
   botTtsStarted: () => void;
   botTtsStopped: () => void;
+
+  // raw text events (RTVI 2.2.0+), sent only when the bot enables them
+  sttRawText: (data: STTRawTextData) => void;
+  llmRawText: (data: LLMRawTextData) => void;
+  ttsRawText: (data: TTSRawTextData) => void;
 
   /** participant events */
   participantConnected: (participant: Participant) => void;
