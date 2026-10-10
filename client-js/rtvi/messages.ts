@@ -62,6 +62,7 @@ export enum RTVIMessageType {
   USER_MUTE_STARTED = "user-mute-started", // User muted server-side.
   USER_MUTE_STOPPED = "user-mute-stopped", // User unmuted server-side.
 
+  /** @deprecated Use `USER_INPUT` or `STT_RAW_TEXT` instead. */
   USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
   USER_INPUT = "user-input", // What the user said or typed: transcriptions, sent text and backchannels (RTVI 2.2.0+)
   BOT_OUTPUT = "bot-output", // A best effort aggregation of all bot output along with metadata like if it's spoken
@@ -70,6 +71,7 @@ export enum RTVIMessageType {
 
   /** LLM Messages */
   USER_LLM_TEXT = "user-llm-text", // Aggregated user input text which is sent to LLM
+  /** @deprecated Use `LLM_RAW_TEXT` instead. */
   BOT_LLM_TEXT = "bot-llm-text", // Streamed token returned by the LLM
   BOT_LLM_STARTED = "bot-llm-started", // Bot LLM inference starts
   BOT_LLM_STOPPED = "bot-llm-stopped", // Bot LLM inference stops
@@ -85,9 +87,15 @@ export enum RTVIMessageType {
   BOT_LLM_SEARCH_RESPONSE = "bot-llm-search-response", // Bot LLM search response
 
   /** TTS Messages */
+  /** @deprecated Use `TTS_RAW_TEXT` instead. */
   BOT_TTS_TEXT = "bot-tts-text", // Bot TTS text output (streamed word as it is spoken)
   BOT_TTS_STARTED = "bot-tts-started", // Bot TTS response starts
   BOT_TTS_STOPPED = "bot-tts-stopped", // Bot TTS response stops
+
+  /** Raw text messages (RTVI 2.2.0+). The bot only sends them when enabled. */
+  STT_RAW_TEXT = "stt-raw-text", // Each transcription as the STT produced it (partials and finals)
+  LLM_RAW_TEXT = "llm-raw-text", // Each chunk of text as the LLM streamed it
+  TTS_RAW_TEXT = "tts-raw-text", // Text the TTS speaks, as it is spoken
 }
 
 // ----- Message Data Types
@@ -165,6 +173,15 @@ export type PipecatMetricsData = {
 
 export type TranscriptData = {
   text: string;
+  final: boolean;
+  timestamp: string;
+  user_id: string;
+};
+
+/** A transcription as the STT produced it (RTVI 2.2.0+). */
+export type STTRawTextData = {
+  text: string;
+  /** Whether the transcription is final, as opposed to interim. */
   final: boolean;
   timestamp: string;
   user_id: string;
@@ -251,6 +268,16 @@ export type UserLLMTextData = {
 };
 
 export type BotTTSTextData = {
+  text: string;
+};
+
+/** A chunk of text as the LLM streamed it (RTVI 2.2.0+). */
+export type LLMRawTextData = {
+  text: string;
+};
+
+/** Text the TTS speaks, as it is spoken (RTVI 2.2.0+). */
+export type TTSRawTextData = {
   text: string;
 };
 

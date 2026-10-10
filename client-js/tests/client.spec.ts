@@ -919,6 +919,53 @@ describe("User input and bot output", () => {
     expect(AggregationType.WORD).toBe(TextType.WORD);
     expect(AggregationType.SENTENCE).toBe(TextType.SENTENCE);
   });
+
+  const rawTextMessages = [
+    {
+      type: RTVIMessageType.STT_RAW_TEXT,
+      event: RTVIEvent.SttRawText,
+      callback: "onSttRawText",
+      data: {
+        text: "Hel",
+        final: false,
+        timestamp: "2026-10-09T00:00:00.000Z",
+        user_id: "user",
+      },
+    },
+    {
+      type: RTVIMessageType.LLM_RAW_TEXT,
+      event: RTVIEvent.LlmRawText,
+      callback: "onLlmRawText",
+      data: { text: "Hi" },
+    },
+    {
+      type: RTVIMessageType.TTS_RAW_TEXT,
+      event: RTVIEvent.TtsRawText,
+      callback: "onTtsRawText",
+      data: { text: "Hi" },
+    },
+  ] as const;
+
+  test.each(rawTextMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onRawText = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onRawText },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onRawText).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
 });
 
 describe("Media support", () => {
