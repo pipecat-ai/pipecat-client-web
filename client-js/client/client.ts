@@ -29,6 +29,7 @@ import {
   LLMFunctionCallResultResponse,
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
+  LLMRawTextData,
   MediaState,
   MediaSupport,
   MimeTypeMapping,
@@ -44,8 +45,10 @@ import {
   SendFileOptions,
   SendTextOptions,
   setAboutClient,
+  STTRawTextData,
   TranscriptData,
   TransportState,
+  TTSRawTextData,
   UICancelJobGroupData,
   UICommandData,
   UIEventData,
@@ -162,6 +165,7 @@ export type RTVIEventCallbacks = Partial<{
   onBotStoppedSpeaking: () => void;
   onUserMuteStarted: () => void;
   onUserMuteStopped: () => void;
+  /** @deprecated Use onUserInput or onSttRawText instead */
   onUserTranscript: (data: TranscriptData) => void;
   onUserInput: (data: UserInputData) => void;
   onUserLlmText: (data: UserLLMTextData) => void;
@@ -169,12 +173,21 @@ export type RTVIEventCallbacks = Partial<{
   /** @deprecated Use onBotOutput instead */
   onBotTranscript: (data: BotLLMTextData) => void;
 
+  /** @deprecated Use onLlmRawText instead */
   onBotLlmText: (data: BotLLMTextData) => void;
   onBotLlmStarted: () => void;
   onBotLlmStopped: () => void;
+  /** @deprecated Use onTtsRawText instead */
   onBotTtsText: (data: BotTTSTextData) => void;
   onBotTtsStarted: () => void;
   onBotTtsStopped: () => void;
+
+  /** Each transcription as the STT produced it (RTVI 2.2.0+), when the bot enables it. */
+  onSttRawText: (data: STTRawTextData) => void;
+  /** Each chunk of text as the LLM streamed it (RTVI 2.2.0+), when the bot enables it. */
+  onLlmRawText: (data: LLMRawTextData) => void;
+  /** Text the TTS speaks, as it is spoken (RTVI 2.2.0+), when the bot enables it. */
+  onTtsRawText: (data: TTSRawTextData) => void;
 
   onLLMFunctionCallStarted: (data: LLMFunctionCallStartedData) => void;
   onLLMFunctionCallInProgress: (data: LLMFunctionCallInProgressData) => void;
@@ -479,6 +492,18 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotTtsText: (text) => {
         options?.callbacks?.onBotTtsText?.(text);
         this.emit(RTVIEvent.BotTtsText, text);
+      },
+      onSttRawText: (data) => {
+        options?.callbacks?.onSttRawText?.(data);
+        this.emit(RTVIEvent.SttRawText, data);
+      },
+      onLlmRawText: (data) => {
+        options?.callbacks?.onLlmRawText?.(data);
+        this.emit(RTVIEvent.LlmRawText, data);
+      },
+      onTtsRawText: (data) => {
+        options?.callbacks?.onTtsRawText?.(data);
+        this.emit(RTVIEvent.TtsRawText, data);
       },
       onBotTtsStarted: () => {
         options?.callbacks?.onBotTtsStarted?.();
@@ -1512,6 +1537,15 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.BOT_TTS_STOPPED:
         this._options.callbacks?.onBotTtsStopped?.();
+        break;
+      case RTVIMessageType.STT_RAW_TEXT:
+        this._options.callbacks?.onSttRawText?.(ev.data as STTRawTextData);
+        break;
+      case RTVIMessageType.LLM_RAW_TEXT:
+        this._options.callbacks?.onLlmRawText?.(ev.data as LLMRawTextData);
+        break;
+      case RTVIMessageType.TTS_RAW_TEXT:
+        this._options.callbacks?.onTtsRawText?.(ev.data as TTSRawTextData);
         break;
       case RTVIMessageType.METRICS:
         this._options.callbacks?.onMetrics?.(ev.data as PipecatMetricsData);
