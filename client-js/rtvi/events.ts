@@ -21,9 +21,12 @@ import {
   LLMFunctionCallInProgressData,
   LLMFunctionCallStartedData,
   LLMFunctionCallStoppedData,
+  LLMRawTextData,
   PipecatMetricsData,
   RTVIMessage,
+  STTRawTextData,
   TranscriptData,
+  TTSRawTextData,
   UICommandData,
   UIJobGroupData,
   UserInputData,
@@ -66,6 +69,10 @@ export enum RTVIEvent {
   UserMuteStopped = "userMuteStopped",
 
   // stt events
+  /**
+   * @deprecated Use `UserInput` to show what the user said, or `SttRawText` to
+   * inspect what the STT produced.
+   */
   UserTranscript = "userTranscript",
   UserInput = "userInput",
   BotOutput = "botOutput",
@@ -74,6 +81,10 @@ export enum RTVIEvent {
 
   // llm events
   UserLlmText = "userLlmText",
+  /**
+   * @deprecated Use `BotOutput` to show the bot's text, or `LlmRawText` to
+   * inspect what the LLM produced.
+   */
   BotLlmText = "botLlmText",
   BotLlmStarted = "botLlmStarted",
   BotLlmStopped = "botLlmStopped",
@@ -87,9 +98,21 @@ export enum RTVIEvent {
   BotLlmSearchResponse = "botLlmSearchResponse",
 
   // tts events
+  /**
+   * @deprecated Use `BotOutput` to show the bot's text, or `TtsRawText` to
+   * inspect what the TTS produced.
+   */
   BotTtsText = "botTtsText",
   BotTtsStarted = "botTtsStarted",
   BotTtsStopped = "botTtsStopped",
+
+  // Raw text events for debugging: what the STT, LLM and TTS produced
+  // (RTVI 2.2.0+). The bot sends them only when enabled, with Pipecat's
+  // stt_raw_text_enabled, llm_raw_text_enabled and tts_raw_text_enabled
+  // RTVIObserverParams.
+  SttRawText = "sttRawText",
+  LlmRawText = "llmRawText",
+  TtsRawText = "ttsRawText",
 
   /** participant events */
   ParticipantConnected = "participantConnected",
@@ -156,6 +179,10 @@ export type RTVIEvents = Partial<{
   userMuteStopped: () => void;
 
   // stt events
+  /**
+   * @deprecated Use `userInput` to show what the user said, or `sttRawText` to
+   * inspect what the STT produced.
+   */
   userTranscript: (data: TranscriptData) => void;
   userInput: (data: UserInputData) => void;
   botOutput: (data: BotOutputData) => void;
@@ -163,6 +190,10 @@ export type RTVIEvents = Partial<{
 
   // llm events
   userLlmText: (data: UserLLMTextData) => void;
+  /**
+   * @deprecated Use `botOutput` to show the bot's text, or `llmRawText` to
+   * inspect what the LLM produced.
+   */
   botLlmText: (data: BotLLMTextData) => void;
   botLlmStarted: () => void;
   botLlmStopped: () => void;
@@ -176,9 +207,21 @@ export type RTVIEvents = Partial<{
   botLlmSearchResponse: (data: BotLLMSearchResponseData) => void;
 
   // tts events
+  /**
+   * @deprecated Use `botOutput` to show the bot's text, or `ttsRawText` to
+   * inspect what the TTS produced.
+   */
   botTtsText: (data: BotTTSTextData) => void;
   botTtsStarted: () => void;
   botTtsStopped: () => void;
+
+  // Raw text events for debugging: what the STT, LLM and TTS produced
+  // (RTVI 2.2.0+). The bot sends them only when enabled, with Pipecat's
+  // stt_raw_text_enabled, llm_raw_text_enabled and tts_raw_text_enabled
+  // RTVIObserverParams.
+  sttRawText: (data: STTRawTextData) => void;
+  llmRawText: (data: LLMRawTextData) => void;
+  ttsRawText: (data: TTSRawTextData) => void;
 
   /** participant events */
   participantConnected: (participant: Participant) => void;
