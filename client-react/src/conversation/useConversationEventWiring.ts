@@ -11,6 +11,7 @@ import {
   type LLMFunctionCallStartedData,
   type LLMFunctionCallStoppedData,
   RTVIEvent,
+  type TranscriptData,
   type UserInputData,
 } from "@pipecat-ai/client-js";
 import { useAtomCallback } from "jotai/utils";
@@ -76,6 +77,10 @@ export function useConversationEventWiring() {
     spoken: "",
     unspoken: "",
   });
+  // Set once the bot reports a transcription as user input, after which
+  // user-input builds the user's turns. Bots before RTVI 2.2.0, or with user
+  // input turned off, only send user-transcription.
+  const userInputTranscribesRef = useRef(false);
 
   // Clean up pending timeouts on unmount
   useEffect(() => {
@@ -191,6 +196,7 @@ export function useConversationEventWiring() {
         set(botAcknowledgesSentTextAtom, false);
         cancelFinalizeTimer();
         botOutputLastChunkRef.current = { spoken: "", unspoken: "" };
+        userInputTranscribesRef.current = false;
       }, [cancelFinalizeTimer])
     )
   );
@@ -379,30 +385,43 @@ export function useConversationEventWiring() {
     )
   );
 
+  const addUserTranscription = useAtomCallback(
+    useCallback((get, set, text: string, final: boolean) => {
+      upsertUserTranscript(get, set, text, final);
+
+      // If we got any transcript, cancel pending cleanup
+      clearTimeout(userStoppedTimeout.current);
+    }, [])
+  );
+
   useRTVIClientEvent(
     RTVIEvent.UserTranscript,
-    useAtomCallback(
-      useCallback((get, set, data) => {
-        const text = data.text ?? "";
-        const final = Boolean(data.final);
-        upsertUserTranscript(get, set, text, final);
-
-        // If we got any transcript, cancel pending cleanup
-        clearTimeout(userStoppedTimeout.current);
-      }, [])
+    useCallback(
+      (data: TranscriptData) => {
+        if (userInputTranscribesRef.current) return;
+        addUserTranscription(data.text ?? "", Boolean(data.final));
+      },
+      [addUserTranscription]
     )
   );
 
   useRTVIClientEvent(
     RTVIEvent.UserInput,
     useAtomCallback(
-      useCallback((get, set, data: UserInputData) => {
-        // Transcriptions arrive as UserTranscript too, which builds the
-        // user's turns.
-        if (data.input_type === "backchannel") {
-          addBackchannel(get, set, "user", data.text);
-        }
-      }, [])
+      useCallback(
+        (get, set, data: UserInputData) => {
+          if (data.input_type === "transcription") {
+            // The bot sends each transcription as user-input before
+            // user-transcription, so the first one switches over without
+            // being added twice.
+            userInputTranscribesRef.current = true;
+            addUserTranscription(data.text, data.final);
+          } else if (data.input_type === "backchannel") {
+            addBackchannel(get, set, "user", data.text);
+          }
+        },
+        [addUserTranscription]
+      )
     )
   );
 
