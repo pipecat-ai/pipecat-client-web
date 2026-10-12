@@ -27,6 +27,7 @@ import {
   handleFunctionCallInProgress,
   handleFunctionCallStarted,
   handleFunctionCallStopped,
+  isSentText,
   removeEmptyLastMessage,
   snapSpeechCursorToEnd,
   updateAssistantBotOutput,
@@ -357,7 +358,7 @@ export function useConversationEventWiring() {
           const messages = get(messagesAtom);
           const lastUserIdx = findLastIndex(
             messages,
-            (m: ConversationMessage) => m.role === "user"
+            (m: ConversationMessage) => m.role === "user" && !isSentText(m)
           );
           if (lastUserIdx !== -1 && !messages[lastUserIdx].final) {
             const hasBotActivityAfterUser = messages
@@ -410,7 +411,7 @@ export function useConversationEventWiring() {
           // Re-read state at timeout time
           const messages = get(messagesAtom);
           const lastUser = findLast(messages,
-            (m: ConversationMessage) => m.role === "user"
+            (m: ConversationMessage) => m.role === "user" && !isSentText(m)
           );
           const hasParts =
             Array.isArray(lastUser?.parts) && lastUser!.parts.length > 0;

@@ -304,6 +304,14 @@ export function addBackchannel(
 }
 
 /**
+ * Whether a message is text sent with the conversation's `sendText()`. It
+ * keeps a message of its own, so the user's speech never adds to or finalizes
+ * it, even when it's the last user message.
+ */
+export const isSentText = (message: ConversationMessage) =>
+  message.status !== undefined;
+
+/**
  * Adds the user message for text sent with the conversation's `sendText()`.
  */
 export function addSentText(
@@ -421,7 +429,10 @@ export function finalizeLastMessage(
   role: "user" | "assistant"
 ) {
   const messages = [...get(messagesAtom)];
-  const lastMessageIndex = findLastIndex(messages,(msg) => msg.role === role);
+  const lastMessageIndex = findLastIndex(
+    messages,
+    (msg) => msg.role === role && !isSentText(msg)
+  );
 
   if (lastMessageIndex === -1) return;
 
@@ -463,7 +474,10 @@ export function removeEmptyLastMessage(
   role: "user" | "assistant"
 ) {
   const messages = [...get(messagesAtom)];
-  const lastMessageIndex = findLastIndex(messages,(msg) => msg.role === role);
+  const lastMessageIndex = findLastIndex(
+    messages,
+    (msg) => msg.role === role && !isSentText(msg)
+  );
 
   if (lastMessageIndex === -1) return;
 
@@ -530,8 +544,11 @@ export function upsertUserTranscript(
   const now = new Date();
   const messages = [...get(messagesAtom)];
 
-  // Find last user message
-  const lastUserIndex = findLastIndex(messages,(m) => m.role === "user");
+  // Find the user message speech is adding to
+  const lastUserIndex = findLastIndex(
+    messages,
+    (m) => m.role === "user" && !isSentText(m)
+  );
 
   if (lastUserIndex !== -1 && !messages[lastUserIndex].final) {
     // Update existing user message

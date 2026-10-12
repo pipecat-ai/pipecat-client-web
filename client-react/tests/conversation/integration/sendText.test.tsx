@@ -230,4 +230,38 @@ describe("conversation sendText", () => {
       { role: "user", text: "Hello.", msgId: "msg-1", status: "sent" },
     ]);
   });
+  it("keeps adding to what the user is saying after text is sent", async () => {
+    const c = renderConversation();
+    c.emit(RTVIEvent.BotReady, { version: "2.2.0" });
+    c.emit(RTVIEvent.UserStartedSpeaking);
+    c.emit(RTVIEvent.UserTranscript, { text: "So I was", final: false });
+    c.advance(100);
+
+    await c.send("Hello.");
+    c.emit(RTVIEvent.UserTranscript, {
+      text: "So I was thinking.",
+      final: true,
+    });
+    c.emit(RTVIEvent.UserStoppedSpeaking);
+    c.advance(3000);
+
+    expect(
+      c.messages().map((m) => ({ ...summarize([m])[0], final: m.final }))
+    ).toEqual([
+      {
+        role: "user",
+        text: "So I was thinking.",
+        msgId: undefined,
+        status: undefined,
+        final: true,
+      },
+      {
+        role: "user",
+        text: "Hello.",
+        msgId: "msg-1",
+        status: "sent",
+        final: true,
+      },
+    ]);
+  });
 });
