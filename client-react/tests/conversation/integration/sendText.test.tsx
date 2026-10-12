@@ -178,20 +178,19 @@ describe("conversation sendText", () => {
     ]);
   });
 
-  it("marks text failed when the bot doesn't acknowledge it in time", async () => {
+  it("leaves text sent until the bot acknowledges it", async () => {
     const c = renderConversation();
     c.emit(RTVIEvent.BotReady, { version: "2.2.0" });
     await c.send("Hello.");
 
-    c.advance(10_000);
-    expect(c.messages()[0].status).toBe("failed");
+    c.advance(60_000);
+    expect(c.messages()[0].status).toBe("sent");
 
-    // A late acknowledgment still means the bot received it.
     c.ack("msg-1");
     expect(c.messages()[0].status).toBe("received");
   });
 
-  it("marks text awaiting acknowledgment failed when the client disconnects", async () => {
+  it("leaves text sent when the client disconnects before an acknowledgment", async () => {
     const c = renderConversation();
     c.emit(RTVIEvent.BotReady, { version: "2.2.0" });
     await c.send("Hello.");
@@ -200,18 +199,7 @@ describe("conversation sendText", () => {
 
     c.emit(RTVIEvent.Disconnected);
 
-    expect(c.messages().map((m) => m.status)).toEqual(["received", "failed"]);
-  });
-
-  it("leaves text sent for a bot that doesn't acknowledge it", async () => {
-    const c = renderConversation();
-    c.emit(RTVIEvent.BotReady, { version: "2.1.0" });
-    await c.send("Hello.");
-
-    c.advance(10_000);
-    c.emit(RTVIEvent.Disconnected);
-
-    expect(c.messages()[0].status).toBe("sent");
+    expect(c.messages().map((m) => m.status)).toEqual(["received", "sent"]);
   });
 
   it("adds text as failed and rethrows when it can't be sent", async () => {

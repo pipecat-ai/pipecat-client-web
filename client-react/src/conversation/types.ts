@@ -132,10 +132,10 @@ export interface ConversationMessagePart {
  * What is known about text sent with the conversation's `sendText()`:
  *
  * - `sent`: it went out to the bot, which hasn't acknowledged it. Bots before
- *   RTVI 2.2.0 never acknowledge text, so their messages stay `sent`.
+ *   RTVI 2.2.0, or with user input turned off, never acknowledge text, so
+ *   their messages stay `sent`.
  * - `received`: the bot acknowledged it.
- * - `failed`: it couldn't be sent, the client disconnected before the bot
- *   acknowledged it, or the bot didn't acknowledge it in time.
+ * - `failed`: it couldn't be sent.
  */
 export type SentTextStatus = "sent" | "received" | "failed";
 

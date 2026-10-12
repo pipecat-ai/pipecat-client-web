@@ -10,15 +10,11 @@ import {
   type UserInputData,
 } from "@pipecat-ai/client-js";
 import { useAtomCallback } from "jotai/utils";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 
 import { usePipecatClient } from "../usePipecatClient";
 import { useRTVIClientEvent } from "../useRTVIClientEvent";
 import { addSentText, setSentTextStatus } from "./conversationActions";
-import { botAcknowledgesSentTextAtom } from "./conversationAtoms";
-
-/** How long (ms) the bot has to acknowledge sent text before it is marked failed. */
-const SENT_TEXT_ACK_TIMEOUT_MS = 10_000;
 
 /**
  * Internal hook behind the conversation's `sendText()`. It sends text to the
@@ -27,15 +23,6 @@ const SENT_TEXT_ACK_TIMEOUT_MS = 10_000;
  */
 export function useSentText() {
   const client = usePipecatClient();
-  // One per message awaiting the bot's acknowledgment, keyed by msgId.
-  const ackTimeouts = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-
-  const clearAckTimeouts = useCallback(() => {
-    ackTimeouts.current.forEach((timeout) => clearTimeout(timeout));
-    ackTimeouts.current.clear();
-  }, []);
-
-  useEffect(() => clearAckTimeouts, [clearAckTimeouts]);
 
   const sendText = useAtomCallback(
     useCallback(
@@ -53,15 +40,6 @@ export function useSentText() {
         }
 
         addSentText(get, set, text, { msgId, status: "sent" });
-        if (get(botAcknowledgesSentTextAtom)) {
-          ackTimeouts.current.set(
-            msgId,
-            setTimeout(() => {
-              ackTimeouts.current.delete(msgId);
-              setSentTextStatus(get, set, "failed", [msgId]);
-            }, SENT_TEXT_ACK_TIMEOUT_MS)
-          );
-        }
         return msgId;
       },
       [client]
@@ -75,31 +53,8 @@ export function useSentText() {
         if (data.input_type !== "chat" || !data.msg_id) return;
         // Text sent with client.sendText() directly is acknowledged too, but
         // no message here has its id, so nothing changes.
-        clearTimeout(ackTimeouts.current.get(data.msg_id));
-        ackTimeouts.current.delete(data.msg_id);
         setSentTextStatus(get, set, "received", [data.msg_id]);
       }, [])
-    )
-  );
-
-  useRTVIClientEvent(
-    RTVIEvent.Connected,
-    useCallback(() => {
-      clearAckTimeouts();
-    }, [clearAckTimeouts])
-  );
-
-  useRTVIClientEvent(
-    RTVIEvent.Disconnected,
-    useAtomCallback(
-      useCallback(
-        (get, set) => {
-          const awaitingAck = [...ackTimeouts.current.keys()];
-          clearAckTimeouts();
-          setSentTextStatus(get, set, "failed", awaitingAck);
-        },
-        [clearAckTimeouts]
-      )
     )
   );
 

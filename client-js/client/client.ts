@@ -1226,8 +1226,8 @@ export class PipecatClient extends RTVIEventEmitter {
    * Sends text to the bot as if the user typed it.
    *
    * @returns The id of the send-text message. A bot of RTVI 2.2.0 or later
-   * acknowledges it with a `user-input` message of type `chat` that carries
-   * this id as `msg_id`.
+   * with user input turned on acknowledges it with a `user-input` message of
+   * type `chat` that carries this id as `msg_id`.
    */
   @transportReady
   public async sendText(

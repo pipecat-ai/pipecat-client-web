@@ -23,8 +23,9 @@ interface ConversationContextValue {
   /**
    * Sends text to the bot and adds it to the conversation as a user message,
    * whose `status` follows whether the bot received it: `sent`, then
-   * `received` or `failed`. Use it in place of
-   * `injectMessage` plus `client.sendText()`, not alongside them.
+   * `received` once the bot acknowledges it, or `failed` if it couldn't be
+   * sent. Use it in place of `injectMessage` plus `client.sendText()`, not
+   * alongside them.
    *
    * @returns The id of the send-text message, also the message's `msgId`.
    */
