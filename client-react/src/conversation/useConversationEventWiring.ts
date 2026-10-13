@@ -11,6 +11,7 @@ import {
   type LLMFunctionCallStartedData,
   type LLMFunctionCallStoppedData,
   RTVIEvent,
+  type UserInputData,
 } from "@pipecat-ai/client-js";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useRef } from "react";
@@ -18,6 +19,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRTVIClientEvent } from "../useRTVIClientEvent";
 import { hasUnspokenContent } from "./botOutput";
 import {
+  addBackchannel,
   addMessage,
   type BotOutputPayload,
   clearMessages,
@@ -25,6 +27,7 @@ import {
   handleFunctionCallInProgress,
   handleFunctionCallStarted,
   handleFunctionCallStopped,
+  isSentText,
   removeEmptyLastMessage,
   snapSpeechCursorToEnd,
   updateAssistantBotOutput,
@@ -216,6 +219,16 @@ export function useConversationEventWiring() {
     useAtomCallback(
       useCallback(
         (get, set, data: BotOutputData) => {
+          // The bot says a backchannel while the user talks, outside its own
+          // turns. Only its first event carries its text; the rest report how
+          // much of it has been spoken.
+          if ((data.text_type ?? data.aggregated_by) === "backchannel") {
+            if (!data.spoken_status || data.spoken_status === "new") {
+              addBackchannel(get, set, "assistant", data.text);
+            }
+            return;
+          }
+
           const protocol = get(botOutputProtocolAtom) ?? "legacy";
 
           if (protocol === "v2") {
@@ -345,7 +358,7 @@ export function useConversationEventWiring() {
           const messages = get(messagesAtom);
           const lastUserIdx = findLastIndex(
             messages,
-            (m: ConversationMessage) => m.role === "user"
+            (m: ConversationMessage) => m.role === "user" && !isSentText(m)
           );
           if (lastUserIdx !== -1 && !messages[lastUserIdx].final) {
             const hasBotActivityAfterUser = messages
@@ -376,6 +389,19 @@ export function useConversationEventWiring() {
   );
 
   useRTVIClientEvent(
+    RTVIEvent.UserInput,
+    useAtomCallback(
+      useCallback((get, set, data: UserInputData) => {
+        // Transcriptions arrive as UserTranscript too, which builds the
+        // user's turns.
+        if (data.input_type === "backchannel") {
+          addBackchannel(get, set, "user", data.text);
+        }
+      }, [])
+    )
+  );
+
+  useRTVIClientEvent(
     RTVIEvent.UserStoppedSpeaking,
     useAtomCallback(
       useCallback((get, set) => {
@@ -385,7 +411,7 @@ export function useConversationEventWiring() {
           // Re-read state at timeout time
           const messages = get(messagesAtom);
           const lastUser = findLast(messages,
-            (m: ConversationMessage) => m.role === "user"
+            (m: ConversationMessage) => m.role === "user" && !isSentText(m)
           );
           const hasParts =
             Array.isArray(lastUser?.parts) && lastUser!.parts.length > 0;

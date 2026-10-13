@@ -15,6 +15,7 @@ import {
 } from "./botOutput";
 import type { MessageCallbacks } from "./conversationAtoms";
 import {
+  backchannelsAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
   messageCallbacksAtom,
@@ -26,6 +27,7 @@ import type {
   ConversationMessage,
   ConversationMessagePart,
   FunctionCallData,
+  SentTextStatus,
 } from "./types";
 import { findLast, findLastIndex } from "./utils";
 
@@ -126,11 +128,14 @@ export const mergeMessages = (
         )
       : Infinity;
 
+    // Text sent with sendText() keeps a message of its own, so its status
+    // can be followed.
     const shouldMerge =
       lastMerged &&
       lastMerged.role === currentMessage.role &&
       currentMessage.role !== "system" &&
       currentMessage.role !== "function_call" &&
+      currentMessage.status === undefined &&
       !lastMerged.final &&
       timeDiff < MERGE_WINDOW_MS;
 
@@ -207,10 +212,11 @@ const normalizeMessagesForUI = (
 
 const callCallbacks = (
   callbacksMap: Map<string, MessageCallbacks>,
-  type: keyof MessageCallbacks,
+  type: "onMessageCreated" | "onMessageUpdated",
   message: ConversationMessage
 ) => {
   callbacksMap.forEach((callbacks) => {
+    if (message.backchannel && !callbacks.includeBackchannel) return;
     try {
       callbacks[type]?.(message);
     } catch (error) {
@@ -246,6 +252,7 @@ export function unregisterMessageCallback(
 
 export function clearMessages(_get: Getter, set: Setter) {
   set(messagesAtom, []);
+  set(backchannelsAtom, []);
   set(botOutputMessageStateAtom, new Map());
   set(botOutputEventsAtom, new Map());
 }
@@ -268,6 +275,92 @@ export function addMessage(
 
   callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
   set(messagesAtom, processedMessages);
+}
+
+/**
+ * Records a backchannel: a short acknowledgment the user or the bot said while
+ * the other one talked.
+ */
+export function addBackchannel(
+  get: Getter,
+  set: Setter,
+  role: "user" | "assistant",
+  text: string
+) {
+  if (text.trim().length === 0) return;
+
+  const now = new Date().toISOString();
+  const message: ConversationMessage = {
+    role,
+    final: true,
+    backchannel: true,
+    parts: [{ text, final: true, createdAt: now }],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
+  set(backchannelsAtom, [...get(backchannelsAtom), message]);
+}
+
+/**
+ * Whether a message is text sent with the conversation's `sendText()`. It
+ * keeps a message of its own, so the user's speech never adds to or finalizes
+ * it, even when it's the last user message.
+ */
+export const isSentText = (message: ConversationMessage) =>
+  message.status !== undefined;
+
+/**
+ * Adds the user message for text sent with the conversation's `sendText()`.
+ */
+export function addSentText(
+  get: Getter,
+  set: Setter,
+  text: string,
+  sent: { msgId?: string; status: SentTextStatus }
+) {
+  const now = new Date().toISOString();
+  const message: ConversationMessage = {
+    role: "user",
+    final: true,
+    parts: [{ text, final: true, createdAt: now }],
+    createdAt: now,
+    updatedAt: now,
+    ...sent,
+  };
+
+  callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
+  set(messagesAtom, normalizeMessagesForUI([...get(messagesAtom), message]));
+}
+
+/**
+ * Sets the status of the messages for text sent with the conversation's
+ * `sendText()` whose `msgId` is in `msgIds`.
+ */
+export function setSentTextStatus(
+  get: Getter,
+  set: Setter,
+  status: SentTextStatus,
+  msgIds: string[]
+) {
+  const now = new Date().toISOString();
+  const updated: ConversationMessage[] = [];
+  const messages = get(messagesAtom).map((message) => {
+    const matches =
+      message.msgId !== undefined && msgIds.includes(message.msgId);
+    if (!matches || message.status === status) return message;
+    const updatedMessage = { ...message, status, updatedAt: now };
+    updated.push(updatedMessage);
+    return updatedMessage;
+  });
+  if (updated.length === 0) return;
+
+  set(messagesAtom, messages);
+  const callbacks = get(messageCallbacksAtom);
+  updated.forEach((message) =>
+    callCallbacks(callbacks, "onMessageUpdated", message)
+  );
 }
 
 export function updateLastMessage(
@@ -336,7 +429,10 @@ export function finalizeLastMessage(
   role: "user" | "assistant"
 ) {
   const messages = [...get(messagesAtom)];
-  const lastMessageIndex = findLastIndex(messages,(msg) => msg.role === role);
+  const lastMessageIndex = findLastIndex(
+    messages,
+    (msg) => msg.role === role && !isSentText(msg)
+  );
 
   if (lastMessageIndex === -1) return;
 
@@ -378,7 +474,10 @@ export function removeEmptyLastMessage(
   role: "user" | "assistant"
 ) {
   const messages = [...get(messagesAtom)];
-  const lastMessageIndex = findLastIndex(messages,(msg) => msg.role === role);
+  const lastMessageIndex = findLastIndex(
+    messages,
+    (msg) => msg.role === role && !isSentText(msg)
+  );
 
   if (lastMessageIndex === -1) return;
 
@@ -445,8 +544,11 @@ export function upsertUserTranscript(
   const now = new Date();
   const messages = [...get(messagesAtom)];
 
-  // Find last user message
-  const lastUserIndex = findLastIndex(messages,(m) => m.role === "user");
+  // Find the user message speech is adding to
+  const lastUserIndex = findLastIndex(
+    messages,
+    (m) => m.role === "user" && !isSentText(m)
+  );
 
   if (lastUserIndex !== -1 && !messages[lastUserIndex].final) {
     // Update existing user message

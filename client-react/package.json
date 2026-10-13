@@ -73,7 +73,7 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@pipecat-ai/client-js": "*",
+    "@pipecat-ai/client-js": ">=1.14.0",
     "react": ">=18",
     "react-dom": ">=18"
   },

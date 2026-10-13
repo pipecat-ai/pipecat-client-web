@@ -10,9 +10,11 @@ import { useCallback, useEffect, useId, useMemo } from "react";
 
 import {
   registerMessageCallback,
+  sortByCreatedAt,
   unregisterMessageCallback,
 } from "./conversation/conversationActions";
 import {
+  backchannelsAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
   messagesAtom,
@@ -56,6 +58,14 @@ interface Props {
    * what the consumer receives in the `messages` array.
    */
   botOutputFilter?: BotOutputFilter;
+  /**
+   * Include backchannels: short acknowledgments said while the other side
+   * talks, such as the user's "mhm" or the bot's "Mm-hmm." (RTVI 2.2.0+).
+   * Each is its own message with `backchannel: true`, placed by when it was
+   * said, and is also reported to `onMessageCreated`.
+   * @default false
+   */
+  includeBackchannel?: boolean;
 }
 
 /**
@@ -64,6 +74,7 @@ interface Props {
  * This hook provides:
  * - The current list of conversation messages, ordered and merged for display.
  * - An `injectMessage` function to programmatically add a message to the conversation.
+ * - A `sendText` function that sends text to the bot and adds it as a user message.
  * - Lifecycle callbacks: `onMessageCreated`, `onMessageUpdated`.
  *
  * Internally, this hook:
@@ -82,8 +93,9 @@ export const usePipecatConversation = ({
   onMessageAdded,
   aggregationMetadata,
   botOutputFilter,
+  includeBackchannel = false,
 }: Props = {}) => {
-  const { injectMessage } = useConversationContext();
+  const { injectMessage, sendText } = useConversationContext();
 
   // Generate a unique ID for this hook instance
   const callbackId = useId();
@@ -98,9 +110,10 @@ export const usePipecatConversation = ({
         registerMessageCallback(get, set, callbackId, {
           onMessageCreated: resolvedCreated,
           onMessageUpdated,
+          includeBackchannel,
         });
       },
-      [callbackId, resolvedCreated, onMessageUpdated]
+      [callbackId, resolvedCreated, onMessageUpdated, includeBackchannel]
     )
   );
 
@@ -123,6 +136,7 @@ export const usePipecatConversation = ({
   // Get the raw state from atoms
   const messages = useAtomValue(messagesAtom);
   const botOutputMessageState = useAtomValue(botOutputMessageStateAtom);
+  const backchannels = useAtomValue(backchannelsAtom);
 
   // Memoize the filtered messages to prevent infinite loops
   const filteredMessages = useMemo(() => {
@@ -225,14 +239,25 @@ export const usePipecatConversation = ({
     });
 
     // Messages are already normalized (sorted, filtered, deduped, merged) on write.
-    return processedMessages;
-  }, [messages, botOutputMessageState, aggregationMetadata, botOutputFilter]);
+    if (!includeBackchannel || backchannels.length === 0) {
+      return processedMessages;
+    }
+    return [...processedMessages, ...backchannels].sort(sortByCreatedAt);
+  }, [
+    messages,
+    botOutputMessageState,
+    aggregationMetadata,
+    botOutputFilter,
+    includeBackchannel,
+    backchannels,
+  ]);
 
   const botOutputEvents = useAtomValue(botOutputEventsAtom);
 
   return {
     messages: filteredMessages,
     injectMessage,
+    sendText,
     botOutputEvents,
   };
 };
