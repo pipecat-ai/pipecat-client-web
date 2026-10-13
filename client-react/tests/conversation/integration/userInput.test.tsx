@@ -107,6 +107,15 @@ describe("user transcriptions", () => {
     expect(c.getUserTexts()).toEqual(["So I was thinking."]);
   });
 
+  it("adds a first transcription that is already final once", () => {
+    const c = renderConversation();
+    c.emit(RTVIEvent.UserStartedSpeaking);
+    c.userInput("So I was thinking.", true);
+    c.userTranscript("So I was thinking.", true);
+
+    expect(c.getUserTexts()).toEqual(["So I was thinking."]);
+  });
+
   it("builds the user's turn from user-input alone", () => {
     const c = renderConversation();
     c.emit(RTVIEvent.UserStartedSpeaking);
@@ -117,6 +126,22 @@ describe("user transcriptions", () => {
 
   it("builds the user's turn from user-transcription when the bot sends no user-input", () => {
     const c = renderConversation();
+    c.emit(RTVIEvent.UserStartedSpeaking);
+    c.userTranscript("So I was", false);
+    c.userTranscript("So I was thinking.", true);
+
+    expect(c.getUserTexts()).toEqual(["So I was thinking."]);
+  });
+
+  it("keeps building the user's turn from user-transcription after sent text", () => {
+    const c = renderConversation();
+    c.emit(RTVIEvent.UserInput, {
+      text: "Some text",
+      input_type: "chat",
+      timestamp: "2026-10-09T00:00:00.000Z",
+      final: true,
+      msg_id: "msg-1",
+    });
     c.emit(RTVIEvent.UserStartedSpeaking);
     c.userTranscript("So I was", false);
     c.userTranscript("So I was thinking.", true);
