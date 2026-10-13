@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Manual re-run: refreshes the open release PRs and re-curates their notes,
+  # e.g. after editing a merged feature PR's "## Release Notes" section.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,12 +19,53 @@ jobs:
       releases_created: ${{ steps.release.outputs.releases_created }}
       js_release_created: ${{ steps.release.outputs['client-js--release_created'] }}
       react_release_created: ${{ steps.release.outputs['client-react--release_created'] }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      prs: ${{ steps.release.outputs.prs }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Rewrite each release PR's generated changelog section with the curated
+  # "## Release Notes" sections authored on the feature PRs it covers.
+  # Release-please force-pushes the release branch on every run, so this job
+  # reapplies curation right after, every time; nothing is ever lost because
+  # the source of truth lives in the feature PR bodies.
+  curate-release-notes:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.prs_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PRS: ${{ needs.release-please.outputs.prs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Curate release notes on each release PR
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Run the script from main's copy, whatever the release branch holds.
+          cp .github/scripts/curate-release-notes.mjs "$RUNNER_TEMP/curate-release-notes.mjs"
+          echo "$PRS" | jq -r '.[] | [.number, .headBranchName] | @tsv' |
+          while IFS=$'\t' read -r number branch; do
+            echo "::group::Curating release PR #$number ($branch)"
+            git fetch origin "$branch"
+            git checkout -B "$branch" "origin/$branch"
+            node "$RUNNER_TEMP/curate-release-notes.mjs" --pr "$number"
+            if ! git diff --quiet; then
+              git add -A
+              git commit -m "chore: curate release notes"
+              git push origin "HEAD:$branch"
+            else
+              echo "No changelog changes needed."
+            fi
+            echo "::endgroup::"
+          done
 
   publish-js:
     needs: release-please
