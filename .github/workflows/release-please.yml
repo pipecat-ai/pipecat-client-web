@@ -8,6 +8,12 @@ on:
   # e.g. after editing a merged feature PR's "## Release Notes" section.
   workflow_dispatch:
 
+# Two quick pushes to main would otherwise race: one run's curate push can be
+# rejected after the other run force-pushes the release branch.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -35,14 +41,17 @@ jobs:
   # the source of truth lives in the feature PR bodies.
   curate-release-notes:
     needs: release-please
-    if: ${{ needs.release-please.outputs.prs_created == 'true' }}
+    # Also run on manual dispatch even when release-please reports no PR
+    # update: it skips updating a release PR whose generated body is
+    # unchanged, and dispatch is exactly how notes added after the fact get
+    # applied to it.
+    if: ${{ needs.release-please.outputs.prs_created == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PRS: ${{ needs.release-please.outputs.prs }}
     steps:
       - uses: actions/checkout@v4
       - name: Curate release notes on each release PR
@@ -51,7 +60,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Run the script from main's copy, whatever the release branch holds.
           cp .github/scripts/curate-release-notes.mjs "$RUNNER_TEMP/curate-release-notes.mjs"
-          echo "$PRS" | jq -r '.[] | [.number, .headBranchName] | @tsv' |
+          # Enumerate open release PRs directly rather than from the action's
+          # outputs, which omit PRs it found already up to date.
+          gh pr list --label "autorelease: pending" --state open \
+            --json number,headRefName \
+            --jq '.[] | [.number, .headRefName] | @tsv' |
           while IFS=$'\t' read -r number branch; do
             echo "::group::Curating release PR #$number ($branch)"
             git fetch origin "$branch"

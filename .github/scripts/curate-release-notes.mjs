@@ -196,6 +196,10 @@ const GROUP_ALIASES = new Map([
   ["miscellaneous chores", "Other"],
   ["chores", "Other"],
   ["chore", "Other"],
+  ["breaking changes", "⚠ BREAKING CHANGES"],
+  ["breaking change", "⚠ BREAKING CHANGES"],
+  ["breaking", "⚠ BREAKING CHANGES"],
+  ["⚠ breaking changes", "⚠ BREAKING CHANGES"],
 ]);
 for (const section of config["changelog-sections"] ?? []) {
   GROUP_ALIASES.set(section.section.toLowerCase(), section.section);
@@ -222,6 +226,9 @@ function normalizeComponentTitle(title) {
     .toLowerCase();
 }
 
+// Fork PRs whose curated notes were skipped for lack of the approval label.
+const unapprovedForkPrs = new Set();
+
 /**
  * Extract this component's curated notes from a feature PR body.
  * Returns Map<groupName, bullets[]> or null if the PR has none.
@@ -230,9 +237,30 @@ function curatedNotesFor(prNumber) {
   let body;
   try {
     body = JSON.parse(
-      gh(["pr", "view", String(prNumber), "--repo", repo, "--json", "body,url"])
+      gh([
+        "pr",
+        "view",
+        String(prNumber),
+        "--repo",
+        repo,
+        "--json",
+        "body,url,isCrossRepository,labels",
+      ])
     );
   } catch {
+    return null;
+  }
+  // A PR author can edit their own description after merge, so merge-time
+  // review doesn't vouch for the notes of a fork PR. Only use them once a
+  // maintainer has read the section and applied the approval label.
+  if (
+    body.isCrossRepository &&
+    !(body.labels ?? []).some((l) => l.name === "release-notes: approved")
+  ) {
+    unapprovedForkPrs.add(prNumber);
+    console.log(
+      `#${prNumber} is a fork PR without the "release-notes: approved" label; keeping its generated entries.`
+    );
     return null;
   }
   const text = (body.body ?? "").replace(/<!--[\s\S]*?-->/g, "");
@@ -270,22 +298,43 @@ function curatedNotesFor(prNumber) {
   return result.size ? result : null;
 }
 
-/** Parse markdown bullets (with continuation lines) out of a text block. */
+/**
+ * Parse markdown bullets out of a text block. A bullet spans continuation
+ * lines, and blank lines followed by indented content (extra paragraphs,
+ * code blocks) stay inside the bullet; an unindented heading or a new bullet
+ * ends it.
+ */
 function parseBullets(block) {
   const bullets = [];
   let current = null;
-  for (const line of block.split(/\r?\n/)) {
+  let pendingBlanks = 0;
+  const finish = () => {
+    if (current) bullets.push(current);
+    current = null;
+    pendingBlanks = 0;
+  };
+  for (let line of block.split(/\r?\n/)) {
+    // A bare horizontal rule inside a bullet would break release-please's
+    // `---`-delimited PR body parsing at tag time; escape it.
+    if (/^\s*-{3,}\s*$/.test(line)) line = line.replace(/-/, "\\-");
     if (/^[*-]\s+/.test(line)) {
-      if (current) bullets.push(current);
+      finish();
       current = line.replace(/^[*-]\s+/, "* ");
-    } else if (current && line.trim() !== "" && !/^#/.test(line)) {
-      current += `\n${line}`;
-    } else if (current && line.trim() === "") {
-      bullets.push(current);
-      current = null;
+    } else if (!current) {
+      continue;
+    } else if (line.trim() === "") {
+      pendingBlanks++;
+    } else if (/^#/.test(line)) {
+      finish();
+    } else if (pendingBlanks > 0 && !/^\s{2,}/.test(line)) {
+      // Blank line followed by unindented text: the bullet is over.
+      finish();
+    } else {
+      current += `${"\n".repeat(pendingBlanks + 1)}${line}`;
+      pendingBlanks = 0;
     }
   }
-  if (current) bullets.push(current);
+  finish();
   // Drop untouched template placeholders.
   return bullets.filter((b) => b.replace(/^\*\s*/, "").trim() !== "...");
 }
@@ -313,7 +362,9 @@ if (process.env.GITHUB_STEP_SUMMARY) {
         `| [#${n}](https://github.com/${repo}/pull/${n}) | ${
           curatedByPr.has(n)
             ? "✅ curated"
-            : '⚠️ generated fallback — add a "## Release Notes" section to the PR and re-run this workflow'
+            : unapprovedForkPrs.has(n)
+              ? '⚠️ fork PR — review its "## Release Notes" section, add the "release-notes: approved" label, and re-run this workflow'
+              : '⚠️ generated fallback — add a "## Release Notes" section to the PR and re-run this workflow'
         } |`
     );
   appendFileSync(
@@ -335,9 +386,14 @@ if (curatedByPr.size === 0) {
 // ---------------------------------------------------------------------------
 
 for (const group of groups) {
+  const isBreaking = group.name.includes("BREAKING");
   group.entries = group.entries.filter((entry) => {
     const num = prForEntry(entry);
-    return !(num && curatedByPr.has(num));
+    if (!num || !curatedByPr.has(num)) return true;
+    // Never drop a generated breaking-change notice unless the curated notes
+    // provide their own; a missed break is worse than a duplicate entry.
+    if (isBreaking) return !curatedByPr.get(num).has("⚠ BREAKING CHANGES");
+    return false;
   });
 }
 
@@ -369,9 +425,7 @@ const orderedGroups = groups
 const newSection =
   [
     versionHeading,
-    ...orderedGroups.map(
-      (g) => `### ${g.name}\n\n${g.entries.join("\n\n")}`
-    ),
+    ...orderedGroups.map((g) => `### ${g.name}\n\n${g.entries.join("\n")}`),
   ].join("\n\n") + "\n";
 
 // ---------------------------------------------------------------------------
