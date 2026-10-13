@@ -247,14 +247,6 @@ describe("backchannels", () => {
       final: true,
       user_id: "user",
     });
-    // A transcription becomes part of the user's turn through UserTranscript.
-    w.emit(RTVIEvent.UserInput, {
-      text: "Hello.",
-      input_type: "transcription",
-      timestamp: "2026-10-09T00:00:01.000Z",
-      final: true,
-      user_id: "user",
-    });
 
     expect(summarize(w.probes.default.messages)).toEqual([]);
     expect(summarize(w.probes.included.messages)).toEqual([
