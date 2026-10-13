@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 /**
+ * KEEP IN SYNC: this file is duplicated in pipecat-ai/pipecat-client-web and
+ * pipecat-ai/pipecat-client-web-transports as
+ * .github/scripts/curate-release-notes.mjs; apply fixes to both copies.
+ *
  * Curate a release-please release PR.
  *
  * Replaces the generated changelog entries in the release PR's newest
@@ -215,6 +219,7 @@ const GROUP_ORDER = [
   "Performance Improvements",
   "Reverts",
   "Documentation",
+  "Dependencies",
   "Other",
 ];
 
