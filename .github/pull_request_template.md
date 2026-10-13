@@ -15,14 +15,16 @@ auto-generated entries for this PR's commits.
   and one under Deprecations for the old it replaces).
 - Keep bullets under the package they belong to, grouped by "####" headings:
   Features, Changed, Deprecations, Removed, Bug Fixes, Security, Performance
-  Improvements, Reverts, Documentation, Other (aliases like Added/Fixed/
-  Deprecated also work).
+  Improvements, Reverts, Documentation, Other, Breaking Changes (aliases like
+  Added/Fixed/Deprecated also work). Include a Breaking Changes bullet for any
+  `feat!`/`fix!` commit so the break is described in the release notes.
 - Delete the subsection for a package this PR doesn't touch. Delete this whole
   section if the PR has no user-facing changes (the auto-generated entries
   from commit messages will be used instead).
 - You can edit this section after the PR merges: re-run the "Release Please"
   workflow (workflow_dispatch) to refresh the pending release PR.
-- Tip: comment "/release-notes" on the PR to have Claude draft this section.
+- Tip: comment "/release-notes" to have Claude draft this section, or
+  "/pr-description" to have it write the whole PR description.
 -->
 
 ### client-js
