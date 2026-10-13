@@ -1,5 +1,9 @@
 name: Draft PR Description
 
+# KEEP IN SYNC: this file is duplicated in pipecat-ai/pipecat-client-web and
+# pipecat-ai/pipecat-client-web-transports as
+# .github/workflows/draft-pr-description.yml; apply fixes to both copies.
+
 # Has Claude draft (or refresh) a PR description following
 # .claude/skills/pr-description/SKILL.md, including the "## Release Notes"
 # section that the curate-release-notes job of the Release Please workflow
