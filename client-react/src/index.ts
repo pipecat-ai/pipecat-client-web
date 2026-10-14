@@ -37,6 +37,7 @@ import { UIJobGroupsContext } from "./UIJobGroupsContext";
 import { UIJobGroupsProvider } from "./UIJobGroupsProvider";
 import { useDTMF } from "./useDTMF";
 import { usePipecatClient } from "./usePipecatClient";
+import { usePipecatClientAudioElement } from "./usePipecatClientAudioElement";
 import { usePipecatClientCamControl } from "./usePipecatClientCamControl";
 import { usePipecatClientMediaDevices } from "./usePipecatClientMediaDevices";
 import { usePipecatClientMediaTrack } from "./usePipecatClientMediaTrack";
@@ -81,6 +82,7 @@ export {
   useMediaSupport,
   useNavigateHandler,
   usePipecatClient,
+  usePipecatClientAudioElement,
   usePipecatClientCamControl,
   usePipecatClientMediaDevices,
   usePipecatClientMediaTrack,
