@@ -5,6 +5,26 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.2...client-react-v1.9.0) (2026-10-16)
+
+
+### Features
+
+* add bot capabilities and media support ([c4331d5](https://github.com/pipecat-ai/pipecat-client-web/commit/c4331d5e28b2e43a397ce2c85252af8706d94150))
+* **client-react:** add a conversation sendText that tracks delivery ([194ec2e](https://github.com/pipecat-ai/pipecat-client-web/commit/194ec2e41db8bce2e63b2e3d125349c01d234e17))
+* **client-react:** add useBotCapabilities hook ([7691c60](https://github.com/pipecat-ai/pipecat-client-web/commit/7691c60dce257df6ec44abd23336ffd440afa2e1))
+* **client-react:** add useMediaSupport hook ([393adeb](https://github.com/pipecat-ai/pipecat-client-web/commit/393adeb34a35dc5a9f2529cdd684a817786618a3))
+* **client-react:** add usePipecatClientAudioElement hook with iOS Safari autoplay handling ([a0d5e25](https://github.com/pipecat-ai/pipecat-client-web/commit/a0d5e25df7067a2a91b0994b831b47066bb30150))
+* **client-react:** build the user's turns from user-input ([15c31bd](https://github.com/pipecat-ai/pipecat-client-web/commit/15c31bdedeac76d8b1c807b11685ce8c26dcaa8f))
+* **client-react:** keep backchannels out of the conversation's turns ([0a6dd75](https://github.com/pipecat-ai/pipecat-client-web/commit/0a6dd750d2713f19211e395d611a891f9b445eb8))
+
+
+### Bug Fixes
+
+* **client-react:** keep adding the user's speech to its own message ([a0778e2](https://github.com/pipecat-ai/pipecat-client-web/commit/a0778e28b52a3699755bd9aa20ff7772a9666815))
+* **client-react:** mark sent text failed only when it can't be sent ([ec0dbdb](https://github.com/pipecat-ai/pipecat-client-web/commit/ec0dbdb81a9438b27288accecd0fac7c2559b82d))
+* **client-react:** play bot audio explicitly for iOS/Safari 27 autoplay block ([d874921](https://github.com/pipecat-ai/pipecat-client-web/commit/d874921daebaf560f7bd87683836ede2dc45fbaf))
+
 ## [1.8.2](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.1...client-react-v1.8.2) (2026-08-25)
 
 
