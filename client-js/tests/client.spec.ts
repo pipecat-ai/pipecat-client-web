@@ -18,6 +18,7 @@ import { messageSizeWithinLimit } from "./../client/utils";
 import {
   AggregationType,
   BotOutputData,
+  BotOutputType,
   BotReadyData,
   FileBytes,
   MediaSupport,
@@ -882,7 +883,32 @@ describe("User input and bot output", () => {
     expect(eventData).toEqual(data);
   });
 
-  test("bot output from a bot that only sends aggregated_by has every name", () => {
+  test.each([
+    ["aggregated_by", "sentence"],
+    ["text_type", "backchannel"],
+    ["output_type", "code"],
+  ])(
+    "bot output from a bot that only sends %s has every name",
+    (field, value) => {
+      let eventData: BotOutputData | undefined;
+      client.on(RTVIEvent.BotOutput, (d) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(
+        serverMessage(RTVIMessageType.BOT_OUTPUT, {
+          text: "Hello.",
+          [field]: value,
+        })
+      );
+
+      expect(eventData?.output_type).toBe(value);
+      expect(eventData?.text_type).toBe(value);
+      expect(eventData?.aggregated_by).toBe(value);
+    }
+  );
+
+  test("bot output keeps every name the bot sends", () => {
     let eventData: BotOutputData | undefined;
     client.on(RTVIEvent.BotOutput, (d) => {
       eventData = d;
@@ -891,54 +917,43 @@ describe("User input and bot output", () => {
     transport.handleMessage(
       serverMessage(RTVIMessageType.BOT_OUTPUT, {
         text: "Hello.",
-        aggregated_by: "sentence",
-      })
-    );
-
-    expect(eventData?.output_type).toBe(TextType.SENTENCE);
-    expect(eventData?.text_type).toBe(TextType.SENTENCE);
-    expect(eventData?.aggregated_by).toBe(TextType.SENTENCE);
-  });
-
-  test("bot output from a bot that sends text_type has its output_type", () => {
-    let eventData: BotOutputData | undefined;
-    client.on(RTVIEvent.BotOutput, (d) => {
-      eventData = d;
-    });
-
-    transport.handleMessage(
-      serverMessage(RTVIMessageType.BOT_OUTPUT, {
-        text: "Mm-hmm.",
-        text_type: "backchannel",
-        aggregated_by: "backchannel",
-      })
-    );
-
-    expect(eventData?.output_type).toBe(TextType.BACKCHANNEL);
-    expect(eventData?.text_type).toBe(TextType.BACKCHANNEL);
-  });
-
-  test("bot output from a bot that only sends output_type has every name", () => {
-    let eventData: BotOutputData | undefined;
-    client.on(RTVIEvent.BotOutput, (d) => {
-      eventData = d;
-    });
-
-    transport.handleMessage(
-      serverMessage(RTVIMessageType.BOT_OUTPUT, {
-        text: "print('hi')",
         output_type: "code",
+        text_type: "sentence",
+        aggregated_by: "word",
       })
     );
 
     expect(eventData?.output_type).toBe("code");
-    expect(eventData?.text_type).toBe("code");
-    expect(eventData?.aggregated_by).toBe("code");
+    expect(eventData?.text_type).toBe(BotOutputType.SENTENCE);
+    expect(eventData?.aggregated_by).toBe(BotOutputType.WORD);
   });
 
-  test("AggregationType is an alias of TextType", () => {
-    expect(AggregationType.WORD).toBe(TextType.WORD);
-    expect(AggregationType.SENTENCE).toBe(TextType.SENTENCE);
+  test.each([
+    [{ output_type: "code", text_type: "sentence" }, "code"],
+    [{ output_type: "code", aggregated_by: "word" }, "code"],
+    [{ text_type: "sentence", aggregated_by: "word" }, "sentence"],
+  ])(
+    "bot output fills in missing names from the newest name sent: %j",
+    (names, expected) => {
+      let eventData: BotOutputData | undefined;
+      client.on(RTVIEvent.BotOutput, (d) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(
+        serverMessage(RTVIMessageType.BOT_OUTPUT, { text: "Hello.", ...names })
+      );
+
+      expect(eventData?.output_type).toBe(names.output_type ?? expected);
+      expect(eventData?.text_type).toBe(names.text_type ?? expected);
+      expect(eventData?.aggregated_by).toBe(names.aggregated_by ?? expected);
+    }
+  );
+
+  test("TextType and AggregationType are aliases of BotOutputType", () => {
+    expect(TextType.BACKCHANNEL).toBe(BotOutputType.BACKCHANNEL);
+    expect(AggregationType.WORD).toBe(BotOutputType.WORD);
+    expect(AggregationType.SENTENCE).toBe(BotOutputType.SENTENCE);
   });
 
   const rawTextMessages = [
