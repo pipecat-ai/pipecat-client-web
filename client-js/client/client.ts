@@ -1520,9 +1520,13 @@ export class PipecatClient extends RTVIEventEmitter {
       }
       case RTVIMessageType.BOT_OUTPUT: {
         const data = ev.data as BotOutputData;
-        if (data.text_type === undefined) {
-          data.text_type = data.aggregated_by;
-        }
+        // Older bots send only `text_type` or `aggregated_by`; fill in every
+        // name so callers reading any of them see the same value.
+        const outputType =
+          data.output_type ?? data.text_type ?? data.aggregated_by;
+        data.output_type ??= outputType;
+        data.text_type ??= outputType;
+        data.aggregated_by ??= outputType;
         this._options.callbacks?.onBotOutput?.(data);
         break;
       }

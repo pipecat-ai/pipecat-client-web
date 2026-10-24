@@ -244,11 +244,14 @@ export type SpokenProgressData = {
 export type BotOutputData = {
   text: string;
   /**
-   * What form the text is in. Bots that only send `aggregated_by` have it
-   * filled in from that.
+   * What form the text is in, the counterpart of `UserInputData.input_type`.
+   * Bots that only send `text_type` or `aggregated_by` have it filled in from
+   * those.
    */
+  output_type?: TextType | string;
+  /** @deprecated Use `output_type` instead. */
   text_type?: TextType | string;
-  /** @deprecated Use `text_type` instead. */
+  /** @deprecated Use `output_type` instead. */
   aggregated_by?: TextType | string;
   segment_id?: number;
   /** @deprecated Protocol 1.4.x only. Use `will_be_spoken` instead. */
