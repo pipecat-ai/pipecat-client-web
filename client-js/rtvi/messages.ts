@@ -13,7 +13,8 @@ import {
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
-export const RTVI_PROTOCOL_VERSION = "2.2.0";
+// Protocol 2.3.0 adds expressive conversation's events, pauses and tones to bot-output.
+export const RTVI_PROTOCOL_VERSION = "2.3.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -223,6 +224,16 @@ export enum BotOutputType {
    * "Mm-hmm." (RTVI 2.2.0+).
    */
   BACKCHANNEL = "backchannel",
+  /**
+   * A sound the bot makes at one point in expressive conversation (alpha),
+   * such as a laugh. The text is its name, such as "laughs" (RTVI 2.3.0+).
+   */
+  EXPRESSION_EVENT = "expression_event",
+  /**
+   * A pause the bot makes in expressive conversation (alpha). The text is
+   * its length in milliseconds, such as "300" (RTVI 2.3.0+).
+   */
+  EXPRESSION_PAUSE = "expression_pause",
   SENTENCE = "sentence",
   TOKEN = "token",
   WORD = "word",
@@ -262,7 +273,45 @@ export type BotOutputData = {
   will_be_spoken?: boolean;
   spoken_status?: SpokenStatus;
   spoken_progress?: SpokenProgressData;
+  /**
+   * In expressive conversation (alpha), the tones of the text just spoken,
+   * such as `["cheerful", "emphasis"]`; empty for the voice's baseline. They
+   * can change within a segment, so a segment's `"new"` message has none
+   * (RTVI 2.3.0+).
+   */
+  tones?: string[];
 };
+
+/**
+ * The tones the bot speaks in changed, in expressive conversation (alpha,
+ * RTVI 2.3.0+). Reported only when they change: a stressed word brings
+ * `"emphasis"` and the word after it takes it away again.
+ */
+export type BotToneChangedData = {
+  /**
+   * The tones of the words the bot is speaking now, such as `["cheerful"]`;
+   * empty for the voice's baseline, and null once it stops speaking.
+   */
+  tones: string[] | null;
+  /** The tones before the change, or null when it wasn't speaking. */
+  previous: string[] | null;
+};
+
+/**
+ * An event or pause the bot performed in expressive conversation (alpha,
+ * RTVI 2.3.0+), reported as it was performed.
+ */
+export type BotExpressionData =
+  | {
+      kind: "event";
+      /** The event, such as "laughs". */
+      name: string;
+    }
+  | {
+      kind: "pause";
+      /** How long the pause is, in milliseconds. */
+      durationMs: number;
+    };
 
 export type BotLLMTextData = {
   text: string;
