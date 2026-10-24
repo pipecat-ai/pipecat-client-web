@@ -170,7 +170,7 @@ describe("user interruption", () => {
   // -----------------------------------------------------------------------
   it("handles interruption during sentence-level bot turn", () => {
     const scenario = conversation()
-      .bot("Hello there how are you today", { aggregation: "sentence" })
+      .bot("Hello there how are you today", { outputType: "sentence" })
       .interruptAfter("Hello there how are")
       .user("I'm good")
       .build();

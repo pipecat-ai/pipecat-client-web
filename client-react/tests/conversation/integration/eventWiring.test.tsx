@@ -89,7 +89,7 @@ const sentence = (
   extra: Record<string, unknown> = {}
 ) => ({
   text,
-  aggregated_by: "sentence",
+  output_type: "sentence",
   will_be_spoken: true,
   segment_id,
   ...extra,
@@ -214,7 +214,7 @@ describe("useConversationEventWiring", () => {
       w.emit(RTVIEvent.BotReady, { version: "1.4.0" });
       w.emit(RTVIEvent.BotOutput, {
         text: "Hello there.",
-        aggregated_by: "sentence",
+        output_type: "sentence",
         spoken: true,
       });
 
@@ -226,7 +226,7 @@ describe("useConversationEventWiring", () => {
       w.emit(RTVIEvent.BotReady, { version: "1.4.0" });
       w.emit(RTVIEvent.BotOutput, {
         text: "Hello",
-        aggregated_by: "word",
+        output_type: "word",
         spoken: true,
       });
 

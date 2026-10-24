@@ -22,10 +22,10 @@ import {
 import { filterBotOutputText } from "./conversation/filterBotOutputText";
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
 import type {
-  AggregationMetadata,
   BotOutputFilter,
   ConversationMessage,
   ConversationMessagePart,
+  OutputTypeMetadata,
 } from "./conversation/types";
 
 /**
@@ -48,10 +48,15 @@ interface Props {
    */
   onMessageAdded?: (message: ConversationMessage) => void;
   /**
-   * Metadata for aggregation types to control rendering and speech progress behavior.
-   * Used to determine which aggregations should be excluded from position-based splitting.
+   * Metadata for output types to control rendering and speech progress behavior.
+   * Used to determine which output types should be excluded from position-based splitting.
    */
-  aggregationMetadata?: Record<string, AggregationMetadata>;
+  outputTypeMetadata?: Record<string, OutputTypeMetadata>;
+  /**
+   * @deprecated Use `outputTypeMetadata` instead. Where both have an entry for
+   * an output type, `outputTypeMetadata`'s is used.
+   */
+  aggregationMetadata?: Record<string, OutputTypeMetadata>;
   /**
    * Filter controlling which portions of BotOutput text are returned.
    * The underlying atoms always store the full data; this filter controls
@@ -91,6 +96,7 @@ export const usePipecatConversation = ({
   onMessageCreated,
   onMessageUpdated,
   onMessageAdded,
+  outputTypeMetadata,
   aggregationMetadata,
   botOutputFilter,
   includeBackchannel = false,
@@ -141,8 +147,10 @@ export const usePipecatConversation = ({
   // Memoize the filtered messages to prevent infinite loops
   const filteredMessages = useMemo(() => {
     const getMetadata = (part: ConversationMessagePart) => {
-      return part.aggregatedBy
-        ? aggregationMetadata?.[part.aggregatedBy]
+      const outputType = part.outputType ?? part.aggregatedBy;
+      return outputType
+        ? (outputTypeMetadata?.[outputType] ??
+            aggregationMetadata?.[outputType])
         : undefined;
     };
 
@@ -246,6 +254,7 @@ export const usePipecatConversation = ({
   }, [
     messages,
     botOutputMessageState,
+    outputTypeMetadata,
     aggregationMetadata,
     botOutputFilter,
     includeBackchannel,

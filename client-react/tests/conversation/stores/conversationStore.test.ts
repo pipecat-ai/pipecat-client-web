@@ -184,7 +184,7 @@ describe("conversationStore", () => {
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(1);
       expect(parts[0].text).toBe("Hello world");
-      expect(parts[0].aggregatedBy).toBe("word");
+      expect(parts[0].outputType).toBe("word");
     });
 
     it("creates new part for sentence-level chunks", () => {
@@ -235,7 +235,7 @@ describe("conversationStore", () => {
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(2);
-      expect(parts[1].aggregatedBy).toBe("code");
+      expect(parts[1].outputType).toBe("code");
     });
   });
 
