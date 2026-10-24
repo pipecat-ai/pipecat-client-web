@@ -24,13 +24,13 @@ export const botOutputMessageStateAtom = atom<
 >(new Map());
 
 /**
- * An event or pause the bot performed in expressive conversation (RTVI
+ * A sound or pause the bot performed in expressive conversation (RTVI
  * 2.3.0+), such as a laugh, and where it fell in its message's text.
  */
 export type ExpressionEvent = {
-  /** `"expression_event"` or `"expression_pause"`. */
+  /** `"expression_sound"` or `"expression_pause"`. */
   outputType: string;
-  /** The event's name, or the pause's length in milliseconds, as sent. */
+  /** The sound's name, or the pause's length in milliseconds, as sent. */
   text: string;
   segment_id?: number;
   createdAt: string;
@@ -49,10 +49,10 @@ export const expressionEventsAtom = atom<Map<string, ExpressionEvent[]>>(
 );
 
 /**
- * The tones the bot is speaking in now, in expressive conversation (RTVI
- * 2.3.0+), or null while it isn't speaking.
+ * The bot's delivery now, in expressive conversation (RTVI 2.3.0+), or
+ * null while it isn't speaking.
  */
-export const botTonesAtom = atom<string[] | null>(null);
+export const botDeliveryAtom = atom<string[] | null>(null);
 
 /** Callback set registered per hook instance */
 export type MessageCallbacks = {

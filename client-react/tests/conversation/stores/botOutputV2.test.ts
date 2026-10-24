@@ -180,7 +180,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
         spoken_status: "completed",
         spoken_progress: { accumulated_text: "laughs", remaining_text: "" },
         segment_id: 2,
-        aggregated_by: "expression_event",
+        aggregated_by: "expression_sound",
       });
 
       const cursor = harness.getLastAssistantCursor();

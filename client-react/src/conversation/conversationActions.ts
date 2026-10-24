@@ -16,9 +16,9 @@ import {
 import type { MessageCallbacks } from "./conversationAtoms";
 import {
   backchannelsAtom,
+  botDeliveryAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
-  botTonesAtom,
   expressionEventsAtom,
   messageCallbacksAtom,
   messagesAtom,
@@ -256,7 +256,7 @@ export function clearMessages(_get: Getter, set: Setter) {
   set(messagesAtom, []);
   set(backchannelsAtom, []);
   set(expressionEventsAtom, new Map());
-  set(botTonesAtom, null);
+  set(botDeliveryAtom, null);
   set(botOutputMessageStateAtom, new Map());
   set(botOutputEventsAtom, new Map());
 }
@@ -282,7 +282,7 @@ export function addMessage(
 }
 
 /**
- * Records an event or pause the bot performed (RTVI 2.3.0+) on its latest
+ * Records a sound or pause the bot performed (RTVI 2.3.0+) on its latest
  * message, at the point its speech had reached.
  */
 export function addExpressionEvent(

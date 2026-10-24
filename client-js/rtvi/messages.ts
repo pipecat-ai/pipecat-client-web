@@ -13,7 +13,7 @@ import {
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
-// Protocol 2.3.0 adds expressive conversation's events, pauses and tones to bot-output.
+// Protocol 2.3.0 adds expressive conversation's sounds, pauses and delivery to bot-output.
 export const RTVI_PROTOCOL_VERSION = "2.3.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
@@ -228,7 +228,7 @@ export enum BotOutputType {
    * A sound the bot makes at one point in expressive conversation (alpha),
    * such as a laugh. The text is its name, such as "laughs" (RTVI 2.3.0+).
    */
-  EXPRESSION_EVENT = "expression_event",
+  EXPRESSION_SOUND = "expression_sound",
   /**
    * A pause the bot makes in expressive conversation (alpha). The text is
    * its length in milliseconds, such as "300" (RTVI 2.3.0+).
@@ -274,37 +274,37 @@ export type BotOutputData = {
   spoken_status?: SpokenStatus;
   spoken_progress?: SpokenProgressData;
   /**
-   * In expressive conversation (alpha), the tones of the text just spoken,
-   * such as `["cheerful", "emphasis"]`; empty for the voice's baseline. They
+   * In expressive conversation (alpha), the delivery of the text just spoken,
+   * such as `["cheerful", "emphasis"]`; empty for the voice's baseline. It
    * can change within a segment, so a segment's `"new"` message has none
    * (RTVI 2.3.0+).
    */
-  tones?: string[];
+  delivery?: string[];
 };
 
 /**
- * The tones the bot speaks in changed, in expressive conversation (alpha,
- * RTVI 2.3.0+). Reported only when they change: a stressed word brings
+ * The bot's delivery changed, in expressive conversation (alpha,
+ * RTVI 2.3.0+). Reported only when it changes: a stressed word brings
  * `"emphasis"` and the word after it takes it away again.
  */
-export type BotToneChangedData = {
+export type BotDeliveryChangedData = {
   /**
-   * The tones of the words the bot is speaking now, such as `["cheerful"]`;
+   * The delivery of the words the bot is speaking now, such as `["cheerful"]`;
    * empty for the voice's baseline, and null once it stops speaking.
    */
-  tones: string[] | null;
-  /** The tones before the change, or null when it wasn't speaking. */
+  delivery: string[] | null;
+  /** The delivery before the change, or null when it wasn't speaking. */
   previous: string[] | null;
 };
 
 /**
- * An event or pause the bot performed in expressive conversation (alpha,
+ * A sound or pause the bot performed in expressive conversation (alpha,
  * RTVI 2.3.0+), reported as it was performed.
  */
 export type BotExpressionData =
   | {
-      kind: "event";
-      /** The event, such as "laughs". */
+      kind: "sound";
+      /** The sound, such as "laughs". */
       name: string;
     }
   | {

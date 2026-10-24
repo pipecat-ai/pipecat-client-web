@@ -11,13 +11,13 @@ import packageJson from "../package.json";
 import {
   A11ySnapshot,
   BotCapabilities,
+  BotDeliveryChangedData,
   BotExpressionData,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
   BotOutputType,
   BotReadyData,
-  BotToneChangedData,
   BotTTSTextData,
   ClientMessageData,
   DeviceErrorReason,
@@ -177,13 +177,13 @@ export type RTVIEventCallbacks = Partial<{
   onUserLlmText: (data: UserLLMTextData) => void;
   onBotOutput: (data: BotOutputData) => void;
   /**
-   * The tones the bot speaks in changed, in expressive conversation
-   * (RTVI 2.3.0+). Derived from `onBotOutput`: called only when they change,
-   * and with null tones once the bot stops speaking.
+   * The bot's delivery changed, in expressive conversation (RTVI 2.3.0+).
+   * Derived from `onBotOutput`: called only when it changes, and with a null
+   * delivery once the bot stops speaking.
    */
-  onBotToneChanged: (data: BotToneChangedData) => void;
+  onBotDeliveryChanged: (data: BotDeliveryChangedData) => void;
   /**
-   * The bot performed an event, such as a laugh, or a pause, in expressive
+   * The bot performed a sound, such as a laugh, or a pause, in expressive
    * conversation (RTVI 2.3.0+). Derived from `onBotOutput`.
    */
   onBotExpression: (data: BotExpressionData) => void;
@@ -292,9 +292,9 @@ export class PipecatClient extends RTVIEventEmitter {
   // Bot's capabilities from bot-ready, cleared on disconnect. Undefined for bots
   // that don't send them.
   private _botCapabilities: BotCapabilities | undefined;
-  // The tones the bot is speaking in, in expressive conversation; null while
+  // The bot's delivery, in expressive conversation; null while
   // it isn't speaking.
-  private _botTones: string[] | null = null;
+  private _botDelivery: string[] | null = null;
 
   // Per-device device state. Independent of TransportState — driven by
   // initDevices() and DeviceError events, never by transport connect/disconnect.
@@ -491,9 +491,9 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onBotOutput?.(data);
         this.emit(RTVIEvent.BotOutput, data);
       },
-      onBotToneChanged: (data) => {
-        options?.callbacks?.onBotToneChanged?.(data);
-        this.emit(RTVIEvent.BotToneChanged, data);
+      onBotDeliveryChanged: (data) => {
+        options?.callbacks?.onBotDeliveryChanged?.(data);
+        this.emit(RTVIEvent.BotDeliveryChanged, data);
       },
       onBotExpression: (data) => {
         options?.callbacks?.onBotExpression?.(data);
@@ -763,13 +763,13 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Report an expression event or pause the bot performed, and a change of
-   * its tones, from its output.
+   * Report a sound or pause the bot performed, and a change of its
+   * delivery, from its output.
    */
   private _reportExpression(data: BotOutputData): void {
-    if (data.output_type === BotOutputType.EXPRESSION_EVENT) {
+    if (data.output_type === BotOutputType.EXPRESSION_SOUND) {
       this._options.callbacks?.onBotExpression?.({
-        kind: "event",
+        kind: "sound",
         name: data.text,
       });
     } else if (data.output_type === BotOutputType.EXPRESSION_PAUSE) {
@@ -780,23 +780,23 @@ export class PipecatClient extends RTVIEventEmitter {
           durationMs,
         });
       }
-    } else if (data.tones && data.spoken_status !== "new") {
-      this._setBotTones(data.tones);
+    } else if (data.delivery && data.spoken_status !== "new") {
+      this._setBotDelivery(data.delivery);
     }
   }
 
-  /** Track the tones the bot speaks in, reporting each change. */
-  private _setBotTones(tones: string[] | null): void {
-    const previous = this._botTones;
+  /** Track the bot's delivery, reporting each change. */
+  private _setBotDelivery(delivery: string[] | null): void {
+    const previous = this._botDelivery;
     const same =
-      tones === null || previous === null
-        ? tones === previous
-        : tones.length === previous.length &&
-          tones.every((tone, i) => tone === previous[i]);
+      delivery === null || previous === null
+        ? delivery === previous
+        : delivery.length === previous.length &&
+          delivery.every((name, i) => name === previous[i]);
     if (same) return;
-    this._botTones = tones && [...tones];
-    this._options.callbacks?.onBotToneChanged?.({
-      tones: this._botTones,
+    this._botDelivery = delivery && [...delivery];
+    this._options.callbacks?.onBotDeliveryChanged?.({
+      delivery: this._botDelivery,
       previous,
     });
   }
@@ -810,7 +810,7 @@ export class PipecatClient extends RTVIEventEmitter {
     this._botVersion = [0, 0, 0];
     this._transport.startBotResponse = undefined;
     this._setBotCapabilities(undefined);
-    this._botTones = null;
+    this._botDelivery = null;
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -1561,7 +1561,7 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.BOT_STOPPED_SPEAKING:
         this._options.callbacks?.onBotStoppedSpeaking?.();
-        this._setBotTones(null);
+        this._setBotDelivery(null);
         break;
       case RTVIMessageType.USER_MUTE_STARTED:
         this._options.callbacks?.onUserMuteStarted?.();
