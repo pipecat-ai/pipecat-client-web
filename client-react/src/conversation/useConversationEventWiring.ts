@@ -6,6 +6,7 @@
 
 import {
   BotOutputData,
+  BotOutputType,
   BotReadyData,
   type LLMFunctionCallInProgressData,
   type LLMFunctionCallStartedData,
@@ -225,14 +226,10 @@ export function useConversationEventWiring() {
     useAtomCallback(
       useCallback(
         (get, set, data: BotOutputData) => {
-          // client-js 1.14.0 doesn't fill in `output_type` from the older names.
-          const outputType =
-            data.output_type ?? data.text_type ?? data.aggregated_by;
-
           // The bot says a backchannel while the user talks, outside its own
           // turns. Only its first event carries its text; the rest report how
           // much of it has been spoken.
-          if (outputType === "backchannel") {
+          if (data.output_type === BotOutputType.BACKCHANNEL) {
             if (!data.spoken_status || data.spoken_status === "new") {
               addBackchannel(get, set, "assistant", data.text);
             }
@@ -273,7 +270,7 @@ export function useConversationEventWiring() {
               data.text,
               false,
               payload,
-              outputType
+              data.output_type
             );
           } else {
             // Protocol 1.4.x (legacy): use spoken boolean with inter-chunk spacing.
@@ -309,14 +306,14 @@ export function useConversationEventWiring() {
             // splitting it. The per-sentence `final` is effectively inert
             // here, so there is no turn-splitting bug to fix on this branch —
             // and passing `false` would change shipped behavior for nothing.
-            const isFinal = outputType === "sentence";
+            const isFinal = data.output_type === BotOutputType.SENTENCE;
             updateAssistantBotOutput(
               get,
               set,
               textToAdd,
               isFinal,
               payload,
-              outputType
+              data.output_type
             );
           }
 

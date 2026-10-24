@@ -7,7 +7,7 @@ import type { StoreHarness } from "./storeHarness";
 // ---------------------------------------------------------------------------
 
 export type ScenarioStep =
-  | { type: "botOutput"; text: string; spoken: boolean; aggregatedBy?: string }
+  | { type: "botOutput"; text: string; spoken: boolean; outputType?: string }
   | { type: "botStartedSpeaking" }
   | { type: "botStoppedSpeaking" }
   | { type: "userStartedSpeaking" }
@@ -39,14 +39,14 @@ export interface ConversationScenario {
 
 interface BotTurnOptions {
   /** How text is chunked: "word" sends one event per word, "sentence" sends one event for the whole text. Default: "word". */
-  aggregation?: "word" | "sentence";
+  outputType?: "word" | "sentence";
   /** If true, only spoken events are emitted (no unspoken). Default: false. */
   spokenOnly?: boolean;
 }
 
 interface BotPartOptions {
-  /** Custom aggregation type (e.g. "code", "link"). */
-  aggregation: string;
+  /** Custom output type (e.g. "code", "link"). */
+  outputType: string;
   /** Display mode. Default: "inline". */
   displayMode?: "inline" | "block";
   /** Whether this part is spoken by TTS. If false, no spoken events are emitted. Default: true. */
@@ -92,7 +92,7 @@ class ConversationBuilder {
   private functionCallCounter = 0;
 
   /**
-   * Add a bot turn. Text will be split into events per the aggregation mode.
+   * Add a bot turn. Text will be split into events per the output type.
    */
   bot(text: string, options: BotTurnOptions = {}): this {
     this.turns.push({ kind: "bot", text, options });
@@ -100,7 +100,7 @@ class ConversationBuilder {
   }
 
   /**
-   * Add a custom-aggregation bot part (e.g. code block) within the current
+   * Add a custom-output-type bot part (e.g. code block) within the current
    * assistant message. Does NOT emit speaking events on its own -- it's part
    * of the surrounding bot turn.
    */
@@ -150,7 +150,7 @@ class ConversationBuilder {
       const turn = turns[ti];
 
       if (turn.kind === "bot") {
-        const { aggregation = "word", spokenOnly = false } = turn.options;
+        const { outputType = "word", spokenOnly = false } = turn.options;
 
         // Check if next turn(s) are botPart (continuation of same assistant message)
         // or interruptAfter (modifies this turn's spoken events).
@@ -177,7 +177,7 @@ class ConversationBuilder {
         // Collect all content segments for this assistant message
         const segments: Array<{
           text: string;
-          aggregatedBy: string;
+          outputType: string;
           words: string[];
           isSpoken: boolean;
         }> = [];
@@ -186,7 +186,7 @@ class ConversationBuilder {
         const mainWords = splitWords(turn.text);
         segments.push({
           text: turn.text,
-          aggregatedBy: aggregation,
+          outputType,
           words: mainWords,
           isSpoken: true,
         });
@@ -196,7 +196,7 @@ class ConversationBuilder {
           if (part.kind === "botPart") {
             segments.push({
               text: part.text,
-              aggregatedBy: part.options.aggregation,
+              outputType: part.options.outputType,
               words: splitWords(part.text),
               isSpoken: part.options.isSpoken !== false,
             });
@@ -209,13 +209,13 @@ class ConversationBuilder {
         // 1. Unspoken events (all segments, unless spokenOnly)
         if (!spokenOnly) {
           for (const seg of segments) {
-            if (seg.aggregatedBy === "word") {
+            if (seg.outputType === "word") {
               for (const word of seg.words) {
                 steps.push({
                   type: "botOutput",
                   text: word,
                   spoken: false,
-                  aggregatedBy: "word",
+                  outputType: "word",
                 });
               }
             } else {
@@ -224,7 +224,7 @@ class ConversationBuilder {
                 type: "botOutput",
                 text: seg.text,
                 spoken: false,
-                aggregatedBy: seg.aggregatedBy,
+                outputType: seg.outputType,
               });
             }
           }
@@ -235,7 +235,7 @@ class ConversationBuilder {
           // Only emit spoken words up to the interrupt point
           const interruptWords = splitWords(interrupt.spokenUpTo);
           const allSpokenWords = segments.flatMap((seg) =>
-            seg.aggregatedBy === "word" ? seg.words : [seg.text]
+            seg.outputType === "word" ? seg.words : [seg.text]
           );
 
           let matched = 0;
@@ -248,7 +248,7 @@ class ConversationBuilder {
               type: "botOutput",
               text: word,
               spoken: true,
-              aggregatedBy: "word",
+              outputType: "word",
             });
             if (wordNorm === targetNorm || wordNorm.startsWith(targetNorm)) {
               matched++;
@@ -261,13 +261,13 @@ class ConversationBuilder {
           // Full spoken events for all spoken segments
           for (const seg of segments) {
             if (!seg.isSpoken) continue;
-            if (seg.aggregatedBy === "word" || spokenOnly) {
+            if (seg.outputType === "word" || spokenOnly) {
               for (const word of seg.words) {
                 steps.push({
                   type: "botOutput",
                   text: word,
                   spoken: true,
-                  aggregatedBy: seg.aggregatedBy,
+                  outputType: seg.outputType,
                 });
               }
             } else {
@@ -276,7 +276,7 @@ class ConversationBuilder {
                 type: "botOutput",
                 text: seg.text,
                 spoken: true,
-                aggregatedBy: seg.aggregatedBy,
+                outputType: seg.outputType,
               });
             }
           }
@@ -379,7 +379,7 @@ export function playScenario(
           clearTimeout(botStoppedTimeout);
           botStoppedTimeout = undefined;
         }
-        harness.emitBotOutput(step.text, step.spoken, step.aggregatedBy);
+        harness.emitBotOutput(step.text, step.spoken, step.outputType);
         break;
 
       case "botStartedSpeaking":

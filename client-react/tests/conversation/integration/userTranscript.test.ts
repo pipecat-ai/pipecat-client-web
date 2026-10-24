@@ -79,7 +79,7 @@ describe("user transcript assembly", () => {
   describe("user turn after bot turn", () => {
     it("creates user message after finalized assistant message", () => {
       const scenario = conversation()
-        .bot("Hello there!", { aggregation: "sentence" })
+        .bot("Hello there!", { outputType: "sentence" })
         .user("Hi back!")
         .build();
 
@@ -157,13 +157,13 @@ describe("user transcript assembly", () => {
             type: "botOutput",
             text: "Hi",
             spoken: false,
-            aggregatedBy: "word",
+            outputType: "word",
           },
           {
             type: "botOutput",
             text: "Hi",
             spoken: true,
-            aggregatedBy: "word",
+            outputType: "word",
           },
           { type: "botStoppedSpeaking" },
           { type: "wait", ms: 2500 },

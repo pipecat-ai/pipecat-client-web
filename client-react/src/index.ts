@@ -117,6 +117,7 @@ export type {
   ConversationMessagePart,
   FunctionCallData,
   FunctionCallRenderer,
+  OutputTypeMetadata,
   SentTextStatus,
 } from "./conversation/types";
 export type {

@@ -52,7 +52,7 @@ describe("BotOutput assembly", () => {
   describe("sentence-level unspoken then spoken", () => {
     it("creates one part per sentence", () => {
       const scenario = conversation()
-        .bot("Hello there.", { aggregation: "sentence" })
+        .bot("Hello there.", { outputType: "sentence" })
         .build();
 
       playScenario(harness, scenario);
@@ -68,7 +68,7 @@ describe("BotOutput assembly", () => {
     it("creates separate parts for consecutive sentence-level turns in same message", () => {
       // Two bot turns that get merged into one assistant message
       const scenario = conversation()
-        .bot("First sentence.", { aggregation: "sentence" })
+        .bot("First sentence.", { outputType: "sentence" })
         .build();
 
       playScenario(harness, scenario);
@@ -97,9 +97,9 @@ describe("BotOutput assembly", () => {
       const parts = messages[0].parts;
 
       expect(parts).toHaveLength(3);
-      expect(parts[0].aggregatedBy).toBe("sentence");
-      expect(parts[1].aggregatedBy).toBe("code");
-      expect(parts[2].aggregatedBy).toBe("sentence");
+      expect(parts[0].outputType).toBe("sentence");
+      expect(parts[1].outputType).toBe("code");
+      expect(parts[2].outputType).toBe("sentence");
     });
 
     it("handles word-level followed by sentence-level in same message", () => {
@@ -116,8 +116,8 @@ describe("BotOutput assembly", () => {
 
       // Word-level words get merged into one part, sentence gets its own
       expect(parts).toHaveLength(2);
-      expect(parts[0].aggregatedBy).toBe("word");
-      expect(parts[1].aggregatedBy).toBe("sentence");
+      expect(parts[0].outputType).toBe("word");
+      expect(parts[1].outputType).toBe("sentence");
     });
   });
 
@@ -186,9 +186,9 @@ describe("BotOutput assembly", () => {
 
     it("works end-to-end via DSL with botPart isSpoken:false", () => {
       const scenario = conversation()
-        .bot("Here is code:", { aggregation: "sentence" })
+        .bot("Here is code:", { outputType: "sentence" })
         .botPart("console.log('hi')", {
-          aggregation: "code",
+          outputType: "code",
           isSpoken: false,
         })
         .build();
@@ -200,8 +200,8 @@ describe("BotOutput assembly", () => {
 
       const parts = messages[0].parts;
       expect(parts).toHaveLength(2);
-      expect(parts[0].aggregatedBy).toBe("sentence");
-      expect(parts[1].aggregatedBy).toBe("code");
+      expect(parts[0].outputType).toBe("sentence");
+      expect(parts[1].outputType).toBe("code");
 
       // Spoken cursor should have advanced through the sentence only
       const cursor = harness.getLastAssistantCursor();
@@ -266,7 +266,7 @@ describe("BotOutput assembly", () => {
 
       parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(1);
-      expect(parts[0].aggregatedBy).toBe("sentence");
+      expect(parts[0].outputType).toBe("sentence");
       expect(parts[0].text).toBe("Hello there!");
 
       const cursor = harness.getLastAssistantCursor()!;
@@ -349,7 +349,7 @@ describe("BotOutput assembly", () => {
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(3);
       expect(parts[0].text).toBe("Hello there!");
-      expect(parts[0].aggregatedBy).toBe("sentence");
+      expect(parts[0].outputType).toBe("sentence");
       expect(parts[1].text).toBe(" How");
       expect(parts[2].text).toBe(" are");
     });
@@ -361,7 +361,7 @@ describe("BotOutput assembly", () => {
   describe("cascaded pipeline: unspoken arrives before spoken", () => {
     it("keeps the existing karaoke-cursor behavior intact", () => {
       const scenario = conversation()
-        .bot("Hello there!", { aggregation: "sentence" })
+        .bot("Hello there!", { outputType: "sentence" })
         .build();
 
       playScenario(harness, scenario);
@@ -372,7 +372,7 @@ describe("BotOutput assembly", () => {
       const parts = messages[0].parts;
       expect(parts).toHaveLength(1);
       expect(parts[0].text).toBe("Hello there!");
-      expect(parts[0].aggregatedBy).toBe("sentence");
+      expect(parts[0].outputType).toBe("sentence");
 
       const cursor = harness.getLastAssistantCursor()!;
       expect(cursor.partSpokenOnly).toEqual([false]);
@@ -560,7 +560,7 @@ describe("BotOutput assembly", () => {
   describe("non-spoken aggregation types coexist with new absorption/drop logic", () => {
     it("never absorbs an existing non-spoken aggregation part into a later unspoken event", () => {
       // A code-block-style part arrives first as unspoken (skip_tts-like —
-      // `aggregatedBy` is not "sentence"/"word"). A later unspoken sentence
+      // `outputType` is not "sentence"/"word"). A later unspoken sentence
       // must NOT absorb it — partSpokenOnly=false means it stays put.
       harness.ensureAssistantMessage();
 
@@ -569,9 +569,9 @@ describe("BotOutput assembly", () => {
 
       const parts = harness.getMessages()[0].parts;
       expect(parts).toHaveLength(2);
-      expect(parts[0].aggregatedBy).toBe("code");
+      expect(parts[0].outputType).toBe("code");
       expect(parts[0].text).toBe("code_snippet");
-      expect(parts[1].aggregatedBy).toBe("sentence");
+      expect(parts[1].outputType).toBe("sentence");
 
       const cursor = harness.getLastAssistantCursor()!;
       // Neither part is a spoken-only fallback.
@@ -598,7 +598,7 @@ describe("BotOutput assembly", () => {
       // All three parts still present; the code block is not absorbed, not
       // dropped, not mutated.
       expect(parts).toHaveLength(3);
-      expect(parts[1].aggregatedBy).toBe("code");
+      expect(parts[1].outputType).toBe("code");
       // The harness prepends a space between consecutive unspoken chunks.
       expect(parts[1].text).toBe(" console.log('hi')");
 

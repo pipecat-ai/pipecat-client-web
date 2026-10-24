@@ -628,7 +628,7 @@ export function updateAssistantBotOutput(
   text: string,
   final: boolean,
   payload: BotOutputPayload,
-  aggregatedBy?: string
+  outputType?: string
 ) {
   // Strip turn-completion markers emitted by FilterIncompleteTurns before
   // the text enters conversation state.
@@ -697,7 +697,8 @@ export function updateAssistantBotOutput(
       ? {
           text,
           spoken: false, // legacy field unused in v2
-          aggregatedBy,
+          outputType,
+          aggregatedBy: outputType,
           receivedAt: now.toISOString(),
           will_be_spoken: payload.will_be_spoken,
           spoken_status: payload.spoken_status,
@@ -707,7 +708,8 @@ export function updateAssistantBotOutput(
       : {
           text,
           spoken: payload.spoken,
-          aggregatedBy,
+          outputType,
+          aggregatedBy: outputType,
           receivedAt: now.toISOString(),
         };
   botOutputEvents.set(messageId, [...existingEvents, rawEvent]);
@@ -729,12 +731,13 @@ export function updateAssistantBotOutput(
     if (!will_be_spoken || spoken_status === "new") {
       // Each v2 event is a self-contained segment — always a new part.
       // Word-level aggregation does not exist in Protocol 2.0.0.
-      const isDefaultType = aggregatedBy === "sentence" || !aggregatedBy;
+      const isDefaultType = outputType === "sentence" || !outputType;
       const newPart: ConversationMessagePart = {
         text,
         final: false,
         createdAt: now.toISOString(),
-        aggregatedBy,
+        outputType,
+        aggregatedBy: outputType,
         displayMode: isDefaultType ? "inline" : undefined,
         segment_id,
         // Signal to the renderer that a separator space should precede this part.
@@ -780,14 +783,14 @@ export function updateAssistantBotOutput(
       // Only append when both current and last part are word-level; sentence-level
       // and other types each get their own part so spoken events can match 1:1.
       const isDefaultType =
-        aggregatedBy === "sentence" ||
-        aggregatedBy === "word" ||
-        !aggregatedBy;
+        outputType === "sentence" ||
+        outputType === "word" ||
+        !outputType;
       const lastPart = parts[parts.length - 1];
       const shouldAppend =
         lastPart &&
-        aggregatedBy === "word" &&
-        lastPart.aggregatedBy === "word" &&
+        outputType === "word" &&
+        (lastPart.outputType ?? lastPart.aggregatedBy) === "word" &&
         typeof lastPart.text === "string" &&
         !messageState.partSpokenOnly[parts.length - 1];
 
@@ -878,7 +881,8 @@ export function updateAssistantBotOutput(
           text: text, // Store full text as string
           final: false, // Will be evaluated in hook based on metadata
           createdAt: now.toISOString(),
-          aggregatedBy,
+          outputType,
+          aggregatedBy: outputType,
           displayMode: defaultDisplayMode,
         };
 
@@ -923,9 +927,9 @@ export function updateAssistantBotOutput(
       const tokens = text.trim().split(/\s+/).filter(Boolean);
       const leadingSpace = /^\s/.test(text) ? " " : "";
       const isDefaultType =
-        aggregatedBy === "sentence" ||
-        aggregatedBy === "word" ||
-        !aggregatedBy;
+        outputType === "sentence" ||
+        outputType === "word" ||
+        !outputType;
       const defaultDisplayMode = isDefaultType ? "inline" : undefined;
 
       let partsMutated = false;
@@ -962,7 +966,8 @@ export function updateAssistantBotOutput(
           text: tokenText,
           final: false,
           createdAt: now.toISOString(),
-          aggregatedBy,
+          outputType,
+          aggregatedBy: outputType,
           displayMode: defaultDisplayMode,
         };
         parts.push(newPart);

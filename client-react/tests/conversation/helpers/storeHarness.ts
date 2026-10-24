@@ -82,7 +82,7 @@ export function createStoreHarness() {
   /**
    * Emit a BotOutput event, replicating ConversationProvider spacing logic.
    */
-  function emitBotOutput(text: string, spoken: boolean, aggregatedBy?: string) {
+  function emitBotOutput(text: string, spoken: boolean, outputType?: string) {
     ensureAssistantMessage();
 
     let textToAdd = text;
@@ -98,14 +98,14 @@ export function createStoreHarness() {
       lastChunk.unspoken = textToAdd;
     }
 
-    const isFinal = aggregatedBy === "sentence";
+    const isFinal = outputType === "sentence";
     actions.updateAssistantBotOutput(
       store.get,
       store.set,
       textToAdd,
       isFinal,
       { protocol: "legacy", spoken },
-      aggregatedBy
+      outputType
     );
   }
 
@@ -126,9 +126,9 @@ export function createStoreHarness() {
     spoken_status?: "new" | "in-progress" | "completed";
     spoken_progress?: { accumulated_text: string; remaining_text: string };
     segment_id?: number;
-    aggregated_by?: string;
+    output_type?: string;
   }) {
-    const { text, will_be_spoken = false, spoken_status, spoken_progress, segment_id, aggregated_by } = params;
+    const { text, will_be_spoken = false, spoken_status, spoken_progress, segment_id, output_type } = params;
     const isProgressEvent = spoken_status === "in-progress" || spoken_status === "completed";
 
     if (!isProgressEvent) {
@@ -143,7 +143,7 @@ export function createStoreHarness() {
       text,
       false,
       { protocol: "v2", will_be_spoken, spoken_status, spoken_progress, segment_id },
-      aggregated_by
+      output_type
     );
   }
 
@@ -318,7 +318,7 @@ export function createStoreHarness() {
     text: string,
     final: boolean,
     payload: BotOutputPayload,
-    aggregatedBy?: string
+    outputType?: string
   ) {
     actions.updateAssistantBotOutput(
       store.get,
@@ -326,7 +326,7 @@ export function createStoreHarness() {
       text,
       final,
       payload,
-      aggregatedBy
+      outputType
     );
   }
 
