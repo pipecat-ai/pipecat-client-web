@@ -302,7 +302,9 @@ export function applySpokenBotOutputProgress(
  * (not yet spoken) for the active segment. When `segmentId` is provided the
  * target part is located by matching `part.segment_id`; this ensures progress
  * events are always applied to the correct part even when multiple segments
- * are in flight. Falls back to `currentPartIndex` when no match is found.
+ * are in flight. Progress for a segment no part holds, such as an expression
+ * event's (RTVI 2.3.0+), which is a segment of its own, changes nothing.
+ * Progress without a `segmentId` applies at `currentPartIndex`.
  */
 export function applySpokenProgressV2(
   cursor: BotOutputMessageCursor,
@@ -315,15 +317,11 @@ export function applySpokenProgressV2(
   // Locate the target part by segment_id when available.
   let targetPartIndex = -1;
   if (segmentId !== undefined) {
-    for (let i = 0; i < parts.length; i++) {
-      if (parts[i].segment_id === segmentId) {
-        targetPartIndex = i;
-        break;
-      }
-    }
+    targetPartIndex = parts.findIndex((part) => part.segment_id === segmentId);
+    if (targetPartIndex === -1) return;
   }
 
-  // Fall back to the cursor's current position if no segment_id match.
+  // Without a segment_id, progress is for the cursor's current position.
   if (targetPartIndex === -1) {
     targetPartIndex = Math.min(cursor.currentPartIndex, parts.length - 1);
     // Advance past already-finalized parts.

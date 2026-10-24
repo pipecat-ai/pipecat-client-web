@@ -162,6 +162,44 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
 
       expect(harness.getMessages()[0].parts.length).toBe(partsBefore);
     });
+
+    it("leaves the cursor alone for an expression event, a segment of its own", () => {
+      harness.emitBotOutputV2({ text: "It's back up.", will_be_spoken: true, spoken_status: "new", segment_id: 1, aggregated_by: "sentence" });
+      harness.emitBotOutputV2({
+        text: "It's back up.",
+        will_be_spoken: true,
+        spoken_status: "in-progress",
+        spoken_progress: { accumulated_text: "It's", remaining_text: " back up." },
+        segment_id: 1,
+      });
+
+      // The laugh between "It's" and "back" arrives as its own completed segment.
+      harness.emitBotOutputV2({
+        text: "laughs",
+        will_be_spoken: true,
+        spoken_status: "completed",
+        spoken_progress: { accumulated_text: "laughs", remaining_text: "" },
+        segment_id: 2,
+        aggregated_by: "expression_event",
+      });
+
+      const cursor = harness.getLastAssistantCursor();
+      expect(cursor!.currentPartIndex).toBe(0);
+      expect(cursor!.currentCharIndex).toBe(4); // still "It's".length
+      expect(cursor!.partFinalFlags[0]).toBe(false);
+    });
+
+    it("applies progress without a segment_id to the current part", () => {
+      harness.emitBotOutputV2({ text: "Hello world.", will_be_spoken: true, spoken_status: "new", aggregated_by: "sentence" });
+      harness.emitBotOutputV2({
+        text: "Hello world.",
+        will_be_spoken: true,
+        spoken_status: "in-progress",
+        spoken_progress: { accumulated_text: "Hello", remaining_text: " world." },
+      });
+
+      expect(harness.getLastAssistantCursor()!.currentCharIndex).toBe(5);
+    });
   });
 
   // -------------------------------------------------------------------------
