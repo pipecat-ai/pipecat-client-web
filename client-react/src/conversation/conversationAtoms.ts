@@ -48,6 +48,12 @@ export const expressionEventsAtom = atom<Map<string, ExpressionEvent[]>>(
   new Map()
 );
 
+/**
+ * The tones the bot is speaking in now, in expressive conversation (RTVI
+ * 2.3.0+), or null while it isn't speaking.
+ */
+export const botTonesAtom = atom<string[] | null>(null);
+
 /** Callback set registered per hook instance */
 export type MessageCallbacks = {
   onMessageCreated?: (message: ConversationMessage) => void;

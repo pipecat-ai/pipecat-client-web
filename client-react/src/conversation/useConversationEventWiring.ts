@@ -7,6 +7,7 @@
 import {
   BotOutputData,
   BotReadyData,
+  type BotToneChangedData,
   type LLMFunctionCallInProgressData,
   type LLMFunctionCallStartedData,
   type LLMFunctionCallStoppedData,
@@ -40,6 +41,7 @@ import {
   botOutputMessageStateAtom,
   botOutputProtocolAtom,
   botOutputSupportedAtom,
+  botTonesAtom,
   messagesAtom,
 } from "./conversationAtoms";
 import type { ConversationMessage } from "./types";
@@ -217,6 +219,15 @@ export function useConversationEventWiring() {
         } else {
           console.debug(`[Pipecat Client] Bot protocol version ${rtviVersion} — BotOutput events not supported (requires RTVI 1.1.0+).`);
         }
+      }, [])
+    )
+  );
+
+  useRTVIClientEvent(
+    RTVIEvent.BotToneChanged,
+    useAtomCallback(
+      useCallback((_get, set, data: BotToneChangedData) => {
+        set(botTonesAtom, data.tones);
       }, [])
     )
   );

@@ -18,6 +18,7 @@ import {
   backchannelsAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
+  botTonesAtom,
   expressionEventsAtom,
   messageCallbacksAtom,
   messagesAtom,
@@ -255,6 +256,7 @@ export function clearMessages(_get: Getter, set: Setter) {
   set(messagesAtom, []);
   set(backchannelsAtom, []);
   set(expressionEventsAtom, new Map());
+  set(botTonesAtom, null);
   set(botOutputMessageStateAtom, new Map());
   set(botOutputEventsAtom, new Map());
 }

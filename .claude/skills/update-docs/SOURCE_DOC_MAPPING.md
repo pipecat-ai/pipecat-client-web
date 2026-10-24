@@ -8,7 +8,7 @@ describes what this file has to provide.
 Two differences from the Python profiles are worth reading before using the
 tables below.
 
-**The mapping is not one file to one page.** Sixteen `use*.ts` hooks share a
+**The mapping is not one file to one page.** Seventeen `use*.ts` hooks share a
 single page, and one class (`PipecatClient`) is split across three. Resolving a
 change means finding the *section* it belongs to, not just the file.
 
@@ -73,7 +73,7 @@ Two many-to-one rules cover most of `client-react/`:
 
 | Source | Page |
 | --- | --- |
-| `client-react/src/use*.ts` (16 hooks) | `api-reference/client/react/hooks.mdx` — one `##` section per hook |
+| `client-react/src/use*.ts` (17 hooks) | `api-reference/client/react/hooks.mdx` — one `##` section per hook |
 | `client-react/src/PipecatClient*.tsx`, `client-react/src/VoiceVisualizer.tsx` | `api-reference/client/react/components.mdx` — one `##` section per component |
 | `client-react/src/*Provider.tsx`, `*Context.ts` | `api-reference/client/react/components.mdx` for the provider component; `api-reference/client/react/overview.mdx` for the setup example |
 | `client-react/src/conversation/**` | `api-reference/client/react/hooks.mdx`, the `usePipecatConversation` section |
