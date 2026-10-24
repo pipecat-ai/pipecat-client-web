@@ -17,9 +17,11 @@ import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
 import {
   AggregationType,
+  BotExpressionData,
   BotOutputData,
   BotOutputType,
   BotReadyData,
+  BotToneChangedData,
   FileBytes,
   MediaSupport,
   RTVIEvent,
@@ -949,6 +951,123 @@ describe("User input and bot output", () => {
       expect(eventData?.aggregated_by).toBe(names.aggregated_by ?? expected);
     }
   );
+
+  test("bot output keeps an expression event's output_type", () => {
+    let eventData: BotOutputData | undefined;
+    client.on(RTVIEvent.BotOutput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_OUTPUT, {
+        text: "laughs",
+        output_type: "expression_event",
+        segment_id: 7,
+        will_be_spoken: true,
+        spoken_status: "completed",
+      })
+    );
+
+    expect(eventData?.output_type).toBe(BotOutputType.EXPRESSION_EVENT);
+    expect(eventData?.text).toBe("laughs");
+  });
+
+  test("bot output carries the tones of the text just spoken", () => {
+    let eventData: BotOutputData | undefined;
+    client.on(RTVIEvent.BotOutput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_OUTPUT, {
+        text: "It's back up.",
+        output_type: "sentence",
+        segment_id: 3,
+        will_be_spoken: true,
+        spoken_status: "in-progress",
+        spoken_progress: {
+          accumulated_text: "It's back",
+          remaining_text: " up.",
+        },
+        tones: ["cheerful", "emphasis"],
+      })
+    );
+
+    expect(eventData?.tones).toEqual(["cheerful", "emphasis"]);
+  });
+
+  const spokenWith = (tones: string[]) =>
+    serverMessage(RTVIMessageType.BOT_OUTPUT, {
+      text: "It's back up.",
+      output_type: "sentence",
+      segment_id: 3,
+      will_be_spoken: true,
+      spoken_status: "in-progress",
+      spoken_progress: {
+        accumulated_text: "It's",
+        remaining_text: " back up.",
+      },
+      tones,
+    });
+
+  test("bot output reports the expression events and pauses the bot performs", () => {
+    const expressions: BotExpressionData[] = [];
+    client.on(RTVIEvent.BotExpression, (d) => expressions.push(d));
+
+    for (const [text, output_type] of [
+      ["laughs", "expression_event"],
+      ["300", "expression_pause"],
+    ]) {
+      transport.handleMessage(
+        serverMessage(RTVIMessageType.BOT_OUTPUT, {
+          text,
+          output_type,
+          segment_id: 7,
+          will_be_spoken: true,
+          spoken_status: "completed",
+        })
+      );
+    }
+
+    expect(expressions).toEqual([
+      { kind: "event", name: "laughs" },
+      { kind: "pause", durationMs: 300 },
+    ]);
+  });
+
+  test("bot output reports the bot's tones only when they change", () => {
+    const changes: BotToneChangedData[] = [];
+    client.on(RTVIEvent.BotToneChanged, (d) => changes.push(d));
+
+    transport.handleMessage(spokenWith(["cheerful"]));
+    transport.handleMessage(spokenWith(["cheerful"]));
+    transport.handleMessage(spokenWith(["cheerful", "emphasis"]));
+    transport.handleMessage(spokenWith(["cheerful"]));
+
+    expect(changes).toEqual([
+      { tones: ["cheerful"], previous: null },
+      { tones: ["cheerful", "emphasis"], previous: ["cheerful"] },
+      { tones: ["cheerful"], previous: ["cheerful", "emphasis"] },
+    ]);
+  });
+
+  test("the bot's tones are null once it stops speaking", () => {
+    const changes: BotToneChangedData[] = [];
+    client.on(RTVIEvent.BotToneChanged, (d) => changes.push(d));
+
+    transport.handleMessage(spokenWith(["calm"]));
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_STOPPED_SPEAKING, {})
+    );
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_STOPPED_SPEAKING, {})
+    );
+
+    expect(changes).toEqual([
+      { tones: ["calm"], previous: null },
+      { tones: null, previous: ["calm"] },
+    ]);
+  });
 
   test("TextType and AggregationType are aliases of BotOutputType", () => {
     // Member types must still resolve; ts-jest fails the suite if they don't.
