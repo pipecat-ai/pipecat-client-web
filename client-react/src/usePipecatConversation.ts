@@ -17,6 +17,8 @@ import {
   backchannelsAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
+  type ExpressionEvent,
+  expressionEventsAtom,
   messagesAtom,
 } from "./conversation/conversationAtoms";
 import { filterBotOutputText } from "./conversation/filterBotOutputText";
@@ -74,6 +76,21 @@ interface Props {
    * @default false
    */
   includeBackchannel?: boolean;
+  /**
+   * Include the events and pauses the bot performs in expressive
+   * conversation, such as a laugh (RTVI 2.3.0+). Each is a part of the bot's
+   * message whose `outputType` is `"expression_event"`, with the event's
+   * name as its text, such as "laughs", or `"expression_pause"`, with the
+   * pause's length in milliseconds. It sits where the bot's speech had
+   * reached when it was performed, splitting the text around it; how it
+   * looks is up to the renderer.
+   *
+   * It affects `messages` only: `onMessageCreated` and `onMessageUpdated`
+   * report the message without its events. To react to an event as it's
+   * performed, use `RTVIEvent.BotExpression`.
+   * @default false
+   */
+  includeExpressionEvents?: boolean;
 }
 
 /**
@@ -103,6 +120,7 @@ export const usePipecatConversation = ({
   aggregationMetadata,
   botOutputFilter,
   includeBackchannel = false,
+  includeExpressionEvents = false,
 }: Props = {}) => {
   const { injectMessage, sendText } = useConversationContext();
 
@@ -156,6 +174,7 @@ export const usePipecatConversation = ({
   const messages = useAtomValue(messagesAtom);
   const botOutputMessageState = useAtomValue(botOutputMessageStateAtom);
   const backchannels = useAtomValue(backchannelsAtom);
+  const expressionEvents = useAtomValue(expressionEventsAtom);
 
   // Memoize the filtered messages to prevent infinite loops
   const filteredMessages = useMemo(() => {
@@ -193,11 +212,41 @@ export const usePipecatConversation = ({
           actualCurrentPartIndex = parts.length - 1;
         }
 
+        // The events and pauses the bot performed, by the part being spoken
+        // when each was.
+        const eventsByPart = new Map<number, ExpressionEvent[]>();
+        if (includeExpressionEvents) {
+          for (const event of expressionEvents.get(messageId) ?? []) {
+            const index = Math.min(event.partIndex, parts.length);
+            eventsByPart.set(index, [
+              ...(eventsByPart.get(index) ?? []),
+              event,
+            ]);
+          }
+        }
+        const eventPart = (
+          event: ExpressionEvent
+        ): ConversationMessagePart => ({
+          text: filterBotOutputText(
+            { spoken: event.text, unspoken: "" },
+            botOutputFilter
+          ),
+          final: true,
+          createdAt: event.createdAt,
+          outputType: event.outputType,
+          aggregatedBy: event.outputType,
+          segment_id: event.segment_id,
+          displayMode: "inline",
+        });
+
         // Convert parts to BotOutputText format based on position state
-        const processedParts: ConversationMessagePart[] = parts.map(
-          (part, partIndex) => {
+        const processedParts: ConversationMessagePart[] = parts.flatMap(
+          (part, partIndex): ConversationMessagePart[] => {
+            const events = eventsByPart.get(partIndex) ?? [];
             // If part text is not a string, it's already processed (e.g., ReactNode)
-            if (typeof part.text !== "string") return part;
+            if (typeof part.text !== "string") {
+              return [part, ...events.map(eventPart)];
+            }
 
             const metadata = getMetadata(part);
             const displayMode =
@@ -210,45 +259,73 @@ export const usePipecatConversation = ({
                 : part.text;
             if (!isSpoken) {
               // Non-spoken aggregation types: all content is "unspoken".
-              return {
-                ...part,
-                displayMode,
-                text: filterBotOutputText(
-                  { spoken: "", unspoken: partText },
-                  botOutputFilter
-                ),
-              };
+              return [
+                {
+                  ...part,
+                  displayMode,
+                  text: filterBotOutputText(
+                    { spoken: "", unspoken: partText },
+                    botOutputFilter
+                  ),
+                },
+                ...events.map(eventPart),
+              ];
             }
 
             // Use cursor split for the part at actualCurrentPartIndex for every message,
             // so previous (e.g. interrupted) messages keep partially spoken state.
-            const isPartAtCursor = partIndex === actualCurrentPartIndex;
-            const currentCharIndex = messageState.currentCharIndex;
-            const spokenText = isPartAtCursor
-              ? partText.slice(0, currentCharIndex)
-              : partIndex < actualCurrentPartIndex
-                ? partText
-                : "";
-            const unspokenText = isPartAtCursor
-              ? partText.slice(currentCharIndex)
-              : partIndex < actualCurrentPartIndex
-                ? ""
-                : partText;
+            const spokenLength =
+              partIndex === actualCurrentPartIndex
+                ? messageState.currentCharIndex
+                : partIndex < actualCurrentPartIndex
+                  ? partText.length
+                  : 0;
 
             // For v2 segments that follow another segment, prepend the separator
             // space to the spoken bucket so it appears immediately. The stored
             // text is the original segment text and is never modified.
-            const separator = part.needsSeparator ? " " : "";
+            let separator = part.needsSeparator ? " " : "";
 
-            return {
-              ...part,
-              displayMode,
-              text: filterBotOutputText(
-                { spoken: separator + spokenText, unspoken: unspokenText },
+            // The part's text from start to end, split into its spoken and
+            // unspoken text.
+            const piece = (
+              start: number,
+              end: number
+            ): ConversationMessagePart => {
+              const spokenEnd = Math.min(Math.max(spokenLength, start), end);
+              const text = filterBotOutputText(
+                {
+                  spoken: separator + partText.slice(start, spokenEnd),
+                  unspoken: partText.slice(spokenEnd, end),
+                },
                 botOutputFilter
-              ),
+              );
+              separator = "";
+              return { ...part, displayMode, text };
             };
+
+            // An event splits the part's text where it was performed.
+            const pieces: ConversationMessagePart[] = [];
+            let start = 0;
+            for (const event of [...events].sort(
+              (a, b) => a.charIndex - b.charIndex
+            )) {
+              const end = Math.min(event.charIndex, partText.length);
+              if (end > start) {
+                pieces.push(piece(start, end));
+                start = end;
+              }
+              pieces.push(eventPart(event));
+            }
+            if (start < partText.length || pieces.length === 0) {
+              pieces.push(piece(start, partText.length));
+            }
+            return pieces;
           }
+        );
+        // Events performed past the last part follow it.
+        processedParts.push(
+          ...(eventsByPart.get(parts.length) ?? []).map(eventPart)
         );
 
         return {
@@ -272,6 +349,8 @@ export const usePipecatConversation = ({
     botOutputFilter,
     includeBackchannel,
     backchannels,
+    includeExpressionEvents,
+    expressionEvents,
   ]);
 
   const botOutputEvents = useAtomValue(botOutputEventsAtom);

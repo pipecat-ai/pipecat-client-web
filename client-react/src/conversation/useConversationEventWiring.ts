@@ -21,6 +21,7 @@ import { useRTVIClientEvent } from "../useRTVIClientEvent";
 import { hasUnspokenContent } from "./botOutput";
 import {
   addBackchannel,
+  addExpressionEvent,
   addMessage,
   type BotOutputPayload,
   clearMessages,
@@ -241,6 +242,23 @@ export function useConversationEventWiring() {
             if (!data.spoken_status || data.spoken_status === "new") {
               addBackchannel(get, set, "assistant", data.text);
             }
+            return;
+          }
+
+          // An event or pause the bot performed (RTVI 2.3.0+) is a segment of
+          // its own, reported once when performed. It is placed where the
+          // bot's speech had reached, and never moves its cursor.
+          if (
+            outputType === "expression_event" ||
+            outputType === "expression_pause"
+          ) {
+            addExpressionEvent(
+              get,
+              set,
+              data.text,
+              outputType,
+              data.segment_id
+            );
             return;
           }
 

@@ -18,6 +18,7 @@ import {
   backchannelsAtom,
   botOutputEventsAtom,
   botOutputMessageStateAtom,
+  expressionEventsAtom,
   messageCallbacksAtom,
   messagesAtom,
 } from "./conversationAtoms";
@@ -253,6 +254,7 @@ export function unregisterMessageCallback(
 export function clearMessages(_get: Getter, set: Setter) {
   set(messagesAtom, []);
   set(backchannelsAtom, []);
+  set(expressionEventsAtom, new Map());
   set(botOutputMessageStateAtom, new Map());
   set(botOutputEventsAtom, new Map());
 }
@@ -275,6 +277,38 @@ export function addMessage(
 
   callCallbacks(get(messageCallbacksAtom), "onMessageCreated", message);
   set(messagesAtom, processedMessages);
+}
+
+/**
+ * Records an event or pause the bot performed (RTVI 2.3.0+) on its latest
+ * message, at the point its speech had reached.
+ */
+export function addExpressionEvent(
+  get: Getter,
+  set: Setter,
+  text: string,
+  outputType: string,
+  segmentId?: number
+) {
+  const messages = get(messagesAtom);
+  const index = findLastIndex(messages, (msg) => msg.role === "assistant");
+  if (index === -1) return;
+  const messageId = messages[index].createdAt;
+  const cursor = get(botOutputMessageStateAtom).get(messageId);
+
+  const events = new Map(get(expressionEventsAtom));
+  events.set(messageId, [
+    ...(events.get(messageId) ?? []),
+    {
+      outputType,
+      text,
+      segment_id: segmentId,
+      createdAt: new Date().toISOString(),
+      partIndex: cursor?.currentPartIndex ?? 0,
+      charIndex: cursor?.currentCharIndex ?? 0,
+    },
+  ]);
+  set(expressionEventsAtom, events);
 }
 
 /**
