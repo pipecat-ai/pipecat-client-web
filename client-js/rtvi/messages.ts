@@ -213,10 +213,11 @@ export type UserInputData = {
 };
 
 /**
- * What form bot output text is in. Bots can also send text types of their
- * own, such as "code".
+ * What kind of text a `bot-output` message holds, the counterpart of
+ * {@link UserInputType}. Bots can also send output types of their own, such
+ * as "code".
  */
-export enum TextType {
+export enum BotOutputType {
   /**
    * A short acknowledgment the bot says while the user talks, such as
    * "Mm-hmm." (RTVI 2.2.0+).
@@ -227,12 +228,17 @@ export enum TextType {
   WORD = "word",
 }
 
-/** @deprecated Use {@link TextType} instead. */
-export const AggregationType = TextType;
-/** @deprecated Use {@link TextType} instead. */
-// A value and a type can share a name; this keeps both uses of the old enum working.
+// A value and a type can share a name; this keeps both uses of the old enums working.
+/** @deprecated Use {@link BotOutputType} instead. */
+export const TextType = BotOutputType;
+/** @deprecated Use {@link BotOutputType} instead. */
 // eslint-disable-next-line no-redeclare
-export type AggregationType = TextType;
+export type TextType = BotOutputType;
+/** @deprecated Use {@link BotOutputType} instead. */
+export const AggregationType = BotOutputType;
+/** @deprecated Use {@link BotOutputType} instead. */
+// eslint-disable-next-line no-redeclare
+export type AggregationType = BotOutputType;
 
 export type SpokenStatus = "new" | "in-progress" | "completed";
 
@@ -248,11 +254,11 @@ export type BotOutputData = {
    * Bots that only send `text_type` or `aggregated_by` have it filled in from
    * those.
    */
-  output_type?: TextType | string;
+  output_type?: BotOutputType | string;
   /** @deprecated Use `output_type` instead. */
-  text_type?: TextType | string;
+  text_type?: BotOutputType | string;
   /** @deprecated Use `output_type` instead. */
-  aggregated_by?: TextType | string;
+  aggregated_by?: BotOutputType | string;
   segment_id?: number;
   /** @deprecated Protocol 1.4.x only. Use `will_be_spoken` instead. */
   spoken?: boolean;
