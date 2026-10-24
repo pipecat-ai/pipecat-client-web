@@ -123,12 +123,13 @@ const summarize = (messages: ConversationMessage[]) =>
 const segment = (
   text: string,
   segment_id: number,
-  text_type: string,
+  output_type: string,
   extra: Record<string, unknown> = {}
 ) => ({
   text,
-  text_type,
-  aggregated_by: text_type,
+  output_type,
+  text_type: output_type,
+  aggregated_by: output_type,
   will_be_spoken: true,
   segment_id,
   ...extra,
@@ -226,6 +227,26 @@ describe("backchannels", () => {
       { role: "assistant", backchannel: false, text: "How about pasta?" },
     ]);
   });
+
+  it.each(["output_type", "text_type", "aggregated_by"])(
+    "recognizes a bot backchannel sent with only %s",
+    (field) => {
+      const w = renderConversation();
+      w.emit(RTVIEvent.BotReady, { version: "2.2.0" });
+      w.emit(RTVIEvent.BotOutput, {
+        text: "Mm-hmm.",
+        [field]: "backchannel",
+        will_be_spoken: true,
+        segment_id: 1,
+        spoken_status: "new",
+      });
+
+      expect(summarize(w.probes.default.messages)).toEqual([]);
+      expect(summarize(w.probes.included.messages)).toEqual([
+        { role: "assistant", backchannel: true, text: "Mm-hmm." },
+      ]);
+    }
+  );
 
   it("includes backchannels by when they were said with includeBackchannel", () => {
     const w = backchannelWhileUserTalks();
