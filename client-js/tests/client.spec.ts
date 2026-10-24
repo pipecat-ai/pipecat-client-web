@@ -882,7 +882,7 @@ describe("User input and bot output", () => {
     expect(eventData).toEqual(data);
   });
 
-  test("bot output from a bot that only sends aggregated_by has its text_type", () => {
+  test("bot output from a bot that only sends aggregated_by has every name", () => {
     let eventData: BotOutputData | undefined;
     client.on(RTVIEvent.BotOutput, (d) => {
       eventData = d;
@@ -895,10 +895,12 @@ describe("User input and bot output", () => {
       })
     );
 
+    expect(eventData?.output_type).toBe(TextType.SENTENCE);
     expect(eventData?.text_type).toBe(TextType.SENTENCE);
+    expect(eventData?.aggregated_by).toBe(TextType.SENTENCE);
   });
 
-  test("bot output keeps the text_type the bot sends", () => {
+  test("bot output from a bot that sends text_type has its output_type", () => {
     let eventData: BotOutputData | undefined;
     client.on(RTVIEvent.BotOutput, (d) => {
       eventData = d;
@@ -912,7 +914,26 @@ describe("User input and bot output", () => {
       })
     );
 
+    expect(eventData?.output_type).toBe(TextType.BACKCHANNEL);
     expect(eventData?.text_type).toBe(TextType.BACKCHANNEL);
+  });
+
+  test("bot output from a bot that only sends output_type has every name", () => {
+    let eventData: BotOutputData | undefined;
+    client.on(RTVIEvent.BotOutput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(
+      serverMessage(RTVIMessageType.BOT_OUTPUT, {
+        text: "print('hi')",
+        output_type: "code",
+      })
+    );
+
+    expect(eventData?.output_type).toBe("code");
+    expect(eventData?.text_type).toBe("code");
+    expect(eventData?.aggregated_by).toBe("code");
   });
 
   test("AggregationType is an alias of TextType", () => {
