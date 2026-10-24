@@ -17,11 +17,11 @@ import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
 import {
   AggregationType,
+  BotDeliveryChangedData,
   BotExpressionData,
   BotOutputData,
   BotOutputType,
   BotReadyData,
-  BotToneChangedData,
   FileBytes,
   MediaSupport,
   RTVIEvent,
@@ -952,7 +952,7 @@ describe("User input and bot output", () => {
     }
   );
 
-  test("bot output keeps an expression event's output_type", () => {
+  test("bot output keeps an expression sound's output_type", () => {
     let eventData: BotOutputData | undefined;
     client.on(RTVIEvent.BotOutput, (d) => {
       eventData = d;
@@ -961,18 +961,18 @@ describe("User input and bot output", () => {
     transport.handleMessage(
       serverMessage(RTVIMessageType.BOT_OUTPUT, {
         text: "laughs",
-        output_type: "expression_event",
+        output_type: "expression_sound",
         segment_id: 7,
         will_be_spoken: true,
         spoken_status: "completed",
       })
     );
 
-    expect(eventData?.output_type).toBe(BotOutputType.EXPRESSION_EVENT);
+    expect(eventData?.output_type).toBe(BotOutputType.EXPRESSION_SOUND);
     expect(eventData?.text).toBe("laughs");
   });
 
-  test("bot output carries the tones of the text just spoken", () => {
+  test("bot output carries the delivery of the text just spoken", () => {
     let eventData: BotOutputData | undefined;
     client.on(RTVIEvent.BotOutput, (d) => {
       eventData = d;
@@ -989,14 +989,14 @@ describe("User input and bot output", () => {
           accumulated_text: "It's back",
           remaining_text: " up.",
         },
-        tones: ["cheerful", "emphasis"],
+        delivery: ["cheerful", "emphasis"],
       })
     );
 
-    expect(eventData?.tones).toEqual(["cheerful", "emphasis"]);
+    expect(eventData?.delivery).toEqual(["cheerful", "emphasis"]);
   });
 
-  const spokenWith = (tones: string[]) =>
+  const spokenWith = (delivery: string[]) =>
     serverMessage(RTVIMessageType.BOT_OUTPUT, {
       text: "It's back up.",
       output_type: "sentence",
@@ -1007,15 +1007,15 @@ describe("User input and bot output", () => {
         accumulated_text: "It's",
         remaining_text: " back up.",
       },
-      tones,
+      delivery,
     });
 
-  test("bot output reports the expression events and pauses the bot performs", () => {
+  test("bot output reports the sounds and pauses the bot performs", () => {
     const expressions: BotExpressionData[] = [];
     client.on(RTVIEvent.BotExpression, (d) => expressions.push(d));
 
     for (const [text, output_type] of [
-      ["laughs", "expression_event"],
+      ["laughs", "expression_sound"],
       ["300", "expression_pause"],
     ]) {
       transport.handleMessage(
@@ -1030,14 +1030,14 @@ describe("User input and bot output", () => {
     }
 
     expect(expressions).toEqual([
-      { kind: "event", name: "laughs" },
+      { kind: "sound", name: "laughs" },
       { kind: "pause", durationMs: 300 },
     ]);
   });
 
-  test("bot output reports the bot's tones only when they change", () => {
-    const changes: BotToneChangedData[] = [];
-    client.on(RTVIEvent.BotToneChanged, (d) => changes.push(d));
+  test("bot output reports the bot's delivery only when it changes", () => {
+    const changes: BotDeliveryChangedData[] = [];
+    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["cheerful"]));
     transport.handleMessage(spokenWith(["cheerful"]));
@@ -1045,15 +1045,15 @@ describe("User input and bot output", () => {
     transport.handleMessage(spokenWith(["cheerful"]));
 
     expect(changes).toEqual([
-      { tones: ["cheerful"], previous: null },
-      { tones: ["cheerful", "emphasis"], previous: ["cheerful"] },
-      { tones: ["cheerful"], previous: ["cheerful", "emphasis"] },
+      { delivery: ["cheerful"], previous: null },
+      { delivery: ["cheerful", "emphasis"], previous: ["cheerful"] },
+      { delivery: ["cheerful"], previous: ["cheerful", "emphasis"] },
     ]);
   });
 
-  test("the bot's tones are null once it stops speaking", () => {
-    const changes: BotToneChangedData[] = [];
-    client.on(RTVIEvent.BotToneChanged, (d) => changes.push(d));
+  test("the bot's delivery is null once it stops speaking", () => {
+    const changes: BotDeliveryChangedData[] = [];
+    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["calm"]));
     transport.handleMessage(
@@ -1064,8 +1064,8 @@ describe("User input and bot output", () => {
     );
 
     expect(changes).toEqual([
-      { tones: ["calm"], previous: null },
-      { tones: null, previous: ["calm"] },
+      { delivery: ["calm"], previous: null },
+      { delivery: null, previous: ["calm"] },
     ]);
   });
 

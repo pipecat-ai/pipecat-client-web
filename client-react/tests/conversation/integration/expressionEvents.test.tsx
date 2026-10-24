@@ -150,7 +150,7 @@ function laughMidSentence() {
     segment("It's back up.", 1, "sentence", progress("It's", " back up."))
   );
   w.advance(100);
-  w.emit(RTVIEvent.BotOutput, performed("laughs", 2, "expression_event"));
+  w.emit(RTVIEvent.BotOutput, performed("laughs", 2, "expression_sound"));
   w.emit(
     RTVIEvent.BotOutput,
     segment("It's back up.", 1, "sentence", progress("It's back", " up."))
@@ -180,7 +180,7 @@ describe("expression events", () => {
 
     expect(summarize(w.probes.included.messages)).toEqual([
       ["sentence", "It's", ""],
-      ["expression_event", "laughs", ""],
+      ["expression_sound", "laughs", ""],
       ["sentence", " back", " up."],
     ]);
   });
@@ -224,11 +224,11 @@ describe("expression events", () => {
       segment("See you!", 1, "sentence", { spoken_status: "new" })
     );
     w.emit(RTVIEvent.BotOutput, performed("See you!", 1, "sentence"));
-    w.emit(RTVIEvent.BotOutput, performed("laughs", 2, "expression_event"));
+    w.emit(RTVIEvent.BotOutput, performed("laughs", 2, "expression_sound"));
 
     expect(summarize(w.probes.included.messages)).toEqual([
       ["sentence", "See you!", ""],
-      ["expression_event", "laughs", ""],
+      ["expression_sound", "laughs", ""],
     ]);
   });
 

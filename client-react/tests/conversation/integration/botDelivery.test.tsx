@@ -11,17 +11,17 @@ import { createStore, Provider } from "jotai";
 
 import { PipecatConversationProvider } from "@/conversation/PipecatConversationProvider";
 import { RTVIEventContext } from "@/RTVIEventContext";
-import { usePipecatBotTone } from "@/usePipecatBotTone";
+import { usePipecatBotDelivery } from "@/usePipecatBotDelivery";
 
-/** Renders usePipecatBotTone against a fake RTVI event bus. */
-function renderBotTone() {
+/** Renders usePipecatBotDelivery against a fake RTVI event bus. */
+function renderBotDelivery() {
   const store = createStore();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlers = new Map<string, Set<(data?: any) => void>>();
-  const probe: { tones: string[] | null } = { tones: null };
+  const probe: { delivery: string[] | null } = { delivery: null };
 
   const ProbeView = () => {
-    probe.tones = usePipecatBotTone();
+    probe.delivery = usePipecatBotDelivery();
     return null;
   };
 
@@ -59,32 +59,38 @@ function renderBotTone() {
   return { emit, probe };
 }
 
-describe("usePipecatBotTone", () => {
-  it("follows the tones the bot speaks in", () => {
-    const w = renderBotTone();
-    expect(w.probe.tones).toBeNull();
+describe("usePipecatBotDelivery", () => {
+  it("follows the bot's delivery", () => {
+    const w = renderBotDelivery();
+    expect(w.probe.delivery).toBeNull();
 
-    w.emit(RTVIEvent.BotToneChanged, { tones: ["cheerful"], previous: null });
-    expect(w.probe.tones).toEqual(["cheerful"]);
+    w.emit(RTVIEvent.BotDeliveryChanged, {
+      delivery: ["cheerful"],
+      previous: null,
+    });
+    expect(w.probe.delivery).toEqual(["cheerful"]);
 
-    w.emit(RTVIEvent.BotToneChanged, {
-      tones: ["cheerful", "emphasis"],
+    w.emit(RTVIEvent.BotDeliveryChanged, {
+      delivery: ["cheerful", "emphasis"],
       previous: ["cheerful"],
     });
-    expect(w.probe.tones).toEqual(["cheerful", "emphasis"]);
+    expect(w.probe.delivery).toEqual(["cheerful", "emphasis"]);
 
-    w.emit(RTVIEvent.BotToneChanged, {
-      tones: null,
+    w.emit(RTVIEvent.BotDeliveryChanged, {
+      delivery: null,
       previous: ["cheerful", "emphasis"],
     });
-    expect(w.probe.tones).toBeNull();
+    expect(w.probe.delivery).toBeNull();
   });
 
   it("is null again when the client connects again", () => {
-    const w = renderBotTone();
-    w.emit(RTVIEvent.BotToneChanged, { tones: ["calm"], previous: null });
+    const w = renderBotDelivery();
+    w.emit(RTVIEvent.BotDeliveryChanged, {
+      delivery: ["calm"],
+      previous: null,
+    });
     w.emit(RTVIEvent.Connected);
 
-    expect(w.probe.tones).toBeNull();
+    expect(w.probe.delivery).toBeNull();
   });
 });

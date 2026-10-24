@@ -5,9 +5,9 @@
  */
 
 import {
+  type BotDeliveryChangedData,
   BotOutputData,
   BotReadyData,
-  type BotToneChangedData,
   type LLMFunctionCallInProgressData,
   type LLMFunctionCallStartedData,
   type LLMFunctionCallStoppedData,
@@ -38,10 +38,10 @@ import {
   upsertUserTranscript,
 } from "./conversationActions";
 import {
+  botDeliveryAtom,
   botOutputMessageStateAtom,
   botOutputProtocolAtom,
   botOutputSupportedAtom,
-  botTonesAtom,
   messagesAtom,
 } from "./conversationAtoms";
 import type { ConversationMessage } from "./types";
@@ -224,10 +224,10 @@ export function useConversationEventWiring() {
   );
 
   useRTVIClientEvent(
-    RTVIEvent.BotToneChanged,
+    RTVIEvent.BotDeliveryChanged,
     useAtomCallback(
-      useCallback((_get, set, data: BotToneChangedData) => {
-        set(botTonesAtom, data.tones);
+      useCallback((_get, set, data: BotDeliveryChangedData) => {
+        set(botDeliveryAtom, data.delivery);
       }, [])
     )
   );
@@ -256,11 +256,11 @@ export function useConversationEventWiring() {
             return;
           }
 
-          // An event or pause the bot performed (RTVI 2.3.0+) is a segment of
+          // A sound or pause the bot performed (RTVI 2.3.0+) is a segment of
           // its own, reported once when performed. It is placed where the
           // bot's speech had reached, and never moves its cursor.
           if (
-            outputType === "expression_event" ||
+            outputType === "expression_sound" ||
             outputType === "expression_pause"
           ) {
             addExpressionEvent(

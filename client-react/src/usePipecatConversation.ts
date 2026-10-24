@@ -77,16 +77,16 @@ interface Props {
    */
   includeBackchannel?: boolean;
   /**
-   * Include the events and pauses the bot performs in expressive
+   * Include the sounds and pauses the bot performs in expressive
    * conversation, such as a laugh (RTVI 2.3.0+). Each is a part of the bot's
-   * message whose `outputType` is `"expression_event"`, with the event's
+   * message whose `outputType` is `"expression_sound"`, with the sound's
    * name as its text, such as "laughs", or `"expression_pause"`, with the
    * pause's length in milliseconds. It sits where the bot's speech had
    * reached when it was performed, splitting the text around it; how it
    * looks is up to the renderer.
    *
    * It affects `messages` only: `onMessageCreated` and `onMessageUpdated`
-   * report the message without its events. To react to an event as it's
+   * report the message without them. To react to one as it's
    * performed, use `RTVIEvent.BotExpression`.
    * @default false
    */
@@ -212,7 +212,7 @@ export const usePipecatConversation = ({
           actualCurrentPartIndex = parts.length - 1;
         }
 
-        // The events and pauses the bot performed, by the part being spoken
+        // The sounds and pauses the bot performed, by the part being spoken
         // when each was.
         const eventsByPart = new Map<number, ExpressionEvent[]>();
         if (includeExpressionEvents) {

@@ -129,7 +129,7 @@ export function createStoreHarness() {
     output_type?: string;
   }) {
     const { text, will_be_spoken = false, spoken_status, spoken_progress, segment_id, output_type } = params;
-    if (output_type === "expression_event" || output_type === "expression_pause") {
+    if (output_type === "expression_sound" || output_type === "expression_pause") {
       actions.addExpressionEvent(store.get, store.set, text, output_type, segment_id);
       return;
     }
