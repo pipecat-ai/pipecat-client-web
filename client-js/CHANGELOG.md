@@ -5,6 +5,14 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.14.0...client-js-v1.15.0) (2026-10-25)
+
+
+### Features
+
+* **client-js:** add output_type to bot-output and deprecate text_type ([44b648a](https://github.com/pipecat-ai/pipecat-client-web/commit/44b648ac8fbced8bee8a891d5a68648324dc3c51))
+* **client-js:** rename TextType to BotOutputType ([60551f7](https://github.com/pipecat-ai/pipecat-client-web/commit/60551f7db676e9d47fe1536b62b2c0d574cf3d8c))
+
 ## [1.14.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.1...client-js-v1.14.0) (2026-10-14)
 
 ### Features
