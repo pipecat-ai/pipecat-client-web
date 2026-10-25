@@ -7,17 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.10.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.9.0...client-react-v1.10.0) (2026-10-25)
 
-
 ### Features
 
-* **client-react:** read bot-output output_type ([d9f90f8](https://github.com/pipecat-ai/pipecat-client-web/commit/d9f90f873c2d53937b51a59621a61a3605a0315e))
-* **client-react:** rename aggregatedBy to outputType ([868084e](https://github.com/pipecat-ai/pipecat-client-web/commit/868084e3ffcaaa4d0047b5e9ace4de114b1ad1bb))
-* **client-react:** warn once when aggregationMetadata is used ([d46f2ed](https://github.com/pipecat-ai/pipecat-client-web/commit/d46f2eddb85997847810391781ae70662d78c46b))
+* Added `outputType` to `ConversationMessagePart` and `BotOutputEvent`, holding the bot output's type, such as `"sentence"` or `"code"`. Added the `outputTypeMetadata` option to `usePipecatConversation`, typed `Record<string, OutputTypeMetadata>`, to control how each output type is rendered and highlighted. ([78c6a57](https://github.com/pipecat-ai/pipecat-client-web/commit/78c6a577eb516a31800ed305c4eab9e36f0ab6fa))
 
+### Deprecations
 
-### Bug Fixes
-
-* **client-react:** append legacy words to parts that only set aggregatedBy ([91a3985](https://github.com/pipecat-ai/pipecat-client-web/commit/91a3985178dac75dce799351df6bfed67dbb3b1a))
+* Deprecated `aggregatedBy` on `ConversationMessagePart` and `BotOutputEvent`. Read `outputType` instead, which carries the same value. ([78c6a57](https://github.com/pipecat-ai/pipecat-client-web/commit/78c6a577eb516a31800ed305c4eab9e36f0ab6fa))
+* Deprecated the `aggregationMetadata` option of `usePipecatConversation` and the `AggregationMetadata` type. Use `outputTypeMetadata` and `OutputTypeMetadata` instead. The old option still works and logs a one-time console warning; where both have an entry for an output type, `outputTypeMetadata`'s is used. ([78c6a57](https://github.com/pipecat-ai/pipecat-client-web/commit/78c6a577eb516a31800ed305c4eab9e36f0ab6fa), [cbd0d56](https://github.com/pipecat-ai/pipecat-client-web/commit/cbd0d56f4136a5c90c5feae5b64050cbf3a72bf8))
 
 ## [1.9.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.2...client-react-v1.9.0) (2026-10-16)
 
