@@ -228,17 +228,13 @@ export enum BotOutputType {
   WORD = "word",
 }
 
-// A value and a type can share a name; this keeps both uses of the old enums working.
+// Import aliases keep every use of the old names working, including member
+// types such as `TextType.BACKCHANNEL` in a type position, which a plain
+// `const` + `type` pair would not.
 /** @deprecated Use {@link BotOutputType} instead. */
-export const TextType = BotOutputType;
+export import TextType = BotOutputType;
 /** @deprecated Use {@link BotOutputType} instead. */
-// eslint-disable-next-line no-redeclare
-export type TextType = BotOutputType;
-/** @deprecated Use {@link BotOutputType} instead. */
-export const AggregationType = BotOutputType;
-/** @deprecated Use {@link BotOutputType} instead. */
-// eslint-disable-next-line no-redeclare
-export type AggregationType = BotOutputType;
+export import AggregationType = BotOutputType;
 
 export type SpokenStatus = "new" | "in-progress" | "completed";
 

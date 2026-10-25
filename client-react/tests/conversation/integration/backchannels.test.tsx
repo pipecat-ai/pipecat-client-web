@@ -264,6 +264,36 @@ describe("backchannels", () => {
     ).toEqual([{ role: "assistant", backchannel: true, text: "Mm-hmm." }]);
   });
 
+  it.each([
+    ["text_type", { text_type: "backchannel" }],
+    ["aggregated_by", { aggregated_by: "backchannel" }],
+  ])(
+    "recognizes a backchannel named only by %s, as from client-js 1.14",
+    (_name, names) => {
+      const w = renderConversation();
+      w.emit(RTVIEvent.BotReady, { version: "2.2.0" });
+      w.emit(RTVIEvent.UserStartedSpeaking);
+      w.emit(RTVIEvent.UserTranscript, { text: "So I was", final: false });
+      w.emit(RTVIEvent.BotStartedSpeaking);
+      w.emit(RTVIEvent.BotOutput, {
+        text: "Mm-hmm.",
+        will_be_spoken: true,
+        segment_id: 1,
+        spoken_status: "new",
+        ...names,
+      });
+      w.emit(RTVIEvent.BotStoppedSpeaking);
+
+      expect(summarize(w.probes.default.messages)).toEqual([
+        { role: "user", backchannel: false, text: "So I was" },
+      ]);
+      expect(summarize(w.probes.included.messages)).toEqual([
+        { role: "user", backchannel: false, text: "So I was" },
+        { role: "assistant", backchannel: true, text: "Mm-hmm." },
+      ]);
+    }
+  );
+
   it("clears backchannels when the client connects again", () => {
     const w = backchannelWhileUserTalks();
     w.emit(RTVIEvent.Connected);
