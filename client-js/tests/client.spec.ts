@@ -951,6 +951,11 @@ describe("User input and bot output", () => {
   );
 
   test("TextType and AggregationType are aliases of BotOutputType", () => {
+    // Member types must still resolve; ts-jest fails the suite if they don't.
+    const kind: TextType.BACKCHANNEL = TextType.BACKCHANNEL;
+    const legacy: AggregationType.WORD = AggregationType.WORD;
+    expect(kind).toBe(BotOutputType.BACKCHANNEL);
+    expect(legacy).toBe(BotOutputType.WORD);
     expect(TextType.BACKCHANNEL).toBe(BotOutputType.BACKCHANNEL);
     expect(AggregationType.WORD).toBe(BotOutputType.WORD);
     expect(AggregationType.SENTENCE).toBe(BotOutputType.SENTENCE);

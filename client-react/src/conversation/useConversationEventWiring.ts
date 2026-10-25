@@ -6,7 +6,6 @@
 
 import {
   BotOutputData,
-  BotOutputType,
   BotReadyData,
   type LLMFunctionCallInProgressData,
   type LLMFunctionCallStartedData,
@@ -226,10 +225,19 @@ export function useConversationEventWiring() {
     useAtomCallback(
       useCallback(
         (get, set, data: BotOutputData) => {
+          // client-js 1.15.0+ fills in `output_type` from the older names, but
+          // package managers only warn on an unmet peer range, so an app can
+          // pair this package with client-js 1.14.x. Read all three so a
+          // legacy-named event is never misrouted. Compare against string
+          // literals rather than `BotOutputType`: importing the enum at
+          // runtime would throw on a client-js without it.
+          const outputType =
+            data.output_type ?? data.text_type ?? data.aggregated_by;
+
           // The bot says a backchannel while the user talks, outside its own
           // turns. Only its first event carries its text; the rest report how
           // much of it has been spoken.
-          if (data.output_type === BotOutputType.BACKCHANNEL) {
+          if (outputType === "backchannel") {
             if (!data.spoken_status || data.spoken_status === "new") {
               addBackchannel(get, set, "assistant", data.text);
             }
@@ -270,7 +278,7 @@ export function useConversationEventWiring() {
               data.text,
               false,
               payload,
-              data.output_type
+              outputType
             );
           } else {
             // Protocol 1.4.x (legacy): use spoken boolean with inter-chunk spacing.
@@ -306,14 +314,14 @@ export function useConversationEventWiring() {
             // splitting it. The per-sentence `final` is effectively inert
             // here, so there is no turn-splitting bug to fix on this branch —
             // and passing `false` would change shipped behavior for nothing.
-            const isFinal = data.output_type === BotOutputType.SENTENCE;
+            const isFinal = outputType === "sentence";
             updateAssistantBotOutput(
               get,
               set,
               textToAdd,
               isFinal,
               payload,
-              data.output_type
+              outputType
             );
           }
 

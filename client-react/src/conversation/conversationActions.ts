@@ -638,6 +638,9 @@ export function updateAssistantBotOutput(
   const now = new Date();
   const messages = [...get(messagesAtom)];
   const botOutputMessageState = new Map(get(botOutputMessageStateAtom));
+  // Every event and part carries the type under both names while
+  // `aggregatedBy` is deprecated.
+  const typeFields = { outputType, aggregatedBy: outputType };
 
   const lastAssistantIndex = findLastIndex(messages,
     (msg) => msg.role === "assistant"
@@ -697,8 +700,7 @@ export function updateAssistantBotOutput(
       ? {
           text,
           spoken: false, // legacy field unused in v2
-          outputType,
-          aggregatedBy: outputType,
+          ...typeFields,
           receivedAt: now.toISOString(),
           will_be_spoken: payload.will_be_spoken,
           spoken_status: payload.spoken_status,
@@ -708,8 +710,7 @@ export function updateAssistantBotOutput(
       : {
           text,
           spoken: payload.spoken,
-          outputType,
-          aggregatedBy: outputType,
+          ...typeFields,
           receivedAt: now.toISOString(),
         };
   botOutputEvents.set(messageId, [...existingEvents, rawEvent]);
@@ -736,8 +737,7 @@ export function updateAssistantBotOutput(
         text,
         final: false,
         createdAt: now.toISOString(),
-        outputType,
-        aggregatedBy: outputType,
+        ...typeFields,
         displayMode: isDefaultType ? "inline" : undefined,
         segment_id,
         // Signal to the renderer that a separator space should precede this part.
@@ -790,7 +790,7 @@ export function updateAssistantBotOutput(
       const shouldAppend =
         lastPart &&
         outputType === "word" &&
-        (lastPart.outputType ?? lastPart.aggregatedBy) === "word" &&
+        lastPart.outputType === "word" &&
         typeof lastPart.text === "string" &&
         !messageState.partSpokenOnly[parts.length - 1];
 
@@ -881,8 +881,7 @@ export function updateAssistantBotOutput(
           text: text, // Store full text as string
           final: false, // Will be evaluated in hook based on metadata
           createdAt: now.toISOString(),
-          outputType,
-          aggregatedBy: outputType,
+          ...typeFields,
           displayMode: defaultDisplayMode,
         };
 
@@ -966,8 +965,7 @@ export function updateAssistantBotOutput(
           text: tokenText,
           final: false,
           createdAt: now.toISOString(),
-          outputType,
-          aggregatedBy: outputType,
+          ...typeFields,
           displayMode: defaultDisplayMode,
         };
         parts.push(newPart);
