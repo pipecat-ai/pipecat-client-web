@@ -187,6 +187,26 @@ describe("conversationStore", () => {
       expect(parts[0].outputType).toBe("word");
     });
 
+    it("appends to an injected word part that only sets aggregatedBy", () => {
+      harness.injectMessage({
+        role: "assistant",
+        parts: [
+          {
+            text: "Hello",
+            final: false,
+            createdAt: "2024-01-01T00:00:00.000Z",
+            aggregatedBy: "word",
+          },
+        ],
+      });
+
+      harness.updateAssistantBotOutput(" world", false, { protocol: "legacy", spoken: false }, "word");
+
+      const parts = harness.getMessages()[0].parts;
+      expect(parts).toHaveLength(1);
+      expect(parts[0].text).toBe("Hello world");
+    });
+
     it("creates new part for sentence-level chunks", () => {
       harness.addMessage({
         role: "assistant",

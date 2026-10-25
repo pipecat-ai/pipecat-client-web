@@ -790,7 +790,8 @@ export function updateAssistantBotOutput(
       const shouldAppend =
         lastPart &&
         outputType === "word" &&
-        lastPart.outputType === "word" &&
+        // Parts added through `injectMessage` may only set the deprecated name.
+        (lastPart.outputType ?? lastPart.aggregatedBy) === "word" &&
         typeof lastPart.text === "string" &&
         !messageState.partSpokenOnly[parts.length - 1];
 
