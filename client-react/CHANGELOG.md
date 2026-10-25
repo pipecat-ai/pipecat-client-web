@@ -5,6 +5,20 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.9.0...client-react-v1.10.0) (2026-10-25)
+
+
+### Features
+
+* **client-react:** read bot-output output_type ([d9f90f8](https://github.com/pipecat-ai/pipecat-client-web/commit/d9f90f873c2d53937b51a59621a61a3605a0315e))
+* **client-react:** rename aggregatedBy to outputType ([868084e](https://github.com/pipecat-ai/pipecat-client-web/commit/868084e3ffcaaa4d0047b5e9ace4de114b1ad1bb))
+* **client-react:** warn once when aggregationMetadata is used ([d46f2ed](https://github.com/pipecat-ai/pipecat-client-web/commit/d46f2eddb85997847810391781ae70662d78c46b))
+
+
+### Bug Fixes
+
+* **client-react:** append legacy words to parts that only set aggregatedBy ([91a3985](https://github.com/pipecat-ai/pipecat-client-web/commit/91a3985178dac75dce799351df6bfed67dbb3b1a))
+
 ## [1.9.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.8.2...client-react-v1.9.0) (2026-10-16)
 
 ### Features
