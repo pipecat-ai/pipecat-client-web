@@ -4,7 +4,14 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-import { describe, expect, it } from "@jest/globals";
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
 import { RTVIEvent } from "@pipecat-ai/client-js";
 import { act, render } from "@testing-library/react";
 import { createStore, Provider } from "jotai";
@@ -79,6 +86,16 @@ function renderConversation(options: {
 }
 
 describe("output type metadata", () => {
+  // Installed before any test so every aggregationMetadata warning is counted,
+  // whichever test happens to trigger the first one.
+  let warnSpy: jest.SpiedFunction<typeof console.warn>;
+  beforeAll(() => {
+    warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
   it("gives a part its output type, and the same deprecated aggregatedBy", () => {
     const part = renderConversation({});
 
@@ -109,5 +126,15 @@ describe("output type metadata", () => {
     });
 
     expect(part.displayMode).toBe("inline");
+  });
+
+  it("warns about the deprecated aggregationMetadata only once", () => {
+    renderConversation({ aggregationMetadata: { code: {} } });
+    renderConversation({ aggregationMetadata: { code: {} } });
+
+    const deprecationWarnings = warnSpy.mock.calls.filter(([message]) =>
+      String(message).includes("aggregationMetadata is deprecated")
+    );
+    expect(deprecationWarnings).toHaveLength(1);
   });
 });
