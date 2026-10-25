@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.15.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.14.0...client-js-v1.15.0) (2026-10-25)
 
-
 ### Features
 
-* **client-js:** add output_type to bot-output and deprecate text_type ([44b648a](https://github.com/pipecat-ai/pipecat-client-web/commit/44b648ac8fbced8bee8a891d5a68648324dc3c51))
-* **client-js:** rename TextType to BotOutputType ([60551f7](https://github.com/pipecat-ai/pipecat-client-web/commit/60551f7db676e9d47fe1536b62b2c0d574cf3d8c))
+* Added `output_type` to `BotOutputData`, the counterpart of `UserInputData.input_type`. It says what kind of text a `bot-output` message holds, such as `"sentence"`, `"backchannel"` or a custom type like `"code"`. Pipecat 1.14.0 and later send it ([pipecat#6351](https://github.com/pipecat-ai/pipecat/pull/6351)), and for older bots the client fills it in from `text_type` or `aggregated_by`. Hopefully the last time we bike shed this :) ([595f34d](https://github.com/pipecat-ai/pipecat-client-web/commit/595f34d360109083bf69957efa3076381845d891))
+* Added the `BotOutputType` enum for `output_type` values, the counterpart of `UserInputType`. ([8eaadb5](https://github.com/pipecat-ai/pipecat-client-web/commit/8eaadb5f56c9791a251a95b096d81cbaf7a8cf34))
+
+### Deprecations
+
+* Deprecated `BotOutputData.text_type`. Read `output_type` instead, which carries the same value. The client keeps filling in `text_type` and `aggregated_by` with that value, so existing code keeps working. ([595f34d](https://github.com/pipecat-ai/pipecat-client-web/commit/595f34d360109083bf69957efa3076381845d891))
+* Deprecated `TextType` and `AggregationType`. Use `BotOutputType` instead, which has the same members; both old names still work as values and as types, including member types such as `TextType.BACKCHANNEL`. ([8eaadb5](https://github.com/pipecat-ai/pipecat-client-web/commit/8eaadb5f56c9791a251a95b096d81cbaf7a8cf34), [520a802](https://github.com/pipecat-ai/pipecat-client-web/commit/520a802f0ef476f86fb1a6baef8df581aa39ba67))
 
 ## [1.14.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.13.1...client-js-v1.14.0) (2026-10-14)
 
