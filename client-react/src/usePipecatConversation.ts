@@ -28,6 +28,9 @@ import type {
   OutputTypeMetadata,
 } from "./conversation/types";
 
+// Shared across hook instances so the deprecation warning logs only once.
+let aggregationMetadataWarned = false;
+
 /**
  * Options for `usePipecatConversation`.
  */
@@ -138,6 +141,16 @@ export const usePipecatConversation = ({
       doUnregister();
     };
   }, [doRegister, doUnregister]);
+
+  const usesAggregationMetadata = aggregationMetadata !== undefined;
+  useEffect(() => {
+    if (usesAggregationMetadata && !aggregationMetadataWarned) {
+      console.warn(
+        "usePipecatConversation: aggregationMetadata is deprecated. Use outputTypeMetadata instead."
+      );
+      aggregationMetadataWarned = true;
+    }
+  }, [usesAggregationMetadata]);
 
   // Get the raw state from atoms
   const messages = useAtomValue(messagesAtom);
