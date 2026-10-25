@@ -208,13 +208,14 @@ describe("useConversationEventWiring", () => {
     });
   });
 
+  // Real 1.4.x bots only send `aggregated_by`, so these exercise the fallback.
   describe("legacy 1.4.x path", () => {
     it("still finalizes per sentence", () => {
       const w = renderWiring();
       w.emit(RTVIEvent.BotReady, { version: "1.4.0" });
       w.emit(RTVIEvent.BotOutput, {
         text: "Hello there.",
-        output_type: "sentence",
+        aggregated_by: "sentence",
         spoken: true,
       });
 
@@ -226,11 +227,30 @@ describe("useConversationEventWiring", () => {
       w.emit(RTVIEvent.BotReady, { version: "1.4.0" });
       w.emit(RTVIEvent.BotOutput, {
         text: "Hello",
-        output_type: "word",
+        aggregated_by: "word",
         spoken: true,
       });
 
       expect(w.getAssistantMessages()[0].final).toBeFalsy();
+    });
+
+    it("appends consecutive unspoken words into one part", () => {
+      const w = renderWiring();
+      w.emit(RTVIEvent.BotReady, { version: "1.4.0" });
+      w.emit(RTVIEvent.BotOutput, {
+        text: "Hello",
+        aggregated_by: "word",
+        spoken: false,
+      });
+      w.emit(RTVIEvent.BotOutput, {
+        text: "there",
+        aggregated_by: "word",
+        spoken: false,
+      });
+
+      const parts = w.getAssistantMessages()[0].parts ?? [];
+      expect(parts).toHaveLength(1);
+      expect(parts[0].text).toBe("Hello there");
     });
   });
 });
