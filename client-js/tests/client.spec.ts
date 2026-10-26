@@ -885,6 +885,34 @@ describe("User input and bot output", () => {
     expect(eventData).toEqual(data);
   });
 
+  test("a transcription's user input carries how the user said it", () => {
+    const data: UserInputData = {
+      text: "It's still down.",
+      input_type: "transcription",
+      timestamp: "2026-10-09T00:00:00.000Z",
+      final: true,
+      user_id: "user",
+      perception: [
+        {
+          name: "tone",
+          labels: [
+            { label: "frustrated", confidence: 0.86 },
+            { label: "neutral", confidence: 0.1 },
+          ],
+        },
+        { name: "speech_rate", labels: [], value: 3.2 },
+      ],
+    };
+    let eventData: UserInputData | undefined;
+    client.on(RTVIEvent.UserInput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(serverMessage(RTVIMessageType.USER_INPUT, data));
+
+    expect(eventData?.perception).toEqual(data.perception);
+  });
+
   test.each([
     ["aggregated_by", "sentence"],
     ["text_type", "backchannel"],
