@@ -282,8 +282,8 @@ export function addMessage(
 }
 
 /**
- * Records a sound or pause the bot performed (RTVI 2.3.0+) on its latest
- * message, at the point its speech had reached.
+ * Records a sound or pause the bot performed (RTVI 2.3.0+) on its message
+ * for the current turn, at the point its speech had reached.
  */
 export function addExpressionEvent(
   get: Getter,
@@ -294,7 +294,10 @@ export function addExpressionEvent(
 ) {
   const messages = get(messagesAtom);
   const index = findLastIndex(messages, (msg) => msg.role === "assistant");
-  if (index === -1) return;
+  // A sound performed before any of its turn's text has no message to go in,
+  // such as a reply that is only a laugh: bots send no message for its empty
+  // text. It's left out rather than added to an earlier turn's message.
+  if (index === -1 || messages[index].final) return;
   const messageId = messages[index].createdAt;
   const cursor = get(botOutputMessageStateAtom).get(messageId);
 
