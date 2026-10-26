@@ -198,6 +198,33 @@ export type STTRawTextData = {
  */
 export type UserInputType = "transcription" | "chat" | "backchannel";
 
+/** A label of a perception signal, with how sure the reading is. */
+export type UserPerceptionLabel = {
+  /** The label, such as "frustrated". */
+  label: string;
+  /** How sure the reading is, from 0 to 1. */
+  confidence: number;
+};
+
+/**
+ * One reading of how the user spoke, in expressive conversation (alpha). A
+ * signal is read either as labels or as a value.
+ */
+export type UserPerceptionSignal = {
+  /** What is read, such as "tone" or "speech_rate". */
+  name: string;
+  /**
+   * The likeliest labels, likeliest first. Empty for a signal read as a
+   * value.
+   */
+  labels: UserPerceptionLabel[];
+  /**
+   * The measure, such as words per second, for a signal read as a value.
+   * Absent for a signal read as labels.
+   */
+  value?: number;
+};
+
 export type UserInputData = {
   text: string;
   input_type: UserInputType;
@@ -211,6 +238,12 @@ export type UserInputData = {
   user_id?: string;
   /** For `chat`, the id of the send-text message, as returned by `sendText()`. */
   msg_id?: string;
+  /**
+   * For a transcription, how the user said it, in expressive conversation
+   * (alpha), when the bot's STT service reports a reading with it. Interim
+   * transcriptions can carry one too.
+   */
+  perception?: UserPerceptionSignal[];
 };
 
 /**
