@@ -161,6 +161,13 @@ export class TransportStub extends Transport {
     this._callbacks.onBotDisconnected?.(participant);
   }
 
+  // to simulate the transport disconnecting without disconnect(), such as
+  // when the connection drops
+  public simulateDisconnect(): void {
+    this.state = "disconnected";
+    this._callbacks.onDisconnected?.();
+  }
+
   public get state(): TransportState {
     return this._state;
   }

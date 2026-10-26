@@ -292,8 +292,8 @@ export class PipecatClient extends RTVIEventEmitter {
   // Bot's capabilities from bot-ready, cleared on disconnect. Undefined for bots
   // that don't send them.
   private _botCapabilities: BotCapabilities | undefined;
-  // The bot's delivery, in expressive conversation; null while
-  // it isn't speaking.
+  // The bot's delivery, in expressive conversation; null while it isn't
+  // speaking or the client isn't connected.
   private _botDelivery: string[] | null = null;
 
   // Per-device device state. Independent of TransportState — driven by
@@ -349,6 +349,9 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.Connected);
       },
       onDisconnected: () => {
+        // A disconnect the transport starts skips disconnect(), and the bot
+        // stops speaking with it.
+        this._setBotDelivery(null);
         options?.callbacks?.onDisconnected?.();
         this.emit(RTVIEvent.Disconnected);
       },
@@ -810,7 +813,7 @@ export class PipecatClient extends RTVIEventEmitter {
     this._botVersion = [0, 0, 0];
     this._transport.startBotResponse = undefined;
     this._setBotCapabilities(undefined);
-    this._botDelivery = null;
+    this._setBotDelivery(null);
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
