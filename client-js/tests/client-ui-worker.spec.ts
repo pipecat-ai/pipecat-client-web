@@ -46,7 +46,11 @@ function makeMockPipecatClient(): MockPipecatClient {
 
   const mock = Object.create(PipecatClient.prototype) as MockPipecatClient;
   (mock as unknown as MessageMockHolder)._sendMessage = jest.fn();
-  Object.assign(mock, { _transport: { state: "ready" }, _botVersion: [0, 0, 0] });
+  Object.assign(mock, {
+    _transport: { state: "ready" },
+    _botVersion: [0, 0, 0],
+    _botDelivery: null,
+  });
   mock.on = jest.fn((event: unknown, handler: unknown) => {
     get(event as RTVIEvent).add(handler as Listener);
     return mock;

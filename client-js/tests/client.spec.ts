@@ -1097,6 +1097,35 @@ describe("User input and bot output", () => {
     ]);
   });
 
+  test("the bot's delivery is null once the client disconnects", async () => {
+    const changes: BotDeliveryChangedData[] = [];
+    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+
+    transport.handleMessage(spokenWith(["calm"]));
+    await client.disconnect();
+
+    expect(changes).toEqual([
+      { delivery: ["calm"], previous: null },
+      { delivery: null, previous: ["calm"] },
+    ]);
+  });
+
+  test("the bot's delivery is null once the connection drops, and reported again after reconnecting", async () => {
+    const changes: BotDeliveryChangedData[] = [];
+    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+
+    transport.handleMessage(spokenWith(["calm"]));
+    transport.simulateDisconnect();
+    await client.connect();
+    transport.handleMessage(spokenWith(["calm"]));
+
+    expect(changes).toEqual([
+      { delivery: ["calm"], previous: null },
+      { delivery: null, previous: ["calm"] },
+      { delivery: ["calm"], previous: null },
+    ]);
+  });
+
   test("TextType and AggregationType are aliases of BotOutputType", () => {
     // Member types must still resolve; ts-jest fails the suite if they don't.
     const kind: TextType.BACKCHANNEL = TextType.BACKCHANNEL;
