@@ -232,6 +232,26 @@ describe("expression events", () => {
     ]);
   });
 
+  it("leaves out a sound performed before any of its turn's text", () => {
+    const w = renderConversation();
+    w.emit(RTVIEvent.BotReady, { version: "2.3.0" });
+    w.emit(RTVIEvent.BotStartedSpeaking);
+    w.emit(
+      RTVIEvent.BotOutput,
+      segment("See you!", 1, "sentence", { spoken_status: "new" })
+    );
+    w.emit(RTVIEvent.BotOutput, performed("See you!", 1, "sentence"));
+    w.emit(RTVIEvent.BotStoppedSpeaking);
+    w.emit(RTVIEvent.UserStartedSpeaking);
+    // A reply that is only a laugh: its empty text opens no message.
+    w.emit(RTVIEvent.BotStartedSpeaking);
+    w.emit(RTVIEvent.BotOutput, performed("laughs", 2, "expression_sound"));
+
+    expect(summarize(w.probes.included.messages)).toEqual([
+      ["sentence", "See you!", ""],
+    ]);
+  });
+
   it("clears expression events when the client connects again", () => {
     const w = laughMidSentence();
     w.emit(RTVIEvent.Connected);
