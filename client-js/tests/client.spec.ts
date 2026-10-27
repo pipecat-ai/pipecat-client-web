@@ -1126,6 +1126,26 @@ describe("User input and bot output", () => {
     ]);
   });
 
+  test("the bot's delivery is null once the bot leaves, while the client stays connected", async () => {
+    const stayingClient = new PipecatClient({
+      transport: TransportStub.create(),
+      disconnectOnBotDisconnect: false,
+    });
+    await stayingClient.connect();
+    const stayingTransport = stayingClient.transport as TransportStub;
+    const changes: BotDeliveryChangedData[] = [];
+    stayingClient.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+
+    stayingTransport.handleMessage(spokenWith(["calm"]));
+    stayingTransport.simulateBotDisconnect({ id: "bot", local: false, name: "bot" });
+
+    expect(stayingClient.connected).toBe(true);
+    expect(changes).toEqual([
+      { delivery: ["calm"], previous: null },
+      { delivery: null, previous: ["calm"] },
+    ]);
+  });
+
   test("TextType and AggregationType are aliases of BotOutputType", () => {
     // Member types must still resolve; ts-jest fails the suite if they don't.
     const kind: TextType.BACKCHANNEL = TextType.BACKCHANNEL;

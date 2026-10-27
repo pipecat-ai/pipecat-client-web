@@ -349,8 +349,8 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.Connected);
       },
       onDisconnected: () => {
-        // A disconnect the transport starts skips disconnect(), and the bot
-        // stops speaking with it.
+        // The transport can disconnect without disconnect() being called, such
+        // as when the connection drops.
         this._setBotDelivery(null);
         options?.callbacks?.onDisconnected?.();
         this.emit(RTVIEvent.Disconnected);
@@ -443,6 +443,8 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.BotReady, botReadyData);
       },
       onBotDisconnected: (p) => {
+        // The client can stay connected after the bot leaves.
+        this._setBotDelivery(null);
         options?.callbacks?.onBotDisconnected?.(p);
         this.emit(RTVIEvent.BotDisconnected, p);
         if (this._disconnectOnBotDisconnect) {
