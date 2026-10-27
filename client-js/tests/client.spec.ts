@@ -1079,6 +1079,16 @@ describe("User input and bot output", () => {
     ]);
   });
 
+  test("the same delivery in another order is no change", () => {
+    const changes: BotDeliveryChangedData[] = [];
+    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+
+    transport.handleMessage(spokenWith(["sad", "slow"]));
+    transport.handleMessage(spokenWith(["slow", "sad"]));
+
+    expect(changes).toEqual([{ delivery: ["sad", "slow"], previous: null }]);
+  });
+
   test("the bot's delivery is null once it stops speaking", () => {
     const changes: BotDeliveryChangedData[] = [];
     client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
