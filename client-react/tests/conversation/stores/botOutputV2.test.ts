@@ -164,7 +164,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
     });
 
     it("leaves the cursor alone for an expression event, a segment of its own", () => {
-      harness.emitBotOutputV2({ text: "It's back up.", will_be_spoken: true, spoken_status: "new", segment_id: 1, aggregated_by: "sentence" });
+      harness.emitBotOutputV2({ text: "It's back up.", will_be_spoken: true, spoken_status: "new", segment_id: 1, output_type: "sentence" });
       harness.emitBotOutputV2({
         text: "It's back up.",
         will_be_spoken: true,
@@ -180,7 +180,6 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
         spoken_status: "completed",
         spoken_progress: { accumulated_text: "laughs", remaining_text: "" },
         segment_id: 2,
-        aggregated_by: "expression_sound",
       });
 
       const cursor = harness.getLastAssistantCursor();
@@ -190,7 +189,7 @@ describe("RTVI Protocol 2.0.0 – BotOutput v2", () => {
     });
 
     it("applies progress without a segment_id to the current part", () => {
-      harness.emitBotOutputV2({ text: "Hello world.", will_be_spoken: true, spoken_status: "new", aggregated_by: "sentence" });
+      harness.emitBotOutputV2({ text: "Hello world.", will_be_spoken: true, spoken_status: "new", output_type: "sentence" });
       harness.emitBotOutputV2({
         text: "Hello world.",
         will_be_spoken: true,
