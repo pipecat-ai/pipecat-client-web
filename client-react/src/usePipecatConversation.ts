@@ -83,7 +83,12 @@ interface Props {
    * name as its text, such as "laughs", or `"expression_pause"`, with the
    * pause's length in milliseconds. It sits where the bot's speech had
    * reached when it was performed, splitting the text around it; how it
-   * looks is up to the renderer.
+   * looks is up to the renderer. A pause's text is a number rather than words
+   * to show, so render these parts by their `outputType`.
+   *
+   * With a TTS service that doesn't report when each word is spoken, the bot
+   * reports a sentence's sounds before the sentence, so a laugh mid-sentence
+   * sits before that whole sentence.
    *
    * It affects `messages` only: `onMessageCreated` and `onMessageUpdated`
    * report the message without them. To react to one as it's
