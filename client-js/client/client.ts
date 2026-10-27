@@ -767,37 +767,32 @@ export class PipecatClient extends RTVIEventEmitter {
     return this.connect(connectionParams);
   }
 
-  /**
-   * Report a sound or pause the bot performed, and a change of its
-   * delivery, from its output.
-   */
-  private _reportExpression(data: BotOutputData): void {
+  /** Report a sound or pause the bot performed, from its output. */
+  private _reportBotExpression(data: BotOutputData): void {
     if (data.output_type === BotOutputType.EXPRESSION_SOUND) {
       this._options.callbacks?.onBotExpression?.({
         kind: "sound",
         name: data.text,
       });
     } else if (data.output_type === BotOutputType.EXPRESSION_PAUSE) {
-      const durationMs = Number(data.text);
-      if (Number.isFinite(durationMs)) {
-        this._options.callbacks?.onBotExpression?.({
-          kind: "pause",
-          durationMs,
-        });
-      }
-    } else if (data.delivery && data.spoken_status !== "new") {
-      this._setBotDelivery(data.delivery);
+      this._options.callbacks?.onBotExpression?.({
+        kind: "pause",
+        durationMs: Number(data.text),
+      });
     }
   }
 
-  /** Track the bot's delivery, reporting each change. */
+  /**
+   * Track the bot's delivery, reporting each change. A delivery is a set, so
+   * the same names in another order are no change.
+   */
   private _setBotDelivery(delivery: string[] | null): void {
     const previous = this._botDelivery;
     const same =
       delivery === null || previous === null
         ? delivery === previous
         : delivery.length === previous.length &&
-          delivery.every((name, i) => name === previous[i]);
+          delivery.every((name) => previous.includes(name));
     if (same) return;
     this._botDelivery = delivery && [...delivery];
     this._options.callbacks?.onBotDeliveryChanged?.({
@@ -1607,7 +1602,11 @@ export class PipecatClient extends RTVIEventEmitter {
         data.text_type ??= outputType;
         data.aggregated_by ??= outputType;
         this._options.callbacks?.onBotOutput?.(data);
-        this._reportExpression(data);
+        this._reportBotExpression(data);
+        // Only spoken words carry a delivery, as they're spoken.
+        if (data.delivery) {
+          this._setBotDelivery(data.delivery);
+        }
         break;
       }
       case RTVIMessageType.BOT_TRANSCRIPTION: {
