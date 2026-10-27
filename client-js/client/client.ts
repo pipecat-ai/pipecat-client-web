@@ -351,7 +351,7 @@ export class PipecatClient extends RTVIEventEmitter {
       onDisconnected: () => {
         // The transport can disconnect without disconnect() being called, such
         // as when the connection drops.
-        this._setBotDelivery(null);
+        this._clearBotState();
         options?.callbacks?.onDisconnected?.();
         this.emit(RTVIEvent.Disconnected);
       },
@@ -812,10 +812,8 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   public async disconnect(): Promise<void> {
     this.stopUISnapshotStream();
-    this._botVersion = [0, 0, 0];
     this._transport.startBotResponse = undefined;
-    this._setBotCapabilities(undefined);
-    this._setBotDelivery(null);
+    this._clearBotState();
     await this._transport.disconnect();
     this._messageDispatcher.disconnect();
   }
@@ -831,6 +829,16 @@ export class PipecatClient extends RTVIEventEmitter {
     this._messageDispatcher = new MessageDispatcher(
       this._sendMessage.bind(this)
     );
+  }
+
+  /**
+   * Clear what the bot reported, its protocol version, capabilities and
+   * delivery, once the client is disconnected from it.
+   */
+  private _clearBotState(): void {
+    this._botVersion = [0, 0, 0];
+    this._setBotCapabilities(undefined);
+    this._setBotDelivery(null);
   }
 
   /**
