@@ -17,8 +17,9 @@ import { FunctionCallCallback, PipecatClient } from "./../client";
 import { messageSizeWithinLimit } from "./../client/utils";
 import {
   AggregationType,
-  BotDeliveryChangedData,
+  BotDeliveryUpdatedData,
   BotExpressionData,
+  BotExpressionKind,
   BotOutputData,
   BotOutputType,
   BotReadyData,
@@ -1058,14 +1059,14 @@ describe("User input and bot output", () => {
     }
 
     expect(expressions).toEqual([
-      { kind: "sound", name: "laughs" },
-      { kind: "pause", durationMs: 300 },
+      { kind: BotExpressionKind.SOUND, sound: "laughs" },
+      { kind: BotExpressionKind.PAUSE, duration_ms: 300 },
     ]);
   });
 
   test("bot output reports the bot's delivery only when it changes", () => {
-    const changes: BotDeliveryChangedData[] = [];
-    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+    const changes: BotDeliveryUpdatedData[] = [];
+    client.on(RTVIEvent.BotDeliveryUpdated, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["cheerful"]));
     transport.handleMessage(spokenWith(["cheerful"]));
@@ -1080,8 +1081,8 @@ describe("User input and bot output", () => {
   });
 
   test("the same delivery in another order is no change", () => {
-    const changes: BotDeliveryChangedData[] = [];
-    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+    const changes: BotDeliveryUpdatedData[] = [];
+    client.on(RTVIEvent.BotDeliveryUpdated, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["sad", "slow"]));
     transport.handleMessage(spokenWith(["slow", "sad"]));
@@ -1090,8 +1091,8 @@ describe("User input and bot output", () => {
   });
 
   test("the bot's delivery is null once it stops speaking", () => {
-    const changes: BotDeliveryChangedData[] = [];
-    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+    const changes: BotDeliveryUpdatedData[] = [];
+    client.on(RTVIEvent.BotDeliveryUpdated, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["calm"]));
     transport.handleMessage(
@@ -1108,8 +1109,8 @@ describe("User input and bot output", () => {
   });
 
   test("the bot's delivery is null once the client disconnects", async () => {
-    const changes: BotDeliveryChangedData[] = [];
-    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+    const changes: BotDeliveryUpdatedData[] = [];
+    client.on(RTVIEvent.BotDeliveryUpdated, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["calm"]));
     await client.disconnect();
@@ -1121,8 +1122,8 @@ describe("User input and bot output", () => {
   });
 
   test("the bot's delivery is null once the connection drops, and reported again after reconnecting", async () => {
-    const changes: BotDeliveryChangedData[] = [];
-    client.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+    const changes: BotDeliveryUpdatedData[] = [];
+    client.on(RTVIEvent.BotDeliveryUpdated, (d) => changes.push(d));
 
     transport.handleMessage(spokenWith(["calm"]));
     transport.simulateDisconnect();
@@ -1143,8 +1144,8 @@ describe("User input and bot output", () => {
     });
     await stayingClient.connect();
     const stayingTransport = stayingClient.transport as TransportStub;
-    const changes: BotDeliveryChangedData[] = [];
-    stayingClient.on(RTVIEvent.BotDeliveryChanged, (d) => changes.push(d));
+    const changes: BotDeliveryUpdatedData[] = [];
+    stayingClient.on(RTVIEvent.BotDeliveryUpdated, (d) => changes.push(d));
 
     stayingTransport.handleMessage(spokenWith(["calm"]));
     stayingTransport.simulateBotDisconnect({ id: "bot", local: false, name: "bot" });

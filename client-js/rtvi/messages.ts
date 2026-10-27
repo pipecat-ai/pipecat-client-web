@@ -320,7 +320,7 @@ export type BotOutputData = {
  * RTVI 2.3.0+). Reported only when it changes: a stressed word brings
  * `"emphasis"` and the word after it takes it away again.
  */
-export type BotDeliveryChangedData = {
+export type BotDeliveryUpdatedData = {
   /**
    * The delivery of the words the bot is speaking now, such as `["cheerful"]`;
    * empty for the voice's baseline, and null once it stops speaking.
@@ -330,20 +330,29 @@ export type BotDeliveryChangedData = {
   previous: string[] | null;
 };
 
+/** The kinds of expression the bot performs (alpha, RTVI 2.3.0+). */
+export enum BotExpressionKind {
+  SOUND = "sound",
+  PAUSE = "pause",
+}
+
 /**
  * A sound or pause the bot performed in expressive conversation (alpha,
  * RTVI 2.3.0+), reported as it was performed.
  */
 export type BotExpressionData =
   | {
-      kind: "sound";
-      /** The sound, such as "laughs". */
-      name: string;
+      kind: BotExpressionKind.SOUND;
+      /**
+       * The sound, such as "laughs". Each TTS service names its own sounds,
+       * so the same laugh can be "laughter" on another.
+       */
+      sound: string;
     }
   | {
-      kind: "pause";
+      kind: BotExpressionKind.PAUSE;
       /** How long the pause is, in milliseconds. */
-      durationMs: number;
+      duration_ms: number;
     };
 
 export type BotLLMTextData = {

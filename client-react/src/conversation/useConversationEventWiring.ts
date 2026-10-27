@@ -5,7 +5,7 @@
  */
 
 import {
-  type BotDeliveryChangedData,
+  type BotDeliveryUpdatedData,
   BotOutputData,
   BotReadyData,
   type LLMFunctionCallInProgressData,
@@ -224,9 +224,9 @@ export function useConversationEventWiring() {
   );
 
   useRTVIClientEvent(
-    RTVIEvent.BotDeliveryChanged,
+    RTVIEvent.BotDeliveryUpdated,
     useAtomCallback(
-      useCallback((_get, set, data: BotDeliveryChangedData) => {
+      useCallback((_get, set, data: BotDeliveryUpdatedData) => {
         set(botDeliveryAtom, data.delivery);
       }, [])
     )
