@@ -1308,6 +1308,22 @@ describe("Media support", () => {
     expect(events[0].botVideo).toBeUndefined();
   });
 
+  test("falls back to the transport once the connection drops", async () => {
+    const client = new PipecatClient({ transport: new VideoLessTransport() });
+    await client.connect();
+    (client.transport as TransportStub).handleMessage(
+      botReady({ version: "2.2.0", capabilities: { audio_in: true } })
+    );
+    const events: MediaSupport[] = [];
+    client.on(RTVIEvent.MediaSupportUpdated, (support) => events.push(support));
+
+    (client.transport as TransportStub).simulateDisconnect();
+
+    expect(client.botCapabilities).toBeUndefined();
+    expect(client.mediaSupport.mic).toBeUndefined();
+    expect(events).toHaveLength(1);
+  });
+
   test("falls back to the transport after disconnect", async () => {
     const client = new PipecatClient({ transport: new VideoLessTransport() });
     await client.connect();
