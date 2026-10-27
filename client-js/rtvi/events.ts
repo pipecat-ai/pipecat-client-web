@@ -12,7 +12,7 @@ import {
 } from "./common_types";
 import { DeviceError, UnsupportedFeatureError } from "./errors";
 import {
-  BotDeliveryChangedData,
+  BotDeliveryUpdatedData,
   BotExpressionData,
   BotLLMSearchResponseData,
   BotLLMTextData,
@@ -79,7 +79,7 @@ export enum RTVIEvent {
   UserInput = "userInput",
   BotOutput = "botOutput",
   /** The bot's delivery changed, in expressive conversation (RTVI 2.3.0+). */
-  BotDeliveryChanged = "botDeliveryChanged",
+  BotDeliveryUpdated = "botDeliveryUpdated",
   /** The bot performed a sound or pause, in expressive conversation (RTVI 2.3.0+). */
   BotExpression = "botExpression",
   // DEPRECATED
@@ -192,7 +192,7 @@ export type RTVIEvents = Partial<{
   userTranscript: (data: TranscriptData) => void;
   userInput: (data: UserInputData) => void;
   botOutput: (data: BotOutputData) => void;
-  botDeliveryChanged: (data: BotDeliveryChangedData) => void;
+  botDeliveryUpdated: (data: BotDeliveryUpdatedData) => void;
   botExpression: (data: BotExpressionData) => void;
   botTranscript: (data: BotLLMTextData) => void;
 

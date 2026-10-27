@@ -64,19 +64,19 @@ describe("usePipecatBotDelivery", () => {
     const w = renderBotDelivery();
     expect(w.probe.delivery).toBeNull();
 
-    w.emit(RTVIEvent.BotDeliveryChanged, {
+    w.emit(RTVIEvent.BotDeliveryUpdated, {
       delivery: ["cheerful"],
       previous: null,
     });
     expect(w.probe.delivery).toEqual(["cheerful"]);
 
-    w.emit(RTVIEvent.BotDeliveryChanged, {
+    w.emit(RTVIEvent.BotDeliveryUpdated, {
       delivery: ["cheerful", "emphasis"],
       previous: ["cheerful"],
     });
     expect(w.probe.delivery).toEqual(["cheerful", "emphasis"]);
 
-    w.emit(RTVIEvent.BotDeliveryChanged, {
+    w.emit(RTVIEvent.BotDeliveryUpdated, {
       delivery: null,
       previous: ["cheerful", "emphasis"],
     });
@@ -85,7 +85,7 @@ describe("usePipecatBotDelivery", () => {
 
   it("is null again when the client connects again", () => {
     const w = renderBotDelivery();
-    w.emit(RTVIEvent.BotDeliveryChanged, {
+    w.emit(RTVIEvent.BotDeliveryUpdated, {
       delivery: ["calm"],
       previous: null,
     });

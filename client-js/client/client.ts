@@ -11,8 +11,9 @@ import packageJson from "../package.json";
 import {
   A11ySnapshot,
   BotCapabilities,
-  BotDeliveryChangedData,
+  BotDeliveryUpdatedData,
   BotExpressionData,
+  BotExpressionKind,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -181,7 +182,7 @@ export type RTVIEventCallbacks = Partial<{
    * Derived from `onBotOutput`: called only when it changes, and with a null
    * delivery once the bot stops speaking.
    */
-  onBotDeliveryChanged: (data: BotDeliveryChangedData) => void;
+  onBotDeliveryUpdated: (data: BotDeliveryUpdatedData) => void;
   /**
    * The bot performed a sound, such as a laugh, or a pause, in expressive
    * conversation (RTVI 2.3.0+). Derived from `onBotOutput`.
@@ -496,9 +497,9 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onBotOutput?.(data);
         this.emit(RTVIEvent.BotOutput, data);
       },
-      onBotDeliveryChanged: (data) => {
-        options?.callbacks?.onBotDeliveryChanged?.(data);
-        this.emit(RTVIEvent.BotDeliveryChanged, data);
+      onBotDeliveryUpdated: (data) => {
+        options?.callbacks?.onBotDeliveryUpdated?.(data);
+        this.emit(RTVIEvent.BotDeliveryUpdated, data);
       },
       onBotExpression: (data) => {
         options?.callbacks?.onBotExpression?.(data);
@@ -771,13 +772,13 @@ export class PipecatClient extends RTVIEventEmitter {
   private _reportBotExpression(data: BotOutputData): void {
     if (data.output_type === BotOutputType.EXPRESSION_SOUND) {
       this._options.callbacks?.onBotExpression?.({
-        kind: "sound",
-        name: data.text,
+        kind: BotExpressionKind.SOUND,
+        sound: data.text,
       });
     } else if (data.output_type === BotOutputType.EXPRESSION_PAUSE) {
       this._options.callbacks?.onBotExpression?.({
-        kind: "pause",
-        durationMs: Number(data.text),
+        kind: BotExpressionKind.PAUSE,
+        duration_ms: Number(data.text),
       });
     }
   }
@@ -795,7 +796,7 @@ export class PipecatClient extends RTVIEventEmitter {
           delivery.every((name) => previous.includes(name));
     if (same) return;
     this._botDelivery = delivery && [...delivery];
-    this._options.callbacks?.onBotDeliveryChanged?.({
+    this._options.callbacks?.onBotDeliveryUpdated?.({
       delivery: this._botDelivery,
       previous,
     });
