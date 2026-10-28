@@ -22,6 +22,8 @@ import { PipecatClientContext } from "@/PipecatClientProvider";
 import { RTVIEventContext } from "@/RTVIEventContext";
 import { usePipecatConversation } from "@/usePipecatConversation";
 
+import { getAssistantText } from "../helpers/assertions";
+
 type Conversation = ReturnType<typeof usePipecatConversation>;
 
 /**
@@ -263,5 +265,65 @@ describe("conversation sendText", () => {
         final: true,
       },
     ]);
+  });
+
+  describe("while the bot is speaking", () => {
+    const sentence = (text: string, segment_id: number) => ({
+      text,
+      output_type: "sentence",
+      will_be_spoken: true,
+      segment_id,
+      spoken_status: "new",
+    });
+
+    function startBotTurn() {
+      const c = renderConversation();
+      c.emit(RTVIEvent.BotReady, { version: "2.2.0" });
+      c.emit(RTVIEvent.BotStartedSpeaking);
+      c.emit(
+        RTVIEvent.BotOutput,
+        sentence("Hi there, how can I help you today?", 1)
+      );
+      return c;
+    }
+
+    it("ends the bot's turn", async () => {
+      const c = startBotTurn();
+
+      await c.send("Actually, never mind.");
+
+      expect(c.messages()[0]).toMatchObject({ role: "assistant", final: true });
+    });
+
+    it("opens a new message for the bot's reply", async () => {
+      const c = startBotTurn();
+      await c.send("Actually, never mind.");
+
+      c.emit(RTVIEvent.BotStartedSpeaking);
+      c.emit(RTVIEvent.BotOutput, sentence("No problem.", 2));
+
+      expect(c.messages().map((m) => [m.role, getAssistantText(m)])).toEqual([
+        ["assistant", "Hi there, how can I help you today?"],
+        ["user", "Actually, never mind."],
+        ["assistant", "No problem."],
+      ]);
+    });
+
+    it("leaves the bot's turn open when the text can't be sent", async () => {
+      const c = renderConversation(async () => {
+        throw new Error("transport not ready");
+      });
+      c.emit(RTVIEvent.BotReady, { version: "2.2.0" });
+      c.emit(RTVIEvent.BotStartedSpeaking);
+      c.emit(
+        RTVIEvent.BotOutput,
+        sentence("Hi there, how can I help you today?", 1)
+      );
+
+      await expect(c.send("Actually, never mind.")).rejects.toThrow();
+
+      expect(c.messages()[0]).toMatchObject({ role: "assistant" });
+      expect(c.messages()[0].final).toBeFalsy();
+    });
   });
 });

@@ -20,8 +20,12 @@ import { addSentText, setSentTextStatus } from "./conversationActions";
  * Internal hook behind the conversation's `sendText()`. It sends text to the
  * bot, adds it to the conversation as a user message, and follows whether the
  * bot received it through the message's `status`.
+ *
+ * @param finalizeLastAssistantMessageIfPending Ends the bot's turn once the
+ *   text is sent. Text produces no UserStartedSpeaking, so without it the
+ *   bot's reply is added to the turn the text interrupted.
  */
-export function useSentText() {
+export function useSentText(finalizeLastAssistantMessageIfPending: () => void) {
   const client = usePipecatClient();
 
   const sendText = useAtomCallback(
@@ -39,10 +43,12 @@ export function useSentText() {
           throw error;
         }
 
+        // Text the bot never got leaves its turn open.
+        finalizeLastAssistantMessageIfPending();
         addSentText(get, set, text, { msgId, status: "sent" });
         return msgId;
       },
-      [client]
+      [client, finalizeLastAssistantMessageIfPending]
     )
   );
 

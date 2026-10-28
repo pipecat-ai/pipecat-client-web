@@ -45,7 +45,7 @@ export const PipecatConversationProvider: React.FC<React.PropsWithChildren> = ({
 }) => {
   const { finalizeLastAssistantMessageIfPending } =
     useConversationEventWiring();
-  const sendText = useSentText();
+  const sendText = useSentText(finalizeLastAssistantMessageIfPending);
 
   const injectMessage = useAtomCallback(
     useCallback((get, set, message: {
