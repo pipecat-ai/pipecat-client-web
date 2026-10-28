@@ -436,8 +436,9 @@ export function updateLastMessage(
  * sentence can remain grey if the spoken BotOutput event didn't match the
  * unspoken text exactly.
  *
- * Deliberately *not* used on the interruption path (UserStartedSpeaking),
- * where unspoken text should stay unspoken.
+ * Deliberately *not* used on the interruption path (UserStartedSpeaking,
+ * BotInterrupted), where unspoken text should stay unspoken; see
+ * `markSpeechCursorInterrupted`.
  */
 export function snapSpeechCursorToEnd(get: Getter, set: Setter) {
   const messages = get(messagesAtom);
@@ -459,6 +460,39 @@ export function snapSpeechCursorToEnd(get: Getter, set: Setter) {
   for (let i = 0; i <= lastPartIdx; i++) {
     cursor.partFinalFlags[i] = true;
   }
+  set(botOutputMessageStateAtom, cursorMap);
+}
+
+/**
+ * Mark the last assistant message's speech as cut off: the bot was
+ * interrupted, so whatever it hadn't voiced yet will never be spoken.
+ *
+ * The cursor stays where the interruption left it, so unvoiced text keeps
+ * rendering as unspoken. Every part is flagged final, though, so that the
+ * bot's next output opens a new message instead of reopening this one as a
+ * premature finalization (see `hasUnspokenContent`). That matters for text
+ * sent with `run_immediately`, where no user message follows the cut-off
+ * turn in the conversation.
+ */
+export function markSpeechCursorInterrupted(get: Getter, set: Setter) {
+  const last = findLast(
+    get(messagesAtom),
+    (m: ConversationMessage) => m.role === "assistant"
+  );
+  if (!last) return;
+
+  const cursorMap = new Map(get(botOutputMessageStateAtom));
+  const cursor = cursorMap.get(last.createdAt);
+  if (!cursor) return;
+
+  const partCount = Math.max(
+    cursor.partFinalFlags.length,
+    last.parts?.length ?? 0
+  );
+  cursorMap.set(last.createdAt, {
+    ...cursor,
+    partFinalFlags: Array.from({ length: partCount }, () => true),
+  });
   set(botOutputMessageStateAtom, cursorMap);
 }
 

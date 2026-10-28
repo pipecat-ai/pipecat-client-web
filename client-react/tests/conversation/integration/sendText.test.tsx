@@ -22,6 +22,9 @@ import { PipecatClientContext } from "@/PipecatClientProvider";
 import { RTVIEventContext } from "@/RTVIEventContext";
 import { usePipecatConversation } from "@/usePipecatConversation";
 
+import { getAssistantText } from "../helpers/assertions";
+import { sentence } from "../helpers/fixtures";
+
 type Conversation = ReturnType<typeof usePipecatConversation>;
 
 /**
@@ -263,5 +266,78 @@ describe("conversation sendText", () => {
         final: true,
       },
     ]);
+  });
+
+  describe("while the bot is speaking", () => {
+    const GREETING = "Hi there, how can I help you today?";
+
+    /** The bot is mid-sentence: it has voiced "Hi there," of the greeting. */
+    function startBotTurn() {
+      const c = renderConversation();
+      c.emit(RTVIEvent.BotReady, { version: "2.2.0" });
+      c.emit(RTVIEvent.BotStartedSpeaking);
+      c.emit(
+        RTVIEvent.BotOutput,
+        sentence(GREETING, 1, { spoken_status: "new" })
+      );
+      c.emit(
+        RTVIEvent.BotOutput,
+        sentence(GREETING, 1, {
+          spoken_status: "in-progress",
+          spoken_progress: {
+            accumulated_text: "Hi there,",
+            remaining_text: " how can I help you today?",
+          },
+        })
+      );
+      return c;
+    }
+
+    it("leaves the bot's turn open until the bot reports an interruption", async () => {
+      // Text sent with run_immediately: false is only appended to the
+      // context; the bot keeps talking, so its message keeps streaming.
+      const c = startBotTurn();
+
+      const msgId = await c.send("Also, what's the weather?");
+      c.ack(msgId!, "Also, what's the weather?");
+      c.emit(
+        RTVIEvent.BotOutput,
+        sentence("I can help with that.", 2, { spoken_status: "new" })
+      );
+
+      expect(c.messages().map((m) => [m.role, getAssistantText(m)])).toEqual([
+        ["assistant", `${GREETING} I can help with that.`],
+        ["user", "Also, what's the weather?"],
+      ]);
+      expect(c.messages()[0].final).toBeFalsy();
+    });
+
+    it("ends the bot's turn and opens a new one for its reply when it is interrupted", async () => {
+      // Text sent with run_immediately (the default) makes the bot send
+      // bot-interrupted before it acknowledges the text and replies.
+      const c = startBotTurn();
+
+      const msgId = await c.send("Actually, never mind.");
+      c.emit(RTVIEvent.BotInterrupted);
+      c.ack(msgId!, "Actually, never mind.");
+      c.emit(RTVIEvent.BotStartedSpeaking);
+      c.emit(
+        RTVIEvent.BotOutput,
+        sentence("No problem.", 2, { spoken_status: "new" })
+      );
+
+      expect(c.messages().map((m) => [m.role, getAssistantText(m)])).toEqual([
+        ["assistant", GREETING],
+        ["user", "Actually, never mind."],
+        ["assistant", "No problem."],
+      ]);
+      expect(c.messages()[0].final).toBe(true);
+      // What the bot never got to say stays unspoken.
+      expect(c.messages()[0].parts[0].text).toEqual({
+        spoken: "Hi there,",
+        unspoken: " how can I help you today?",
+      });
+      expect(c.messages()[1]).toMatchObject({ msgId, status: "received" });
+    });
   });
 });

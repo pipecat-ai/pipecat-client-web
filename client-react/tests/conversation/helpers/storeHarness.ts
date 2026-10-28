@@ -182,6 +182,17 @@ export function createStoreHarness() {
   }
 
   /**
+   * End the assistant turn the way BotInterrupted does: flag the cursor as
+   * cut off, so later output opens a new message, without moving it, so
+   * unvoiced text stays unspoken. Calls the same `markSpeechCursorInterrupted`
+   * that useConversationEventWiring uses, so this cannot drift from production.
+   */
+  function interruptAssistant() {
+    actions.markSpeechCursorInterrupted(store.get, store.set);
+    finalizeAssistant();
+  }
+
+  /**
    * Finalize the last user message.
    */
   function finalizeUser() {
@@ -363,6 +374,7 @@ export function createStoreHarness() {
     emitUserTranscript,
     finalizeAssistant,
     finalizeAssistantAfterBotStoppedSpeaking,
+    interruptAssistant,
     finalizeUser,
     finalizeAssistantIfPending,
     finalizeUserIfPending,
