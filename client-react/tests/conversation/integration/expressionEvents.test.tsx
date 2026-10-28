@@ -27,13 +27,16 @@ import { RTVIEventContext } from "@/RTVIEventContext";
 import { usePipecatConversation } from "@/usePipecatConversation";
 
 type Probe = { messages: ConversationMessage[] };
+type ConversationOptions = NonNullable<
+  Parameters<typeof usePipecatConversation>[0]
+>;
 
 /**
  * Renders the real event wiring against a fake RTVI event bus, with two
  * conversation hooks: one with the default options and one that includes
- * expression events.
+ * expression events, plus any `options` given.
  */
-function renderConversation() {
+function renderConversation(options: ConversationOptions = {}) {
   const store = createStore();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlers = new Map<string, Set<(data?: any) => void>>();
@@ -44,12 +47,12 @@ function renderConversation() {
 
   const ProbeView = ({
     probe,
-    includeExpressionEvents,
+    options,
   }: {
     probe: Probe;
-    includeExpressionEvents?: boolean;
+    options?: ConversationOptions;
   }) => {
-    const { messages } = usePipecatConversation({ includeExpressionEvents });
+    const { messages } = usePipecatConversation(options);
     probe.messages = messages;
     return null;
   };
@@ -73,7 +76,10 @@ function renderConversation() {
       >
         <PipecatConversationProvider>
           <ProbeView probe={probes.default} />
-          <ProbeView probe={probes.included} includeExpressionEvents />
+          <ProbeView
+            probe={probes.included}
+            options={{ includeExpressionEvents: true, ...options }}
+          />
         </PipecatConversationProvider>
       </RTVIEventContext.Provider>
     </Provider>
@@ -182,6 +188,30 @@ describe("expression events", () => {
       ["sentence", "It's", ""],
       ["expression_sound", "laughs", ""],
       ["sentence", " back", " up."],
+    ]);
+  });
+
+  it("takes an event part's display mode from outputTypeMetadata", () => {
+    const w = renderConversation({
+      outputTypeMetadata: { expression_pause: { displayMode: "block" } },
+    });
+    w.emit(RTVIEvent.BotReady, { version: "2.3.0" });
+    w.emit(RTVIEvent.BotStartedSpeaking);
+    w.emit(
+      RTVIEvent.BotOutput,
+      segment("Hi.", 1, "sentence", { spoken_status: "new" })
+    );
+    w.emit(RTVIEvent.BotOutput, performed("Hi.", 1, "sentence"));
+    w.emit(RTVIEvent.BotOutput, performed("300", 2, "expression_pause"));
+    w.emit(RTVIEvent.BotOutput, performed("laughs", 3, "expression_sound"));
+
+    const parts = w.probes.included.messages
+      .filter((m) => m.role === "assistant")
+      .flatMap((m) => m.parts);
+    expect(parts.map((p) => [p.outputType, p.displayMode])).toEqual([
+      ["sentence", "inline"],
+      ["expression_pause", "block"],
+      ["expression_sound", "inline"],
     ]);
   });
 
