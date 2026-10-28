@@ -167,6 +167,12 @@ export type RTVIEventCallbacks = Partial<{
   onUserStoppedSpeaking: () => void;
   onBotStartedSpeaking: () => void;
   onBotStoppedSpeaking: () => void;
+  /**
+   * The bot's in-flight output was cut off, whether by the user speaking or
+   * by text sent with `run_immediately`. Whatever it was mid-saying will not
+   * be spoken. Sent by bots on RTVI 2.0.0+.
+   */
+  onBotInterrupted: () => void;
   onUserMuteStarted: () => void;
   onUserMuteStopped: () => void;
   /**
@@ -470,6 +476,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotStoppedSpeaking: () => {
         options?.callbacks?.onBotStoppedSpeaking?.();
         this.emit(RTVIEvent.BotStoppedSpeaking);
+      },
+      onBotInterrupted: () => {
+        options?.callbacks?.onBotInterrupted?.();
+        this.emit(RTVIEvent.BotInterrupted);
       },
       onRemoteAudioLevel: (level, p) => {
         options?.callbacks?.onRemoteAudioLevel?.(level, p);
@@ -1573,6 +1583,9 @@ export class PipecatClient extends RTVIEventEmitter {
       case RTVIMessageType.BOT_STOPPED_SPEAKING:
         this._options.callbacks?.onBotStoppedSpeaking?.();
         this._setBotDelivery(null);
+        break;
+      case RTVIMessageType.BOT_INTERRUPTED:
+        this._options.callbacks?.onBotInterrupted?.();
         break;
       case RTVIMessageType.USER_MUTE_STARTED:
         this._options.callbacks?.onUserMuteStarted?.();

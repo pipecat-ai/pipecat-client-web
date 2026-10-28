@@ -63,6 +63,7 @@ export enum RTVIEvent {
   // vad events
   BotStartedSpeaking = "botStartedSpeaking",
   BotStoppedSpeaking = "botStoppedSpeaking",
+  BotInterrupted = "botInterrupted",
   UserStartedSpeaking = "userStartedSpeaking",
   UserStoppedSpeaking = "userStoppedSpeaking",
 
@@ -177,6 +178,12 @@ export type RTVIEvents = Partial<{
   // vad events
   botStartedSpeaking: () => void;
   botStoppedSpeaking: () => void;
+  /**
+   * The bot's in-flight output was cut off, whether by the user speaking or
+   * by text sent with `run_immediately`. Whatever it was mid-saying will not
+   * be spoken. Sent by bots on RTVI 2.0.0+.
+   */
+  botInterrupted: () => void;
   userStartedSpeaking: () => void;
   userStoppedSpeaking: () => void;
 
