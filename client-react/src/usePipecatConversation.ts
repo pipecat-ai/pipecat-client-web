@@ -80,7 +80,7 @@ interface Props {
    * Include the sounds and pauses the bot performs in expressive
    * conversation, such as a laugh (RTVI 2.3.0+). Each is a part of the bot's
    * message whose `outputType` is `"expression_sound"`, with the sound's
-   * name as its text, such as "laughs", or `"expression_pause"`, with the
+   * name as its text, such as "laugh", or `"expression_pause"`, with the
    * pause's length in milliseconds. It sits where the bot's speech had
    * reached when it was performed, splitting the text around it. How an
    * event looks is up to the renderer: its `displayMode` comes from
