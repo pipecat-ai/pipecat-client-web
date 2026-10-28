@@ -31,6 +31,7 @@ import {
   handleFunctionCallStarted,
   handleFunctionCallStopped,
   isSentText,
+  markSpeechCursorInterrupted,
   removeEmptyLastMessage,
   snapSpeechCursorToEnd,
   updateAssistantBotOutput,
@@ -161,9 +162,9 @@ export function useConversationEventWiring() {
    *
    * Finalizing is deferred rather than immediate because the bot may just be
    * pausing mid-turn; BotStartedSpeaking cancels the timer when that happens.
-   * On RTVI 2.0.0+ this timer and UserStartedSpeaking are the *only* things
-   * that end an assistant turn, so any path that cancels the timer has to
-   * re-arm it here rather than dropping it on the floor.
+   * On RTVI 2.0.0+ this timer, UserStartedSpeaking and BotInterrupted are the
+   * *only* things that end an assistant turn, so any path that cancels the
+   * timer has to re-arm it here rather than dropping it on the floor.
    */
   const armBotStoppedFinalizeTimer = useAtomCallback(
     useCallback((get, set) => {
@@ -384,6 +385,30 @@ export function useConversationEventWiring() {
       // Bot is speaking again; reset the finalize timer (bot was just pausing).
       cancelFinalizeTimer();
     }, [cancelFinalizeTimer])
+  );
+
+  useRTVIClientEvent(
+    RTVIEvent.BotInterrupted,
+    useAtomCallback(
+      useCallback(
+        (get, set) => {
+          // The bot's output was cut off, by the user speaking or by text sent
+          // with `run_immediately`. Text input produces no UserStartedSpeaking,
+          // so this is what keeps the bot's reply out of the turn it
+          // interrupted. Like UserStartedSpeaking, it leaves unvoiced text
+          // unspoken rather than snapping the cursor to the end.
+          cancelFinalizeTimer();
+          const lastAssistant = findLast(
+            get(messagesAtom),
+            (m: ConversationMessage) => m.role === "assistant"
+          );
+          if (!lastAssistant || lastAssistant.final) return;
+          markSpeechCursorInterrupted(get, set);
+          finalizeLastMessage(get, set, "assistant");
+        },
+        [cancelFinalizeTimer]
+      )
+    )
   );
 
   useRTVIClientEvent(

@@ -1,5 +1,14 @@
-import { createStoreHarness } from "../helpers/storeHarness";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from "@jest/globals";
+
 import { expectMessages, getRawPartTexts } from "../helpers/assertions";
+import { createStoreHarness } from "../helpers/storeHarness";
 
 /**
  * Tests for the premature finalization fix (commit 0277a2c).
@@ -85,6 +94,31 @@ describe("premature finalization during long bot response", () => {
     expect(messages[0].final).toBe(true);
     expect(messages[1].role).toBe("user");
     expect(messages[2].role).toBe("assistant");
+  });
+
+  it("creates a new bubble if the bot was interrupted, even with no user message between", () => {
+    // Text sent with run_immediately interrupts the bot without a user
+    // transcript following, so only the cursor says the turn was cut off.
+    harness.ensureAssistantMessage();
+    harness.emitBotOutput("Hello", false, "word");
+    harness.emitBotOutput("world", false, "word");
+    harness.emitBotOutput("Hello", true, "word");
+
+    harness.interruptAssistant();
+
+    harness.ensureAssistantMessage();
+    harness.emitBotOutput("Sorry", false, "word");
+
+    const messages = harness.getMessages();
+    expect(messages).toHaveLength(2);
+    expect(messages[0].role).toBe("assistant");
+    expect(messages[0].final).toBe(true);
+    expect(messages[1].role).toBe("assistant");
+    expect(messages[1].final).toBe(false);
+    // "world" was never voiced, so the cursor must not have reached the end.
+    const cursor = harness.getBotOutputState().get(messages[0].createdAt);
+    const fullText = getRawPartTexts(messages[0]).join("");
+    expect(cursor!.currentCharIndex).toBeLessThan(fullText.length);
   });
 
   it("keeps message in a single bubble with sentence-level aggregation", () => {
