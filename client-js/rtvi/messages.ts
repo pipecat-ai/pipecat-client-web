@@ -259,7 +259,8 @@ export enum BotOutputType {
   BACKCHANNEL = "backchannel",
   /**
    * A sound the bot makes at one point in expressive conversation (alpha),
-   * such as a laugh. The text is its name, such as "laughs" (RTVI 2.3.0+).
+   * such as a laugh. The text is its name, such as "laugh", one of Pipecat's
+   * universal names, the same whichever TTS service performs it (RTVI 2.3.0+).
    */
   EXPRESSION_SOUND = "expression_sound",
   /**
@@ -308,7 +309,8 @@ export type BotOutputData = {
   spoken_progress?: SpokenProgressData;
   /**
    * In expressive conversation (alpha), the delivery of the text just spoken,
-   * such as `["cheerful", "emphasis"]`; empty for the voice's baseline. It
+   * by Pipecat's universal names, the same whichever TTS service performs it,
+   * such as `["warm", "emphasis"]`; empty for the voice's baseline. It
    * can change within a segment, so a segment's `"new"` message has none
    * (RTVI 2.3.0+).
    */
@@ -322,7 +324,7 @@ export type BotOutputData = {
  */
 export type BotDeliveryUpdatedData = {
   /**
-   * The delivery of the words the bot is speaking now, such as `["cheerful"]`;
+   * The delivery of the words the bot is speaking now, such as `["warm"]`;
    * empty for the voice's baseline, and null once it stops speaking.
    */
   delivery: string[] | null;
@@ -344,8 +346,8 @@ export type BotExpressionData =
   | {
       kind: BotExpressionKind.SOUND;
       /**
-       * The sound, such as "laughs". Each TTS service names its own sounds,
-       * so the same laugh can be "laughter" on another.
+       * The sound, such as "laugh", by Pipecat's universal name for it, the
+       * same whichever TTS service performs it.
        */
       sound: string;
     }
