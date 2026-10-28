@@ -349,6 +349,36 @@ describe("PipecatClient Methods", () => {
     expect(eventTriggered).toBe(true);
   });
 
+  test("bot-interrupted should trigger callback and emit event", async () => {
+    let callbackTriggered = false;
+    let eventTriggered = false;
+
+    const clientWithCallbacks = new PipecatClient({
+      transport: TransportStub.create(),
+      callbacks: {
+        onBotInterrupted: () => {
+          callbackTriggered = true;
+        },
+      },
+    });
+
+    clientWithCallbacks.on(RTVIEvent.BotInterrupted, () => {
+      eventTriggered = true;
+    });
+
+    const msg: RTVIMessage = {
+      id: "bot-interrupted-1",
+      label: "rtvi-ai",
+      type: "bot-interrupted",
+      data: {},
+    };
+
+    (clientWithCallbacks.transport as TransportStub).handleMessage(msg);
+
+    expect(callbackTriggered).toBe(true);
+    expect(eventTriggered).toBe(true);
+  });
+
   test("user-mute-stopped should trigger callback and emit event", async () => {
     let callbackTriggered = false;
     let eventTriggered = false;

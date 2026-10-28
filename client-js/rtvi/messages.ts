@@ -58,6 +58,7 @@ export enum RTVIMessageType {
   USER_STOPPED_SPEAKING = "user-stopped-speaking", // User stopped speaking
   BOT_STARTED_SPEAKING = "bot-started-speaking", // Bot started speaking
   BOT_STOPPED_SPEAKING = "bot-stopped-speaking", // Bot stopped speaking
+  BOT_INTERRUPTED = "bot-interrupted", // The bot's in-flight output was cut off, by the user speaking or by text sent with run_immediately (RTVI 2.0.0+)
   // User muted events. These events notify when the server is ignoring audio from the client.
   // The client should continue sending audio normally but may want to show some indication to the user.
   USER_MUTE_STARTED = "user-mute-started", // User muted server-side.
