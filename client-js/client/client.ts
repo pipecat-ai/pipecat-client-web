@@ -444,7 +444,9 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.BotReady, botReadyData);
       },
       onBotDisconnected: (p) => {
-        // The client can stay connected after the bot leaves.
+        // The client can stay connected after the bot leaves. Its delivery
+        // is over, but its version and capabilities are kept while the
+        // client is connected.
         this._setBotDelivery(null);
         options?.callbacks?.onBotDisconnected?.(p);
         this.emit(RTVIEvent.BotDisconnected, p);
