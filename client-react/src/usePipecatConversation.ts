@@ -82,9 +82,10 @@ interface Props {
    * message whose `outputType` is `"expression_sound"`, with the sound's
    * name as its text, such as "laughs", or `"expression_pause"`, with the
    * pause's length in milliseconds. It sits where the bot's speech had
-   * reached when it was performed, splitting the text around it; how it
-   * looks is up to the renderer. A pause's text is a number rather than words
-   * to show, so render these parts by their `outputType`.
+   * reached when it was performed, splitting the text around it. How an
+   * event looks is up to the renderer: its `displayMode` comes from
+   * `outputTypeMetadata`, inline by default. A pause's text is a number
+   * rather than words to show, so render these parts by their `outputType`.
    *
    * With a TTS service that doesn't report when each word is spoken, the bot
    * reports a sentence's sounds before the sentence, so a laugh mid-sentence
@@ -183,13 +184,13 @@ export const usePipecatConversation = ({
 
   // Memoize the filtered messages to prevent infinite loops
   const filteredMessages = useMemo(() => {
-    const getMetadata = (part: ConversationMessagePart) => {
-      const outputType = part.outputType ?? part.aggregatedBy;
-      return outputType
+    const getTypeMetadata = (outputType?: string) =>
+      outputType
         ? (outputTypeMetadata?.[outputType] ??
-            aggregationMetadata?.[outputType])
+          aggregationMetadata?.[outputType])
         : undefined;
-    };
+    const getMetadata = (part: ConversationMessagePart) =>
+      getTypeMetadata(part.outputType ?? part.aggregatedBy);
 
     // Process messages: convert string parts to BotOutputText based on position state
     const processedMessages = messages.map((message) => {
@@ -241,7 +242,8 @@ export const usePipecatConversation = ({
           outputType: event.outputType,
           aggregatedBy: event.outputType,
           segment_id: event.segment_id,
-          displayMode: "inline",
+          displayMode:
+            getTypeMetadata(event.outputType)?.displayMode ?? "inline",
         });
 
         // Convert parts to BotOutputText format based on position state
