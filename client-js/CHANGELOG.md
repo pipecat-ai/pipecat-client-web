@@ -5,6 +5,22 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.15.0...client-js-v1.16.0) (2026-10-29)
+
+
+### Features
+
+* **client-js:** add the bot-interrupted event ([83af5a2](https://github.com/pipecat-ai/pipecat-client-web/commit/83af5a207364b9aa00767ce15f06fb1fe45b235b))
+* **client-js:** report expressive conversation's tones and expressions (RTVI 2.3.0) ([350741a](https://github.com/pipecat-ai/pipecat-client-web/commit/350741a90938b492392bd23e89293049e1febe03))
+* **client-js:** type user-input perception ([49153eb](https://github.com/pipecat-ai/pipecat-client-web/commit/49153eb3b5c225cde1d09cd12a495d85d686b6cb))
+
+
+### Bug Fixes
+
+* **client-js:** clear the bot's capabilities when the connection drops ([7cfee05](https://github.com/pipecat-ai/pipecat-client-web/commit/7cfee05796bd3f6451d28ae072e8de64aa515fdb))
+* **client-js:** report a null delivery on disconnect ([31332bb](https://github.com/pipecat-ai/pipecat-client-web/commit/31332bbcd2aa7ece56c4646c94b2a22ef7a9e014))
+* **client-js:** report a null delivery when the bot leaves ([907e02c](https://github.com/pipecat-ai/pipecat-client-web/commit/907e02c096770aa4aab7316ddb168cc552ed9887))
+
 ## [1.15.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.14.0...client-js-v1.15.0) (2026-10-25)
 
 ### Features
