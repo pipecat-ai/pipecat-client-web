@@ -7,19 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.16.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.15.0...client-js-v1.16.0) (2026-10-29)
 
-
 ### Features
 
-* **client-js:** add the bot-interrupted event ([83af5a2](https://github.com/pipecat-ai/pipecat-client-web/commit/83af5a207364b9aa00767ce15f06fb1fe45b235b))
-* **client-js:** report expressive conversation's tones and expressions (RTVI 2.3.0) ([350741a](https://github.com/pipecat-ai/pipecat-client-web/commit/350741a90938b492392bd23e89293049e1febe03))
-* **client-js:** type user-input perception ([49153eb](https://github.com/pipecat-ai/pipecat-client-web/commit/49153eb3b5c225cde1d09cd12a495d85d686b6cb))
-
+* Added `RTVIEvent.BotInterrupted` and the `onBotInterrupted` callback, fired when the bot reports that its in-flight output was cut off, whether by the user speaking or by text sent with `run_immediately`. Whatever the bot was in the middle of saying will not be spoken. Requires a bot on RTVI protocol 2.0.0 or later. See [callbacks](https://docs.pipecat.ai/api-reference/client/js/callbacks). ([340a47e](https://github.com/pipecat-ai/pipecat-client-web/commit/340a47ee1a432501a210e84b1051971db3dc0b80))
+* Added expressive conversation (alpha) to bot output: `BotOutputData.delivery` carries the delivery of the text just spoken, such as `["cheerful", "emphasis"]`, and the `BotOutputType.EXPRESSION_SOUND` and `BotOutputType.EXPRESSION_PAUSE` output types mark the sounds (such as `"laughs"`) and pauses (in milliseconds) the bot performs. `RTVI_PROTOCOL_VERSION` is now `2.3.0`; bots send expression sounds and pauses only to clients of 2.3.0 or later. ([8ceacdb](https://github.com/pipecat-ai/pipecat-client-web/commit/8ceacdb365600e649e5d9c5968f436d83e0e035b))
+* Added `RTVIEvent.BotDeliveryUpdated` and the `onBotDeliveryUpdated` callback, reported when the bot's delivery changes, with `{ delivery, previous }`; `delivery` is `null` once the bot stops speaking or leaves, or the client disconnects. ([8ceacdb](https://github.com/pipecat-ai/pipecat-client-web/commit/8ceacdb365600e649e5d9c5968f436d83e0e035b))
+* Added `RTVIEvent.BotExpression` and the `onBotExpression` callback, reported for each sound (`{ kind: BotExpressionKind.SOUND, sound }`, such as `"laughs"`) or pause (`{ kind: BotExpressionKind.PAUSE, duration_ms }`) the bot performs. ([8ceacdb](https://github.com/pipecat-ai/pipecat-client-web/commit/8ceacdb365600e649e5d9c5968f436d83e0e035b))
+* Added `UserInputData.perception` (alpha): for a transcription, how the user said it, when the bot's STT service reports a reading, as a list of `UserPerceptionSignal`s. Each signal has a `name`, such as `"tone"` or `"speech_rate"`, and is read either as `labels` (`UserPerceptionLabel`s with a `confidence` from 0 to 1, likeliest first) or as a `value`. Interim transcriptions can carry one too. ([ea55510](https://github.com/pipecat-ai/pipecat-client-web/commit/ea555100ff417b04ed412bf896dc3a5aba598ebd))
 
 ### Bug Fixes
 
-* **client-js:** clear the bot's capabilities when the connection drops ([7cfee05](https://github.com/pipecat-ai/pipecat-client-web/commit/7cfee05796bd3f6451d28ae072e8de64aa515fdb))
-* **client-js:** report a null delivery on disconnect ([31332bb](https://github.com/pipecat-ai/pipecat-client-web/commit/31332bbcd2aa7ece56c4646c94b2a22ef7a9e014))
-* **client-js:** report a null delivery when the bot leaves ([907e02c](https://github.com/pipecat-ai/pipecat-client-web/commit/907e02c096770aa4aab7316ddb168cc552ed9887))
+* Fixed the bot's capabilities and protocol version staying set, and `mediaSupport()` still reflecting them, after the connection drops without `disconnect()` being called. ([4c75b58](https://github.com/pipecat-ai/pipecat-client-web/commit/4c75b58c54b54ea131926468977114adcee52d85))
 
 ## [1.15.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.14.0...client-js-v1.15.0) (2026-10-25)
 
