@@ -7,19 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.11.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.10.0...client-react-v1.11.0) (2026-10-29)
 
-
 ### Features
 
-* **client-react:** add includeExpressionEvents to usePipecatConversation ([f2b69e5](https://github.com/pipecat-ai/pipecat-client-web/commit/f2b69e5d5d11ab0dba4002afb49b7472af070873))
-* **client-react:** add usePipecatBotTone ([815b504](https://github.com/pipecat-ai/pipecat-client-web/commit/815b504b3eb26736fccdd9c82751a482a96e112a))
-
+* Added the `includeExpressionEvents` option to `usePipecatConversation` (RTVI 2.3.0+): each sound or pause the bot performs becomes a part of its message, with `outputType` `"expression_sound"` or `"expression_pause"`, placed where the bot's speech had reached. It's off by default, and `onMessageCreated` and `onMessageUpdated` report messages without them. A reply that is only a sound isn't included, since it has no message of its own; `RTVIEvent.BotExpression` still reports it. Bots send sounds and pauses only to `@pipecat-ai/client-js` 1.16.0 or later. ([9c70fdf](https://github.com/pipecat-ai/pipecat-client-web/commit/9c70fdf409b7d5e629a96fcea0bb5927b0560fb5))
+* Added `usePipecatBotDelivery()`, which returns the bot's delivery now, such as `["cheerful"]`, or `null` while it isn't speaking (RTVI 2.3.0+). It requires `@pipecat-ai/client-js` 1.16.0 or later; with an older version it stays `null`. ([9669cf5](https://github.com/pipecat-ai/pipecat-client-web/commit/9669cf5def3cdf0cf6d4213215a66ccd61aeaca4))
 
 ### Bug Fixes
 
-* **client-react:** end the assistant turn when the bot is interrupted ([e09e465](https://github.com/pipecat-ai/pipecat-client-web/commit/e09e46548c960dd61f4d1c5748a132519f13f6c6))
-* **client-react:** ignore spoken progress for a segment no message part holds ([6b325d2](https://github.com/pipecat-ai/pipecat-client-web/commit/6b325d250455f74ef9ed5e90ab82eb625556b5b0))
-* **client-react:** keep a sound out of an earlier turn's message ([4b68050](https://github.com/pipecat-ai/pipecat-client-web/commit/4b68050bbdd37ab7774f787aecb5357c2bf8f1a1))
-* **client-react:** take an expression event part's displayMode from outputTypeMetadata ([6ce973a](https://github.com/pipecat-ai/pipecat-client-web/commit/6ce973a61be97da4dcac7e18793a8bc881f3ccc0))
+* Fixed spoken progress for a segment no message part holds, such as an expression sound's, moving the spoken text of the part being spoken in `usePipecatConversation`. ([3c76005](https://github.com/pipecat-ai/pipecat-client-web/commit/3c760052377fe961394bcd8369b387df7c8d47fd))
+* `usePipecatConversation` now ends the assistant message when the bot is interrupted, so the bot's reply to text sent with `sendText()` and `run_immediately` appears as a new message instead of being appended to the one it cut off. Text the bot never got to say stays marked as unspoken. Requires a bot on RTVI protocol 2.0.0 or later. ([68428ba](https://github.com/pipecat-ai/pipecat-client-web/commit/68428bade1221739f8d64898d6c4ca682bd98c80))
 
 ## [1.10.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.9.0...client-react-v1.10.0) (2026-10-25)
 
