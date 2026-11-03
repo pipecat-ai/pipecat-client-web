@@ -311,6 +311,16 @@ export class PipecatClient extends RTVIEventEmitter {
     cam: { state: "uninitialized" },
   };
 
+  // Whether the transport has initialized devices, via a resolved
+  // initDevices() or a successful connect() (transports initialize media as
+  // part of connecting). Once a transport has initialized it can't do so
+  // again (daily-js allows a single startCamera()), so a later initDevices()
+  // is refused here rather than handed down. A rejected initDevices() leaves
+  // this false so the call can be retried, which the transports also allow.
+  // Post-init device control is enableMic() / enableCam(). Never reset,
+  // including on disconnect.
+  private _devicesInitialized = false;
+
   constructor(options: PipecatClientOptions) {
     super();
 
@@ -601,11 +611,21 @@ export class PipecatClient extends RTVIEventEmitter {
    * device(s) per-device; anything still at 'initializing' falls back to
    * 'unknown'. The original error is always re-thrown.
    *
-   * Calling this again after a failure is the recovery path — a second call
-   * re-enters 'initializing' and reclassifies. There is no separate
-   * retryDevices() method.
+   * Intended to be called once, before connect(). Once it has succeeded, or
+   * once connect() has succeeded (the transport initializes devices as part
+   * of connecting), further calls log a warning and return without touching
+   * the transport or MediaState; use enableMic() / enableCam() to change
+   * devices or to retry one that was blocked (they re-attempt acquisition
+   * and fire DeviceError if it still fails). If this call rejected, the
+   * transport never finished initializing and it may be called again.
    */
   public async initDevices() {
+    if (this._devicesInitialized) {
+      logger.warn(
+        "[Pipecat Client] Devices are already initialized. initDevices() is intended to be called once, before connect(); use enableMic() / enableCam() to change or retry devices after initialization."
+      );
+      return;
+    }
     logger.debug("[Pipecat Client] Initializing devices...");
     // Both devices enter the lifecycle, regardless of enableMic / enableCam.
     // The actual transport behavior is asymmetric and not predictable from
@@ -622,6 +642,7 @@ export class PipecatClient extends RTVIEventEmitter {
 
     try {
       await this._transport.initDevices();
+      this._devicesInitialized = true;
       // Transport resolved. Per-device transitions during the await:
       //   - onMicUpdated / onCamUpdated upgraded reported devices to 'granted'
       //   - onDeviceError applied per-device 'error' classifications
@@ -762,6 +783,10 @@ export class PipecatClient extends RTVIEventEmitter {
           await this._transport.connect(
             connectParams as TransportConnectionParams
           );
+          // The transport initialized media as part of connecting, whether
+          // or not the implicit initDevices() above ran (it doesn't when
+          // every requested device is disabled).
+          this._devicesInitialized = true;
           await this._transport.sendReadyMessage();
         } catch (e) {
           void this.disconnect();
@@ -1023,16 +1048,23 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Whether initDevices() still has work to do. Returns true if any device
-   * the caller opted into (enableMic / enableCam) is still 'uninitialized'.
+   * Whether initDevices() still needs to happen. Returns false once
+   * initDevices() or connect() has succeeded. Before that, returns true if
+   * any device the caller opted into (enableMic / enableCam) is still
+   * 'uninitialized'.
    * Devices the caller opted out of are not considered — they stay
    * 'uninitialized' by design and must not gate the implicit init.
+   *
+   * This reports whether initialization is pending, not whether a device is
+   * healthy: a device that errored during initDevices() does not make this
+   * true again. Use enableMic() / enableCam() to retry a device.
    *
    * Used internally by connect() / startBot() to decide whether to drive an
    * implicit initDevices(); exposed publicly so consumers (e.g. step 3's
    * useMediaState hook) can branch on the same logic.
    */
   public needsInit(): boolean {
+    if (this._devicesInitialized) return false;
     if (
       this._options.enableMic !== false &&
       this._mediaState.mic.state === "uninitialized"

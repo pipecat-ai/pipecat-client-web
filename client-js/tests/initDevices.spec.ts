@@ -13,6 +13,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 
 import { PipecatClient } from "../client";
+import { logger } from "../client/logger";
 import {
   DeviceError,
   DeviceErrorType,
@@ -104,26 +105,53 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(states).toEqual(["initializing", "initialized"]);
   });
 
-  test("repeated explicit initDevices() calls re-enter the initializing state each time", async () => {
-    // Today the abstract contract does not guarantee idempotency — each
-    // concrete transport decides. The stub re-runs the transition, which is
-    // representative of transports that re-enumerate on every call.
+  test("a second explicit initDevices() call is refused: warns, skips the transport, leaves state alone", async () => {
+    // initDevices() is meant to be called once, before connect(). Once a
+    // transport has initialized it can't do so again (daily-js allows a
+    // single startCamera()), so the client refuses the repeat here instead
+    // of handing it down. Post-init device control is enableMic() /
+    // enableCam().
+    const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
     const states = recordStateChanges(client);
 
     await client.initDevices();
     await client.initDevices();
 
-    expect(transport.initDevicesCallCount).toBe(2);
+    expect(transport.initDevicesCallCount).toBe(1);
     expect(client.state).toBe("initialized");
-    // Note: the second cycle still emits initializing → initialized even
-    // though the end state is unchanged. Any regression here would change
-    // how consumers observe repeat calls.
-    expect(states).toEqual([
-      "initializing",
-      "initialized",
-      "initializing",
-      "initialized",
-    ]);
+    expect(states).toEqual(["initializing", "initialized"]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/enableMic\(\) \/ enableCam\(\)/);
+    warn.mockRestore();
+  });
+
+  test("a successful connect() with both devices disabled marks devices initialized", async () => {
+    // Nothing is requested, so connect() skips the implicit initDevices().
+    // The transport still initializes media as part of connecting, so a
+    // later explicit initDevices() must be refused like any post-init call.
+    const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+    const localTransport = CharacterizationTransport.create();
+    const localClient = new PipecatClient({
+      transport: localTransport,
+      enableMic: false,
+      enableCam: false,
+    });
+
+    expect(localClient.needsInit()).toBe(false);
+    await localClient.connect();
+    expect(localTransport.initDevicesCallCount).toBe(0);
+
+    await localClient.initDevices();
+
+    expect(localTransport.initDevicesCallCount).toBe(0);
+    expect(localClient.needsInit()).toBe(false);
+    // connect() also logs the stub's bot-ready protocol-version warning, so
+    // look for ours specifically.
+    const refusals = warn.mock.calls.filter((args) =>
+      /enableMic\(\) \/ enableCam\(\)/.test(String(args[0]))
+    );
+    expect(refusals).toHaveLength(1);
+    warn.mockRestore();
   });
 
   test("connect() implicitly calls initDevices() when state === 'disconnected'", async () => {

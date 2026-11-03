@@ -12,9 +12,17 @@
  * - Devices the transport doesn't acquire (stay 'uninitialized')
  */
 
-import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from "@jest/globals";
 
 import { PipecatClient } from "../client";
+import { logger } from "../client/logger";
 import {
   DeviceError,
   DeviceErrorReason,
@@ -74,6 +82,30 @@ class MediaStateTransport extends TransportStub {
 
   public emitDeviceError(error: DeviceError): void {
     this._callbacks.onDeviceError?.(error);
+  }
+
+  // enableMic(true) / enableCam(true) re-attempt acquisition on a real
+  // transport and report the outcome the same way initDevices() does:
+  // onDeviceError if it still fails, onMicUpdated / onCamUpdated with the
+  // acquired device if it succeeds. Driven by the same fields as init.
+  public override enableMic(enable: boolean): void {
+    if (enable) this._reacquire("mic");
+  }
+
+  public override enableCam(enable: boolean): void {
+    if (enable) this._reacquire("cam");
+  }
+
+  private _reacquire(kind: "mic" | "cam"): void {
+    const pendingError = this.emitDeviceErrorDuringInit;
+    if (pendingError?.devices.includes(kind)) {
+      this._callbacks.onDeviceError?.(pendingError);
+      return;
+    }
+    const device = this.acquiredOnInit[kind];
+    if (!device) return;
+    if (kind === "mic") this._callbacks.onMicUpdated?.(device);
+    else this._callbacks.onCamUpdated?.(device);
   }
 }
 
@@ -268,14 +300,18 @@ describe("MediaState — DeviceError classification", () => {
   });
 
   test("recovering device: a previously errored device can transition back to 'granted'", async () => {
-    // E.g. cam was unplugged → 'not-found' → user plugs it in and re-inits
-    // → cam should upgrade to 'granted'. _markDeviceGranted does not gate
-    // on prior state.
+    // E.g. cam was unplugged → 'not-found' → user plugs it in and calls
+    // enableCam(true) → the transport re-acquires and reports the cam →
+    // cam should upgrade to 'granted'. _markDeviceGranted does not gate on
+    // prior state. (initDevices() is one-time, so recovery never goes
+    // through a second init.)
     const transport = MediaStateTransport.create();
     const client = buildClient(transport);
 
-    // First init: cam reports as not-found.
-    transport.acquiredOnInit = { mic: { deviceId: "mic-1" } as MediaDeviceInfo };
+    // Init: cam reports as not-found.
+    transport.acquiredOnInit = {
+      mic: { deviceId: "mic-1" } as MediaDeviceInfo,
+    };
     transport.emitDeviceErrorDuringInit = new DeviceError(["cam"], "not-found");
     await client.initDevices();
     expect(client.mediaState).toEqual({
@@ -283,10 +319,10 @@ describe("MediaState — DeviceError classification", () => {
       cam: errored("not-found"),
     });
 
-    // Second init: cam now acquired.
+    // Cam is back. enableCam(true) re-acquires and the transport reports it.
     transport.acquiredOnInit = { ...DEFAULT_ACQUIRED };
     transport.emitDeviceErrorDuringInit = undefined;
-    await client.initDevices();
+    client.enableCam(true);
 
     expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
   });
@@ -318,10 +354,11 @@ describe("MediaState — needsInit() gate in connect()/startBot()", () => {
   });
 
   test("connect() after a failed initDevices() does NOT retry init (mediaState is in an error state)", async () => {
-    // After a rejection, mediaState lands in 'error'. needsInit only
-    // returns true when a requested device is 'uninitialized', so connect()
-    // does NOT trigger another implicit init. Recovery is the user's job:
-    // call initDevices() again explicitly.
+    // After a rejection, mediaState lands in 'error'. needsInit() only
+    // returns true while a requested device is 'uninitialized', so connect()
+    // does NOT trigger another implicit init. Retrying is the app's call:
+    // either an explicit initDevices() (allowed, since the transport never
+    // finished initializing) or enableMic(true) / enableCam(true).
     const transport = MediaStateTransport.create();
     transport.acquiredOnInit = {};
     const client = buildClient(transport);
@@ -348,6 +385,98 @@ describe("MediaState — needsInit() gate in connect()/startBot()", () => {
     await client.initDevices();
 
     expect(client.needsInit()).toBe(false);
+  });
+
+  test("needsInit() is false after an init that acquired nothing for a requested device", async () => {
+    // The transport resolved without ever speaking to the mic (no
+    // onMicUpdated), so the mic fell back to 'uninitialized'. initDevices()
+    // has still run, and it is one-time, so connect() must not drive
+    // another implicit init.
+    const transport = MediaStateTransport.create();
+    transport.acquiredOnInit = {};
+    const client = buildClient(transport);
+
+    await client.initDevices();
+
+    expect(client.mediaState).toEqual({ mic: UNINIT, cam: UNINIT });
+    expect(client.needsInit()).toBe(false);
+
+    await client.connect();
+
+    expect(transport.initDevicesCallCount).toBe(1);
+  });
+});
+
+describe("MediaState — initDevices() is refused once it has succeeded", () => {
+  let warn: jest.SpiedFunction<typeof logger.warn>;
+
+  beforeEach(() => {
+    warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+  });
+
+  test("a repeat call after a blocked device is refused and leaves mediaState untouched", async () => {
+    const transport = MediaStateTransport.create();
+    transport.emitDeviceErrorDuringInit = new DeviceError(
+      ["mic"],
+      "permissions"
+    );
+    const client = buildClient(transport);
+
+    await client.initDevices();
+    expect(client.mediaState).toEqual({
+      mic: errored("blocked"),
+      cam: GRANTED,
+    });
+
+    const updates = recordMediaState(client);
+    transport.emitDeviceErrorDuringInit = undefined;
+    await client.initDevices();
+
+    // No re-entry into 'initializing', no fallback to 'uninitialized', and
+    // the transport was not asked again. 'blocked' is sticky until
+    // enableMic(true) succeeds.
+    expect(transport.initDevicesCallCount).toBe(1);
+    expect(updates).toEqual([]);
+    expect(client.mediaState).toEqual({
+      mic: errored("blocked"),
+      cam: GRANTED,
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  test("a retry after a failed init is allowed and reaches the transport", async () => {
+    // A rejection means the transport never finished initializing (e.g.
+    // daily-js failed to load its call machine), and the transports allow
+    // another attempt in that state. So does the client: the retry runs
+    // the full lifecycle and can succeed.
+    const transport = MediaStateTransport.create();
+    transport.acquiredOnInit = {};
+    transport.initDevicesShouldThrow = new Error("first attempt failed");
+    const client = buildClient(transport);
+
+    await expect(client.initDevices()).rejects.toThrow();
+    expect(client.mediaState).toEqual({
+      mic: errored("unknown"),
+      cam: errored("unknown"),
+    });
+
+    transport.initDevicesShouldThrow = undefined;
+    transport.acquiredOnInit = { ...DEFAULT_ACQUIRED };
+    await client.initDevices();
+
+    expect(transport.initDevicesCallCount).toBe(2);
+    expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
+    expect(client.needsInit()).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+
+    // Now that it has succeeded, a further call is refused.
+    await client.initDevices();
+    expect(transport.initDevicesCallCount).toBe(2);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -470,7 +599,9 @@ describe("MediaState — devices the transport didn't acquire stay 'uninitialize
 
   test("transport that doesn't acquire cam leaves cam at 'uninitialized'", async () => {
     const transport = MediaStateTransport.create();
-    transport.acquiredOnInit = { mic: { deviceId: "mic-1" } as MediaDeviceInfo };
+    transport.acquiredOnInit = {
+      mic: { deviceId: "mic-1" } as MediaDeviceInfo,
+    };
     const client = buildClient(transport);
     const updates = recordMediaState(client);
 
@@ -488,7 +619,9 @@ describe("MediaState — devices the transport didn't acquire stay 'uninitialize
 
   test("transport that doesn't acquire mic leaves mic at 'uninitialized'", async () => {
     const transport = MediaStateTransport.create();
-    transport.acquiredOnInit = { cam: { deviceId: "cam-1" } as MediaDeviceInfo };
+    transport.acquiredOnInit = {
+      cam: { deviceId: "cam-1" } as MediaDeviceInfo,
+    };
     const client = buildClient(transport);
 
     await client.initDevices();
