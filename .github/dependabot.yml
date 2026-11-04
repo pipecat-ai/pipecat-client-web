@@ -3,6 +3,11 @@ updates:
   # The actions every workflow pins by commit.
   - package-ecosystem: github-actions
     directory: /
+    # Without an explicit prefix Dependabot writes "chore(deps): ...", and
+    # .commitlintrc.json only allows package names as scopes. No `include:
+    # scope`, so the commits read "ci: bump ...".
+    commit-message:
+      prefix: ci
     schedule:
       interval: weekly
     # A release that turns out to be compromised is usually caught within
