@@ -17,6 +17,9 @@ name: Draft PR Description
 #     or "/release-notes" to only (re)write the Release Notes section
 #   - manually from the Actions tab (workflow_dispatch) with a PR number
 #
+# Bot PRs (Dependabot etc.): the automatic trigger skips them. They don't get
+# repository secrets, and claude-code-action rejects bot actors anyway.
+#
 # Fork PRs: the automatic trigger skips them, but a maintainer can run the
 # comment or dispatch trigger on one deliberately. Every gh command Claude may
 # run is scoped to the single target PR, so prompt-injected content in a fork
@@ -46,6 +49,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request' &&
        github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.type != 'Bot' &&
        !github.event.pull_request.draft &&
        !startsWith(github.event.pull_request.head.ref, 'release-please--')) ||
       (github.event_name == 'issue_comment' &&
