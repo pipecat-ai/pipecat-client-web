@@ -430,11 +430,27 @@ export type LLMSearchOrigin = {
 
 export type LLMFunctionCallStartedData = {
   function_name?: string;
+  /**
+   * The `tool_call_id` of the function call this one ran as part of. A tool's
+   * work can involve function calls of its own, made by another model on its
+   * behalf, e.g. a backend that a `delegate` tool hands work to makes calls
+   * while the `delegate` call is in progress; each of them names it as its
+   * parent. Absent for a call the bot's LLM made itself.
+   */
+  parent_tool_call_id?: string;
 };
 
 export type LLMFunctionCallInProgressData = {
   function_name?: string;
   tool_call_id: string;
+  /**
+   * The `tool_call_id` of the function call this one ran as part of. A tool's
+   * work can involve function calls of its own, made by another model on its
+   * behalf, e.g. a backend that a `delegate` tool hands work to makes calls
+   * while the `delegate` call is in progress; each of them names it as its
+   * parent. Absent for a call the bot's LLM made itself.
+   */
+  parent_tool_call_id?: string;
   arguments?: Record<string, unknown>;
 };
 
@@ -457,6 +473,14 @@ export type LLMFunctionCallResultResponse = {
 export type LLMFunctionCallStoppedData = {
   function_name?: string;
   tool_call_id: string;
+  /**
+   * The `tool_call_id` of the function call this one ran as part of. A tool's
+   * work can involve function calls of its own, made by another model on its
+   * behalf, e.g. a backend that a `delegate` tool hands work to makes calls
+   * while the `delegate` call is in progress; each of them names it as its
+   * parent. Absent for a call the bot's LLM made itself.
+   */
+  parent_tool_call_id?: string;
   cancelled: boolean;
   result?: unknown;
 };

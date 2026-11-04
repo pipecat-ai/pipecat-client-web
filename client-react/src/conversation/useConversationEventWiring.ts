@@ -514,6 +514,7 @@ export function useConversationEventWiring() {
       useCallback((get, set, data: LLMFunctionCallStartedData) => {
         handleFunctionCallStarted(get, set, {
           function_name: data.function_name,
+          parent_tool_call_id: data.parent_tool_call_id,
         });
       }, [])
     )
@@ -526,6 +527,7 @@ export function useConversationEventWiring() {
         handleFunctionCallInProgress(get, set, {
           function_name: data.function_name,
           tool_call_id: data.tool_call_id,
+          parent_tool_call_id: data.parent_tool_call_id,
           args: data.arguments,
         });
       }, [])
@@ -539,6 +541,7 @@ export function useConversationEventWiring() {
         handleFunctionCallStopped(get, set, {
           function_name: data.function_name,
           tool_call_id: data.tool_call_id,
+          parent_tool_call_id: data.parent_tool_call_id,
           result: data.result,
           cancelled: data.cancelled,
         });
