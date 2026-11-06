@@ -70,6 +70,19 @@ import { transportAlreadyStarted, transportReady } from "./decorators";
 import { MessageDispatcher } from "./dispatcher";
 import { logger, LogLevel } from "./logger";
 import { combineMediaSupport } from "./mediaSupport";
+
+/**
+ * Transport states in which a session's media is live. initDevices() is
+ * ignored in these: devices are session-scoped by then, so changing them is
+ * enableMic() / enableCam()'s job. Deliberately excludes 'authenticating' /
+ * 'authenticated', which precede the implicit initDevices() in connect().
+ */
+const IN_SESSION_STATES: TransportState[] = [
+  "connecting",
+  "connected",
+  "ready",
+  "disconnecting",
+];
 import {
   APIRequest,
   ConnectionEndpoint,
@@ -240,14 +253,18 @@ export interface PipecatClientOptions {
   callbacks?: RTVIEventCallbacks;
 
   /**
-   * Enable user mic input
+   * Whether the user's mic is on when a session starts. Change it with
+   * enableMic(): before a session the call updates this flag; during a
+   * session it is a live toggle only, so the next connect() starts from the
+   * flag again.
    *
    * Default to true
    */
   enableMic?: boolean;
 
   /**
-   * Enable user cam input
+   * Whether the user's cam is on when a session starts. Change it with
+   * enableCam(), which works the same way as enableMic().
    *
    * Default to false
    */
@@ -591,34 +608,53 @@ export class PipecatClient extends RTVIEventEmitter {
   // ------ Transport methods
 
   /**
-   * Initialize local media devices.
+   * Start the devices the client options ask for (enableMic / enableCam) and
+   * report them, so a device picker can be populated and the permission
+   * prompt shown before connect(). Optional: connect() acquires whatever the
+   * options ask for, and enableMic(true) / enableCam(true) acquire on their
+   * own. Safe to call any number of times, before or between sessions.
+   * Ignored (with a warning) once a session is underway: devices are
+   * session-scoped by then, so enableMic() / enableCam() are the way to
+   * change them.
    *
-   * Drives MediaState transitions: both mic and cam move to 'initializing' on
-   * entry. On success, each device moves to 'granted' only if the transport
-   * reports it as acquired (via onMicUpdated / onCamUpdated with a real
-   * deviceId); otherwise that device falls back to 'uninitialized'. On
-   * failure the in-flight DeviceError (if any) classifies the affected
-   * device(s) per-device; anything still at 'initializing' falls back to
-   * 'unknown'. The original error is always re-thrown.
+   * Drives MediaState transitions: each device not already 'granted' moves to
+   * 'initializing' on entry. On success, such a device moves to 'granted'
+   * only if the transport reports it as acquired (via onMicUpdated /
+   * onCamUpdated with a real deviceId); otherwise it falls back to
+   * 'uninitialized'. On failure the in-flight DeviceError (if any) classifies
+   * the affected device(s) per-device; anything still at 'initializing'
+   * falls back to 'unknown'. The original error is always re-thrown.
    *
-   * Calling this again after a failure is the recovery path — a second call
-   * re-enters 'initializing' and reclassifies. There is no separate
-   * retryDevices() method.
+   * Calling this again after a failure is one recovery path: the call
+   * re-enters 'initializing' and reclassifies. enableMic(true) /
+   * enableCam(true) is the other, and the one to use once a session has
+   * started.
    */
   public async initDevices() {
+    if (IN_SESSION_STATES.includes(this._transport.state)) {
+      logger.warn(
+        `[Pipecat Client] initDevices() ignored while the transport is '${this._transport.state}'. Use enableMic() / enableCam() to change devices during a session.`
+      );
+      return;
+    }
     logger.debug("[Pipecat Client] Initializing devices...");
-    // Both devices enter the lifecycle, regardless of enableMic / enableCam.
-    // The actual transport behavior is asymmetric and not predictable from
-    // options alone (e.g. daily-js's startCamera honors startVideoOff but not
-    // startAudioOff — it acquires the mic even when the caller said
-    // enableMic: false). MediaState mirrors what the transport actually did,
-    // sourced from onMicUpdated / onCamUpdated events that fire with a real
-    // deviceId only when permission was granted. Devices the transport never
-    // speaks to fall back to 'uninitialized' below.
-    this._setMediaState({
-      mic: { state: "initializing" },
-      cam: { state: "initializing" },
-    });
+    // Every device not already granted enters the lifecycle, regardless of
+    // enableMic / enableCam. The actual transport behavior is asymmetric and
+    // not predictable from options alone (e.g. daily-js's startCamera honors
+    // startVideoOff but not startAudioOff — it acquires the mic even when the
+    // caller said enableMic: false). MediaState mirrors what the transport
+    // actually did, sourced from onMicUpdated / onCamUpdated events that fire
+    // with a real deviceId only when permission was granted. Devices the
+    // transport never speaks to fall back to 'uninitialized' below. A device
+    // already 'granted' stays so: the transport leaves an acquired device
+    // alone and need not re-report it.
+    const entering: Partial<MediaState> = {};
+    for (const kind of ["mic", "cam"] as const) {
+      if (this._mediaState[kind].state !== "granted") {
+        entering[kind] = { state: "initializing" };
+      }
+    }
+    if (Object.keys(entering).length > 0) this._setMediaState(entering);
 
     try {
       await this._transport.initDevices();
@@ -672,8 +708,9 @@ export class PipecatClient extends RTVIEventEmitter {
    * Upgrade a device to 'granted'. Called from the wrapped onMicUpdated /
    * onCamUpdated when the transport reports an actual selected device.
    * Allowed from any state — a previously errored device (e.g. 'not-found'
-   * because the cam was unplugged) can recover when the device reappears
-   * on a subsequent initDevices() call.
+   * because the cam was unplugged, or 'blocked' until the user allowed it)
+   * recovers when a later initDevices(), enableMic(true) or enableCam(true)
+   * acquires it.
    */
   private _markDeviceGranted(kind: "mic" | "cam"): void {
     if (this._mediaState[kind].state !== "granted") {
@@ -1029,8 +1066,9 @@ export class PipecatClient extends RTVIEventEmitter {
    * 'uninitialized' by design and must not gate the implicit init.
    *
    * Used internally by connect() / startBot() to decide whether to drive an
-   * implicit initDevices(); exposed publicly so consumers (e.g. step 3's
-   * useMediaState hook) can branch on the same logic.
+   * implicit initDevices() (which only refreshes MediaState: the transport's
+   * connect() acquires devices on its own); exposed publicly so consumers
+   * (e.g. a useMediaState hook) can branch on the same logic.
    */
   public needsInit(): boolean {
     if (
@@ -1125,6 +1163,13 @@ export class PipecatClient extends RTVIEventEmitter {
     this._transport.updateSpeaker(speakerId);
   }
 
+  /**
+   * Turn the user's mic on or off. Enabling acquires the mic if nothing has
+   * acquired it this session, which is also how to retry one that was
+   * blocked (a DeviceError follows if it still is). Before a session the call
+   * sets the state the next connect() starts with; during a session it is a
+   * live toggle only. See PipecatClientOptions.enableMic.
+   */
   public enableMic(enable: boolean) {
     this._transport.enableMic(enable);
   }
@@ -1133,6 +1178,7 @@ export class PipecatClient extends RTVIEventEmitter {
     return this._transport.isMicEnabled;
   }
 
+  /** Turn the user's cam on or off. Works the same way as enableMic(). */
   public enableCam(enable: boolean) {
     try {
       this._transport.enableCam(enable);

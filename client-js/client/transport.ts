@@ -56,9 +56,19 @@ export abstract class Transport {
   ): void;
 
   /**
-   * This method is intended to initialize cam/mic devices. It is wrapped
-   * by PipecatClient.initDevices and should not be called directly. It is also
-   * called as part of PipecatClient.connect if it has not already called.
+   * Start the devices the client options ask for (enableMic / enableCam) and
+   * report them: the available devices via onAvailableMicsUpdated and
+   * friends, the selection via onMicUpdated / onCamUpdated /
+   * onSpeakerUpdated. Must be safe to call any number of times, before or
+   * between sessions: a device already acquired is left alone (and
+   * re-reported), and a device that is off is not acquired.
+   *
+   * Wrapped by PipecatClient.initDevices and called as part of
+   * PipecatClient.connect when a requested device is still uninitialized;
+   * not called directly, and never while a session is underway (the wrapper
+   * ignores the call then). Transports must not depend on it: connect()
+   * acquires whatever the flags ask for that has not been acquired, and
+   * enableMic(true) / enableCam(true) acquire on their own.
    */
   abstract initDevices(): Promise<void>;
 
@@ -156,6 +166,21 @@ export abstract class Transport {
   abstract get selectedCam(): MediaDeviceInfo | Record<string, never>;
   abstract get selectedSpeaker(): MediaDeviceInfo | Record<string, never>;
 
+  /**
+   * Turn the mic / cam on or off.
+   *
+   * Enabling with nothing acquired this session acquires the device, which is
+   * also what re-attempts a device that was blocked (a DeviceError is
+   * reported if it still is). Disabling with nothing acquired only records
+   * the preference; it never prompts for a device the app has turned off.
+   *
+   * Outside a session (before connect(), or after disconnect()) the call also
+   * sets the connect-time flag, so the next connect() starts with the device
+   * in this state. Once connect() begins the flag is frozen for that session
+   * and the call is a live toggle only, so a mid-session mute does not carry
+   * into the next connect(). isMicEnabled / isCamEnabled report the live
+   * state; disconnect() resets it to the flags.
+   */
   abstract enableMic(enable: boolean): void;
   abstract enableCam(enable: boolean): void;
   abstract enableScreenShare(enable: boolean): void;

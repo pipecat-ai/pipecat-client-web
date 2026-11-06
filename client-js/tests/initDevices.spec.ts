@@ -142,6 +142,18 @@ describe("PipecatClient.initDevices() — characterization", () => {
     ]);
   });
 
+  test("initDevices() during a session is ignored: no transport call, no state change", async () => {
+    await client.connect();
+    expect(transport.initDevicesCallCount).toBe(1);
+    const states = recordStateChanges(client);
+
+    await client.initDevices();
+
+    expect(transport.initDevicesCallCount).toBe(1);
+    expect(client.state).toBe("ready");
+    expect(states).toEqual([]);
+  });
+
   test("connect() does NOT re-call initDevices() when state is already 'initialized'", async () => {
     await client.initDevices();
     expect(transport.initDevicesCallCount).toBe(1);

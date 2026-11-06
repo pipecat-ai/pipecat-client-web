@@ -142,6 +142,36 @@ describe("MediaState — lifecycle on initDevices()", () => {
     ]);
   });
 
+  test("a repeat initDevices() leaves a granted device granted even if the transport does not re-report it", async () => {
+    await client.initDevices();
+    // Transports leave an acquired device alone on a repeat call and need
+    // not re-report it; the client must not drop it back to 'uninitialized'.
+    transport.acquiredOnInit = {};
+    const updates = recordMediaState(client);
+
+    await client.initDevices();
+
+    expect(transport.initDevicesCallCount).toBe(2);
+    expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
+    expect(updates).toEqual([]);
+  });
+
+  test("a repeat initDevices() re-enters 'initializing' only for devices not yet granted", async () => {
+    transport.acquiredOnInit = { mic: DEFAULT_ACQUIRED.mic };
+    await client.initDevices();
+    expect(client.mediaState).toEqual({ mic: GRANTED, cam: UNINIT });
+    transport.acquiredOnInit = { ...DEFAULT_ACQUIRED };
+    const updates = recordMediaState(client);
+
+    await client.initDevices();
+
+    expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
+    expect(updates).toEqual([
+      { mic: GRANTED, cam: INITIALIZING },
+      { mic: GRANTED, cam: GRANTED },
+    ]);
+  });
+
   test("onMediaStateChanged callback fires alongside the event emitter", async () => {
     const callbackSnapshots: MediaState[] = [];
     const callbackTransport = MediaStateTransport.create();
