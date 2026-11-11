@@ -29,6 +29,7 @@ import {
   RTVIFile,
   RTVIMessage,
   RTVIMessageType,
+  STTRawTextData,
   TextType,
   UserInputData,
 } from "./../rtvi";
@@ -942,6 +943,43 @@ describe("User input and bot output", () => {
     transport.handleMessage(serverMessage(RTVIMessageType.USER_INPUT, data));
 
     expect(eventData?.perception).toEqual(data.perception);
+  });
+
+  test("a transcription's user input carries who said it", () => {
+    const data: UserInputData = {
+      text: "Mine is the banana.",
+      input_type: "transcription",
+      timestamp: "2026-11-10T00:00:00.000Z",
+      final: true,
+      user_id: "user",
+      speaker: { label: "B", number: 2 },
+    };
+    let eventData: UserInputData | undefined;
+    client.on(RTVIEvent.UserInput, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(serverMessage(RTVIMessageType.USER_INPUT, data));
+
+    expect(eventData?.speaker).toEqual({ label: "B", number: 2 });
+  });
+
+  test("a raw STT transcription carries who said it", () => {
+    const data: STTRawTextData = {
+      text: "Mine is",
+      final: false,
+      timestamp: "2026-11-10T00:00:00.000Z",
+      user_id: "user",
+      speaker: { label: "B", number: 2 },
+    };
+    let eventData: STTRawTextData | undefined;
+    client.on(RTVIEvent.SttRawText, (d) => {
+      eventData = d;
+    });
+
+    transport.handleMessage(serverMessage(RTVIMessageType.STT_RAW_TEXT, data));
+
+    expect(eventData?.speaker).toEqual({ label: "B", number: 2 });
   });
 
   test.each([

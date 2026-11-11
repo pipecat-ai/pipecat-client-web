@@ -180,6 +180,20 @@ export type TranscriptData = {
   user_id: string;
 };
 
+/**
+ * A speaker the bot's STT service told apart with diarization, in a
+ * transcription.
+ */
+export type TranscriptionSpeaker = {
+  /** The STT provider's label for the speaker, such as "A" or "S1". */
+  label: string;
+  /**
+   * The speaker's place in the order speakers first spoke, starting at 1, so
+   * it reads the same whatever labels the provider uses.
+   */
+  number: number;
+};
+
 /** A transcription as the STT produced it (RTVI 2.2.0+). */
 export type STTRawTextData = {
   text: string;
@@ -187,6 +201,12 @@ export type STTRawTextData = {
   final: boolean;
   timestamp: string;
   user_id: string;
+  /**
+   * Who said it, when the bot's STT service tells speakers apart with
+   * diarization. Unlike `user_id`, the transport participant, this tells
+   * apart people sharing one microphone.
+   */
+  speaker?: TranscriptionSpeaker;
 };
 
 /**
@@ -245,6 +265,13 @@ export type UserInputData = {
    * transcriptions can carry one too.
    */
   perception?: UserPerceptionSignal[];
+  /**
+   * For a transcription, who said it, when the bot's STT service tells
+   * speakers apart with diarization. Unlike `user_id`, the transport
+   * participant, this tells apart people sharing one microphone. Interim
+   * transcriptions can carry one too.
+   */
+  speaker?: TranscriptionSpeaker;
 };
 
 /**
