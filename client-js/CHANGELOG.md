@@ -5,6 +5,12 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.16.0...client-js-v1.17.0) (2026-11-11)
+
+### Features
+
+* With speaker diarization on, transcriptions now say who spoke: `UserInputData.speaker` (on `onUserInput` / `RTVIEvent.UserInput`) and `STTRawTextData.speaker` (on `onSttRawText` / `RTVIEvent.SttRawText`) are a new `TranscriptionSpeaker`, with the STT provider's `label` and the speaker's `number` in the order speakers first spoke, starting at 1. The field is absent when the bot's STT service doesn't tell speakers apart. ([#288](https://github.com/pipecat-ai/pipecat-client-web/pull/288))
+
 ## [1.16.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.15.0...client-js-v1.16.0) (2026-10-29)
 
 ### Features
