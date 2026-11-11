@@ -37,6 +37,7 @@ import {
   updateAssistantBotOutput,
   updateLastMessage,
   upsertUserTranscript,
+  type UserTranscriptDetails,
 } from "./conversationActions";
 import {
   botDeliveryAtom,
@@ -444,12 +445,21 @@ export function useConversationEventWiring() {
   );
 
   const addUserTranscription = useAtomCallback(
-    useCallback((get, set, text: string, final: boolean) => {
-      upsertUserTranscript(get, set, text, final);
+    useCallback(
+      (
+        get,
+        set,
+        text: string,
+        final: boolean,
+        details?: UserTranscriptDetails
+      ) => {
+        upsertUserTranscript(get, set, text, final, details);
 
-      // If we got any transcript, cancel pending cleanup
-      clearTimeout(userStoppedTimeout.current);
-    }, [])
+        // If we got any transcript, cancel pending cleanup
+        clearTimeout(userStoppedTimeout.current);
+      },
+      []
+    )
   );
 
   useRTVIClientEvent(
@@ -473,7 +483,10 @@ export function useConversationEventWiring() {
             // user-transcription, so the first one switches over without
             // being added twice.
             userInputTranscribesRef.current = true;
-            addUserTranscription(data.text, data.final);
+            addUserTranscription(data.text, data.final, {
+              speaker: data.speaker,
+              perception: data.perception,
+            });
           } else if (data.input_type === "backchannel") {
             addBackchannel(get, set, "user", data.text);
           }
