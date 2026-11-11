@@ -608,11 +608,27 @@ export function injectMessage(
   set(messagesAtom, processedMessages);
 }
 
+/** What a user transcription can carry besides its text. */
+export type UserTranscriptDetails = Pick<
+  ConversationMessagePart,
+  "speaker" | "perception"
+>;
+
+/** A transcription's details, each left out when absent. */
+const transcriptDetails = ({
+  speaker,
+  perception,
+}: UserTranscriptDetails) => ({
+  ...(speaker && { speaker }),
+  ...(perception && { perception }),
+});
+
 export function upsertUserTranscript(
   get: Getter,
   set: Setter,
   text: string | ReactNode,
-  final: boolean
+  final: boolean,
+  details: UserTranscriptDetails = {}
 ) {
   const now = new Date();
   const messages = [...get(messagesAtom)];
@@ -633,13 +649,21 @@ export function upsertUserTranscript(
     const lastPart = parts[parts.length - 1];
     if (!lastPart || lastPart.final) {
       // Start a new part
-      parts.push({ text, final, createdAt: now.toISOString() });
-    } else {
-      // Update in-progress part
-      parts[parts.length - 1] = {
-        ...lastPart,
+      parts.push({
         text,
         final,
+        createdAt: now.toISOString(),
+        ...transcriptDetails(details),
+      });
+    } else {
+      // Update in-progress part. The latest transcription's speaker and
+      // perception replace the interim's, which can differ from the final's.
+      const updatedPart: ConversationMessagePart = { ...lastPart, text, final };
+      delete updatedPart.speaker;
+      delete updatedPart.perception;
+      parts[parts.length - 1] = {
+        ...updatedPart,
+        ...transcriptDetails(details),
       };
     }
 
@@ -667,6 +691,7 @@ export function upsertUserTranscript(
         text,
         final,
         createdAt: now.toISOString(),
+        ...transcriptDetails(details),
       },
     ],
     createdAt: now.toISOString(),

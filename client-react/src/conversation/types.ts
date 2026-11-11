@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+import type {
+  TranscriptionSpeaker,
+  UserPerceptionSignal,
+} from "@pipecat-ai/client-js";
 import { type ReactNode } from "react";
 
 /**
@@ -133,6 +137,18 @@ export interface ConversationMessagePart {
    * @default "inline"
    */
   displayMode?: "inline" | "block";
+  /**
+   * For a part of the user's speech, who said it, when the bot's STT service
+   * tells speakers apart with diarization. One user message can hold parts
+   * from several speakers; `usePipecatConversation`'s `splitBySpeaker` gives
+   * each speaker's run of parts a message of its own.
+   */
+  speaker?: TranscriptionSpeaker;
+  /**
+   * For a part of the user's speech, how the user said it, in expressive
+   * conversation (alpha), when the bot's STT service reports a reading with it.
+   */
+  perception?: UserPerceptionSignal[];
 }
 
 /**
@@ -167,4 +183,9 @@ export interface ConversationMessage {
   msgId?: string;
   /** For a user message added by the conversation's `sendText()`, whether the bot received it. */
   status?: SentTextStatus;
+  /**
+   * With `usePipecatConversation`'s `splitBySpeaker`, the speaker of every
+   * part of this user message. Absent otherwise.
+   */
+  speaker?: TranscriptionSpeaker;
 }
