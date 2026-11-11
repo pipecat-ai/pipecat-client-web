@@ -7,10 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.17.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.16.0...client-js-v1.17.0) (2026-11-11)
 
-
 ### Features
 
-* **client-js:** type the diarization speaker on user-input and stt-raw-text ([71f0366](https://github.com/pipecat-ai/pipecat-client-web/commit/71f03662226b0ce0a4b62b86e313b17c377d22e0))
+* With speaker diarization on, transcriptions now say who spoke: `UserInputData.speaker` (on `onUserInput` / `RTVIEvent.UserInput`) and `STTRawTextData.speaker` (on `onSttRawText` / `RTVIEvent.SttRawText`) are a new `TranscriptionSpeaker`, with the STT provider's `label` and the speaker's `number` in the order speakers first spoke, starting at 1. The field is absent when the bot's STT service doesn't tell speakers apart. ([#288](https://github.com/pipecat-ai/pipecat-client-web/pull/288))
 
 ## [1.16.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.15.0...client-js-v1.16.0) (2026-10-29)
 
