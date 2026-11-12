@@ -104,26 +104,15 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(states).toEqual(["initializing", "initialized"]);
   });
 
-  test("repeated explicit initDevices() calls re-enter the initializing state each time", async () => {
-    // Today the abstract contract does not guarantee idempotency — each
-    // concrete transport decides. The stub re-runs the transition, which is
-    // representative of transports that re-enumerate on every call.
+  test("a repeated explicit initDevices() is a no-op", async () => {
     const states = recordStateChanges(client);
 
     await client.initDevices();
     await client.initDevices();
 
-    expect(transport.initDevicesCallCount).toBe(2);
+    expect(transport.initDevicesCallCount).toBe(1);
     expect(client.state).toBe("initialized");
-    // Note: the second cycle still emits initializing → initialized even
-    // though the end state is unchanged. Any regression here would change
-    // how consumers observe repeat calls.
-    expect(states).toEqual([
-      "initializing",
-      "initialized",
-      "initializing",
-      "initialized",
-    ]);
+    expect(states).toEqual(["initializing", "initialized"]);
   });
 
   test("connect() implicitly calls initDevices() when state === 'disconnected'", async () => {
@@ -155,14 +144,13 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(client.state).toBe("ready");
   });
 
-  test("reconnect after disconnect does NOT re-run initDevices() (mediaState gate)", async () => {
+  test("reconnect after disconnect re-runs initDevices() by the flags", async () => {
     await client.connect();
     await client.disconnect();
 
     expect(client.state).toBe("disconnected");
     expect(transport.initDevicesCallCount).toBe(1);
-    // The fake transport reports both devices acquired on init (mirroring
-    // what daily-js actually does, even when enableMic / enableCam disagree).
+    // Picker access survives the disconnect.
     expect(client.mediaState).toEqual({
       mic: { state: "granted" },
       cam: { state: "granted" },
@@ -170,12 +158,9 @@ describe("PipecatClient.initDevices() — characterization", () => {
 
     await client.connect();
 
-    // Step 2 replaced the `state === "disconnected"` gate with
-    // needsInit(mediaState). Post-disconnect, mediaState is still
-    // {mic:"granted", cam:"granted"}, so the implicit-init no longer
-    // double-fires. Picker access survives the disconnect — this is the
-    // contract voice-ui-kit will rely on in step 4.
-    expect(transport.initDevicesCallCount).toBe(1);
+    // No device call came before either connect(), so each one turns the
+    // devices back on by the flags.
+    expect(transport.initDevicesCallCount).toBe(2);
     expect(client.state).toBe("ready");
   });
 
@@ -191,16 +176,6 @@ describe("PipecatClient.initDevices() — characterization", () => {
     expect(client.state).toBe("initializing");
     expect(states).toEqual(["initializing"]);
   });
-
-  // KNOWN LATENT BUG — intentionally not asserted as a passing test:
-  //
-  // When initDevices() rejects inside connect(), the `await` sits outside the
-  // try/catch in client.ts, so the async IIFE emits an unhandled rejection
-  // and the outer Promise never settles. Step 2 of Plan A fixes this by
-  // handling the error deliberately. The "explicit initDevices() rejects"
-  // test above locks in the init-level rejection behavior the refactor builds
-  // on; the connect-path behavior will be re-characterized in step 2 once
-  // the fix is in place.
 
   test("startBot() implicitly calls initDevices() when state === 'disconnected'", async () => {
     // Stub makeRequest via the global fetch mock supplied by whatwg-fetch.
@@ -261,6 +236,108 @@ describe("PipecatClient.initDevices() — characterization", () => {
       expect(states).toEqual(["initializing", "initialized"]);
     }
   );
+});
+
+describe("PipecatClient — as-is vs by-the-flags connects", () => {
+  let transport: CharacterizationTransport;
+  let client: PipecatClient;
+
+  beforeEach(() => {
+    transport = CharacterizationTransport.create();
+    client = new PipecatClient({ transport });
+  });
+
+  test("an initDevices() before connect() makes connect() leave the devices alone", async () => {
+    await client.initDevices();
+    await client.connect();
+
+    expect(transport.initDevicesCallCount).toBe(1);
+  });
+
+  test.each(["enableMic", "enableCam"] as const)(
+    "a %s() before connect() means connect() doesn't initialize the devices",
+    async (method) => {
+      client[method](true);
+      await client.connect();
+
+      expect(transport.initDevicesCallCount).toBe(0);
+    }
+  );
+
+  test("as-is is sticky: after disconnect(), connect() still leaves the devices alone", async () => {
+    await client.initDevices();
+    await client.connect();
+    await client.disconnect();
+    await client.connect();
+
+    expect(transport.initDevicesCallCount).toBe(1);
+  });
+
+  test("a device call during a session doesn't switch connect() to as-is", async () => {
+    await client.connect();
+    client.enableMic(false);
+    await client.disconnect();
+    await client.connect();
+
+    expect(transport.initDevicesCallCount).toBe(2);
+  });
+
+  test("an initDevices() during a session is a no-op", async () => {
+    await client.connect();
+    await client.initDevices();
+
+    expect(transport.initDevicesCallCount).toBe(1);
+    expect(client.state).toBe("ready");
+  });
+
+  test("initDevices() works once again after disconnect()", async () => {
+    await client.initDevices();
+    await client.disconnect();
+    await client.initDevices();
+    await client.initDevices();
+
+    expect(transport.initDevicesCallCount).toBe(2);
+  });
+
+  test("a no-op initDevices() still reports the device lists", async () => {
+    const mics = jest.fn();
+    const cams = jest.fn();
+    client.on(RTVIEvent.AvailableMicsUpdated, mics);
+    client.on(RTVIEvent.AvailableCamsUpdated, cams);
+    await client.initDevices();
+    mics.mockClear();
+    cams.mockClear();
+
+    await client.initDevices();
+
+    expect(mics).toHaveBeenCalledTimes(1);
+    expect(cams).toHaveBeenCalledTimes(1);
+  });
+
+  test("startBotAndConnect() applies the flags once, in startBot()", async () => {
+    const fetchMock = jest
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+
+    try {
+      await client.startBotAndConnect({
+        endpoint: "https://example.invalid/start",
+      });
+    } finally {
+      fetchMock.mockRestore();
+    }
+
+    expect(transport.initDevicesCallCount).toBe(1);
+    expect(client.state).toBe("ready");
+  });
+
+  test("connect() still connects when the devices fail to start", async () => {
+    transport.initDevicesShouldThrow = new Error("boom");
+
+    await client.connect();
+
+    expect(client.state).toBe("ready");
+  });
 });
 
 describe("DeviceError — characterization", () => {

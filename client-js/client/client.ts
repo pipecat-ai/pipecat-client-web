@@ -311,6 +311,18 @@ export class PipecatClient extends RTVIEventEmitter {
     cam: { state: "uninitialized" },
   };
 
+  // Whether connect() keeps the devices as the app left them instead of
+  // turning them on by enableMic / enableCam. Set by any initDevices(),
+  // enableMic() or enableCam() outside a session (a pre-join experience),
+  // and never cleared.
+  private _devicesAsIs = false;
+  // Whether this stretch between sessions has already used its
+  // initDevices(): set by initDevices(), enableMic(), enableCam(), startBot()
+  // and connect(), cleared by disconnect().
+  private _devicesTouched = false;
+  // From connect() until disconnect().
+  private _inSession = false;
+
   constructor(options: PipecatClientOptions) {
     super();
 
@@ -591,7 +603,51 @@ export class PipecatClient extends RTVIEventEmitter {
   // ------ Transport methods
 
   /**
-   * Initialize local media devices.
+   * Initialize local media devices, turning them on as enableMic /
+   * enableCam say. It is meant to be called once between sessions: after
+   * any initDevices(), enableMic(), enableCam() or connect() it changes
+   * nothing and only reports the device lists again, until disconnect().
+   * Called before connect(), it also makes connect() keep the devices as
+   * they are.
+   *
+   * A device that fails here (e.g. blocked) is recovered with enableMic() /
+   * enableCam(), not another initDevices().
+   */
+  public async initDevices() {
+    this._noteDeviceCall();
+    if (this._devicesTouched) {
+      await this._reportDevices();
+      return;
+    }
+    this._devicesTouched = true;
+    await this._initTransportDevices();
+  }
+
+  /** Record a device call; outside a session it switches connect() to as-is. */
+  private _noteDeviceCall(): void {
+    if (this._inSession) return;
+    this._devicesAsIs = true;
+  }
+
+  /** Report the device lists, as an initDevices() that runs would. */
+  private async _reportDevices(): Promise<void> {
+    const callbacks = this._options.callbacks;
+    try {
+      const [mics, cams, speakers] = await Promise.all([
+        this._transport.getAllMics(),
+        this._transport.getAllCams(),
+        this._transport.getAllSpeakers(),
+      ]);
+      callbacks?.onAvailableMicsUpdated?.(mics);
+      callbacks?.onAvailableCamsUpdated?.(cams);
+      callbacks?.onAvailableSpeakersUpdated?.(speakers);
+    } catch (e) {
+      logger.debug("[Pipecat Client] Could not list devices", e);
+    }
+  }
+
+  /**
+   * Have the transport turn the devices on by enableMic / enableCam.
    *
    * Drives MediaState transitions: both mic and cam move to 'initializing' on
    * entry. On success, each device moves to 'granted' only if the transport
@@ -600,12 +656,8 @@ export class PipecatClient extends RTVIEventEmitter {
    * failure the in-flight DeviceError (if any) classifies the affected
    * device(s) per-device; anything still at 'initializing' falls back to
    * 'unknown'. The original error is always re-thrown.
-   *
-   * Calling this again after a failure is the recovery path — a second call
-   * re-enters 'initializing' and reclassifies. There is no separate
-   * retryDevices() method.
    */
-  public async initDevices() {
+  private async _initTransportDevices() {
     logger.debug("[Pipecat Client] Initializing devices...");
     // Both devices enter the lifecycle, regardless of enableMic / enableCam.
     // The actual transport behavior is asymmetric and not predictable from
@@ -689,13 +741,9 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   @transportAlreadyStarted
   public async startBot(startBotParams: APIRequest): Promise<unknown> {
-    // Implicit init when devices haven't been initialized yet. Pre-Plan-A
-    // this gate read transport.state === "disconnected", which fired both
-    // pre-init AND post-session — leading to redundant initDevices() calls
-    // on reconnect. needsInit(mediaState) is the unambiguous replacement.
-    if (this.needsInit()) {
-      await this.initDevices();
-    }
+    // Turn the devices on by the flags now, as connect() would, so any
+    // permission prompt comes up before the wait for the bot.
+    await this._applyDeviceFlags();
     this._transport.state = "authenticating";
     this._transport.startBotParams = startBotParams;
     this._abortController = new AbortController();
@@ -754,9 +802,8 @@ export class PipecatClient extends RTVIEventEmitter {
       (async () => {
         this._connectResolve = resolve;
 
-        if (this.needsInit()) {
-          await this.initDevices();
-        }
+        this._inSession = true;
+        await this._applyDeviceFlags();
 
         try {
           await this._transport.connect(
@@ -770,6 +817,26 @@ export class PipecatClient extends RTVIEventEmitter {
         }
       })();
     });
+  }
+
+  /**
+   * Unless the client is as-is, turn the devices on by enableMic /
+   * enableCam. A device that fails to start is reported through
+   * onDeviceError and doesn't stop the connection.
+   */
+  private async _applyDeviceFlags(): Promise<void> {
+    // _devicesAsIs alone covers every device call the app makes. The
+    // _devicesTouched check is for startBotAndConnect(): startBot() applies
+    // the flags first (so any permission prompt comes up before the wait for
+    // the bot), and connect() must not apply them a second time.
+    const apply = !this._devicesAsIs && !this._devicesTouched;
+    this._devicesTouched = true;
+    if (!apply) return;
+    try {
+      await this._initTransportDevices();
+    } catch (e) {
+      logger.warn("[Pipecat Client] Devices failed to start", e);
+    }
   }
 
   @transportAlreadyStarted
@@ -819,6 +886,10 @@ export class PipecatClient extends RTVIEventEmitter {
    * Reset / reinitialize transport and abort any pending requests
    */
   public async disconnect(): Promise<void> {
+    // The next stretch before connect() starts fresh: initDevices() works
+    // again, and connect() applies the flags unless the client is as-is.
+    this._inSession = false;
+    this._devicesTouched = false;
     this.stopUISnapshotStream();
     this._transport.startBotResponse = undefined;
     this._clearBotState();
@@ -1028,9 +1099,9 @@ export class PipecatClient extends RTVIEventEmitter {
    * Devices the caller opted out of are not considered — they stay
    * 'uninitialized' by design and must not gate the implicit init.
    *
-   * Used internally by connect() / startBot() to decide whether to drive an
-   * implicit initDevices(); exposed publicly so consumers (e.g. step 3's
-   * useMediaState hook) can branch on the same logic.
+   * Consumers (e.g. the useMediaState hook) can use it to decide whether to
+   * show a device prompt. connect() and startBot() don't use it: they follow
+   * the as-is / by-the-flags rules on initDevices().
    */
   public needsInit(): boolean {
     if (
@@ -1126,6 +1197,8 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public enableMic(enable: boolean) {
+    this._noteDeviceCall();
+    this._devicesTouched = true;
     this._transport.enableMic(enable);
   }
 
@@ -1134,6 +1207,8 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   public enableCam(enable: boolean) {
+    this._noteDeviceCall();
+    this._devicesTouched = true;
     try {
       this._transport.enableCam(enable);
     } catch (e) {
