@@ -75,6 +75,14 @@ class MediaStateTransport extends TransportStub {
   public emitDeviceError(error: DeviceError): void {
     this._callbacks.onDeviceError?.(error);
   }
+
+  public emitTrackStarted(kind: "audio" | "video", local: boolean): void {
+    this._callbacks.onTrackStarted?.({ kind } as MediaStreamTrack, {
+      id: local ? "local" : "bot",
+      name: local ? "local" : "bot",
+      local,
+    });
+  }
 }
 
 const recordMediaState = (client: PipecatClient): MediaState[] => {
@@ -288,6 +296,36 @@ describe("MediaState — DeviceError classification", () => {
     transport.emitDeviceErrorDuringInit = undefined;
     await client.initDevices();
 
+    expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
+  });
+
+  test("blocked device re-acquired via enableMic/enableCam: local track start upgrades to 'granted'", async () => {
+    // Re-acquiring the same device doesn't change the selection, so the
+    // transport fires no onMicUpdated / onCamUpdated — only track-started.
+    const transport = MediaStateTransport.create();
+    const client = buildClient(transport);
+
+    transport.emitDeviceErrorDuringInit = new DeviceError(
+      ["mic", "cam"],
+      "permissions"
+    );
+    await client.initDevices();
+    expect(client.mediaState).toEqual({
+      mic: errored("blocked"),
+      cam: errored("blocked"),
+    });
+
+    // Remote (bot) tracks say nothing about local permissions.
+    transport.emitTrackStarted("audio", false);
+    expect(client.mediaState.mic).toEqual(errored("blocked"));
+
+    transport.emitTrackStarted("audio", true);
+    expect(client.mediaState).toEqual({
+      mic: GRANTED,
+      cam: errored("blocked"),
+    });
+
+    transport.emitTrackStarted("video", true);
     expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
   });
 });
