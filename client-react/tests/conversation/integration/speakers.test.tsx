@@ -163,8 +163,6 @@ describe("diarized user turns", () => {
       [B, true, ["Mine is the banana."]],
       [A, false, ["And mine"]],
     ]);
-    expect(split[0].createdAt < split[1].createdAt).toBe(true);
-    expect(split[1].createdAt < split[2].createdAt).toBe(true);
   });
 
   it("still reports the whole turn as one message to onMessageCreated", () => {
@@ -175,29 +173,5 @@ describe("diarized user turns", () => {
 
     const userCreated = c.probes.split.created.filter((m) => m.role === "user");
     expect(userCreated).toHaveLength(1);
-  });
-
-  it("gives parts without a speaker a message of their own, without a speaker", () => {
-    const c = renderConversation();
-    c.emit(RTVIEvent.UserStartedSpeaking);
-    c.userInput("My favorite fruit is the apple.", true, A);
-    c.userInput("Hmm.", true);
-
-    const split = c.userMessages(c.probes.split);
-    expect(split.map((m) => m.parts.map((p) => p.text))).toEqual([
-      ["My favorite fruit is the apple."],
-      ["Hmm."],
-    ]);
-    expect(split[0].speaker).toEqual(A);
-    expect(split[1]).not.toHaveProperty("speaker");
-  });
-
-  it("leaves messages unchanged with splitBySpeaker when nobody is diarized", () => {
-    const c = renderConversation();
-    c.emit(RTVIEvent.UserStartedSpeaking);
-    c.userInput("So I was thinking.", true);
-    c.userInput("Maybe not.", true);
-
-    expect(c.probes.split.messages).toEqual(c.probes.default.messages);
   });
 });

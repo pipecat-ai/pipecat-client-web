@@ -614,11 +614,16 @@ export type UserTranscriptDetails = Pick<
   "speaker" | "perception"
 >;
 
-/** A transcription's details, each left out when absent. */
-const transcriptDetails = ({
-  speaker,
-  perception,
-}: UserTranscriptDetails) => ({
+/** A user part for a transcription, with its details left out when absent. */
+const transcriptPart = (
+  text: string | ReactNode,
+  final: boolean,
+  createdAt: string,
+  { speaker, perception }: UserTranscriptDetails
+): ConversationMessagePart => ({
+  text,
+  final,
+  createdAt,
   ...(speaker && { speaker }),
   ...(perception && { perception }),
 });
@@ -649,22 +654,16 @@ export function upsertUserTranscript(
     const lastPart = parts[parts.length - 1];
     if (!lastPart || lastPart.final) {
       // Start a new part
-      parts.push({
-        text,
-        final,
-        createdAt: now.toISOString(),
-        ...transcriptDetails(details),
-      });
+      parts.push(transcriptPart(text, final, now.toISOString(), details));
     } else {
       // Update in-progress part. The latest transcription's speaker and
       // perception replace the interim's, which can differ from the final's.
-      const updatedPart: ConversationMessagePart = { ...lastPart, text, final };
-      delete updatedPart.speaker;
-      delete updatedPart.perception;
-      parts[parts.length - 1] = {
-        ...updatedPart,
-        ...transcriptDetails(details),
-      };
+      parts[parts.length - 1] = transcriptPart(
+        text,
+        final,
+        lastPart.createdAt,
+        details
+      );
     }
 
     const updatedMessage: ConversationMessage = {
@@ -686,14 +685,7 @@ export function upsertUserTranscript(
   const newMessage: ConversationMessage = {
     role: "user",
     final: false,
-    parts: [
-      {
-        text,
-        final,
-        createdAt: now.toISOString(),
-        ...transcriptDetails(details),
-      },
-    ],
+    parts: [transcriptPart(text, final, now.toISOString(), details)],
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };

@@ -184,8 +184,9 @@ export interface ConversationMessage {
   /** For a user message added by the conversation's `sendText()`, whether the bot received it. */
   status?: SentTextStatus;
   /**
-   * With `usePipecatConversation`'s `splitBySpeaker`, the speaker of every
-   * part of this user message. Absent otherwise.
+   * With `usePipecatConversation`'s `splitBySpeaker`, the speaker of this
+   * user message's parts. Its last part may have no speaker yet while it is
+   * interim. Absent otherwise.
    */
   speaker?: TranscriptionSpeaker;
 }
