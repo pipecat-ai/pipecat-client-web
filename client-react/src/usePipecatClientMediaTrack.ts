@@ -6,7 +6,7 @@
 
 import { Participant, RTVIEvent, Tracks } from "@pipecat-ai/client-js";
 import { atom, useAtomValue } from "jotai";
-import { atomFamily, useAtomCallback } from "jotai/utils";
+import { useAtomCallback } from "jotai/utils";
 import { PrimitiveAtom } from "jotai/vanilla";
 import { useCallback, useEffect } from "react";
 
@@ -23,10 +23,15 @@ const localScreenVideoTrackAtom = atom<MediaStreamTrack | null>(null);
 const botAudioTrackAtom = atom<MediaStreamTrack | null>(null);
 const botVideoTrackAtom = atom<MediaStreamTrack | null>(null);
 
-const trackAtom = atomFamily<
-  { local: boolean; trackType: TrackType },
-  PrimitiveAtom<MediaStreamTrack | null>
->(({ local, trackType }) => {
+// Every (participant, track type) pair maps to one of the static atoms above,
+// so a plain lookup is enough; there's nothing to create or cache.
+const getTrackAtom = ({
+  local,
+  trackType,
+}: {
+  local: boolean;
+  trackType: TrackType;
+}): PrimitiveAtom<MediaStreamTrack | null> => {
   if (local) {
     switch (trackType) {
       case "audio":
@@ -40,7 +45,7 @@ const trackAtom = atomFamily<
     }
   }
   return trackType === "audio" ? botAudioTrackAtom : botVideoTrackAtom;
-});
+};
 
 export const usePipecatClientMediaTrack = (
   trackType: TrackType,
@@ -48,7 +53,7 @@ export const usePipecatClientMediaTrack = (
 ) => {
   const client = usePipecatClient();
   const track = useAtomValue(
-    trackAtom({ local: participantType === "local", trackType })
+    getTrackAtom({ local: participantType === "local", trackType })
   );
 
   const updateTrack = useAtomCallback(
@@ -60,7 +65,7 @@ export const usePipecatClientMediaTrack = (
         trackType: TrackType,
         local: boolean
       ) => {
-        const atom = trackAtom({
+        const atom = getTrackAtom({
           local,
           trackType,
         });
