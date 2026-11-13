@@ -23,6 +23,7 @@ import {
 } from "./conversation/conversationAtoms";
 import { filterBotOutputText } from "./conversation/filterBotOutputText";
 import { useConversationContext } from "./conversation/PipecatConversationProvider";
+import { splitMessageBySpeaker } from "./conversation/splitBySpeaker";
 import type {
   BotOutputFilter,
   ConversationMessage,
@@ -97,6 +98,18 @@ interface Props {
    * @default false
    */
   includeExpressionEvents?: boolean;
+  /**
+   * Give each speaker's run of the user's speech a message of its own, when
+   * the bot's STT service tells speakers apart with diarization. Each such
+   * message has the run's `speaker`, and every one but a turn's last is
+   * final.
+   *
+   * It affects `messages` only: `onMessageCreated` and `onMessageUpdated`
+   * report the user's whole turn as one message, whose parts each carry their
+   * `speaker`.
+   * @default false
+   */
+  splitBySpeaker?: boolean;
 }
 
 /**
@@ -127,6 +140,7 @@ export const usePipecatConversation = ({
   botOutputFilter,
   includeBackchannel = false,
   includeExpressionEvents = false,
+  splitBySpeaker = false,
 }: Props = {}) => {
   const { injectMessage, sendText } = useConversationContext();
 
@@ -342,12 +356,15 @@ export const usePipecatConversation = ({
       }
       return message;
     });
+    const spokenMessages = splitBySpeaker
+      ? processedMessages.flatMap(splitMessageBySpeaker)
+      : processedMessages;
 
     // Messages are already normalized (sorted, filtered, deduped, merged) on write.
     if (!includeBackchannel || backchannels.length === 0) {
-      return processedMessages;
+      return spokenMessages;
     }
-    return [...processedMessages, ...backchannels].sort(sortByCreatedAt);
+    return [...spokenMessages, ...backchannels].sort(sortByCreatedAt);
   }, [
     messages,
     botOutputMessageState,
@@ -358,6 +375,7 @@ export const usePipecatConversation = ({
     backchannels,
     includeExpressionEvents,
     expressionEvents,
+    splitBySpeaker,
   ]);
 
   const botOutputEvents = useAtomValue(botOutputEventsAtom);

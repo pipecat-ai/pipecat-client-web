@@ -608,11 +608,32 @@ export function injectMessage(
   set(messagesAtom, processedMessages);
 }
 
+/** What a user transcription can carry besides its text. */
+export type UserTranscriptDetails = Pick<
+  ConversationMessagePart,
+  "speaker" | "perception"
+>;
+
+/** A user part for a transcription, with its details left out when absent. */
+const transcriptPart = (
+  text: string | ReactNode,
+  final: boolean,
+  createdAt: string,
+  { speaker, perception }: UserTranscriptDetails
+): ConversationMessagePart => ({
+  text,
+  final,
+  createdAt,
+  ...(speaker && { speaker }),
+  ...(perception && { perception }),
+});
+
 export function upsertUserTranscript(
   get: Getter,
   set: Setter,
   text: string | ReactNode,
-  final: boolean
+  final: boolean,
+  details: UserTranscriptDetails = {}
 ) {
   const now = new Date();
   const messages = [...get(messagesAtom)];
@@ -633,14 +654,16 @@ export function upsertUserTranscript(
     const lastPart = parts[parts.length - 1];
     if (!lastPart || lastPart.final) {
       // Start a new part
-      parts.push({ text, final, createdAt: now.toISOString() });
+      parts.push(transcriptPart(text, final, now.toISOString(), details));
     } else {
-      // Update in-progress part
-      parts[parts.length - 1] = {
-        ...lastPart,
+      // Update in-progress part. The latest transcription's speaker and
+      // perception replace the interim's, which can differ from the final's.
+      parts[parts.length - 1] = transcriptPart(
         text,
         final,
-      };
+        lastPart.createdAt,
+        details
+      );
     }
 
     const updatedMessage: ConversationMessage = {
@@ -662,13 +685,7 @@ export function upsertUserTranscript(
   const newMessage: ConversationMessage = {
     role: "user",
     final: false,
-    parts: [
-      {
-        text,
-        final,
-        createdAt: now.toISOString(),
-      },
-    ],
+    parts: [transcriptPart(text, final, now.toISOString(), details)],
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
   };
