@@ -376,6 +376,13 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.ParticipantLeft, p);
       },
       onTrackStarted: (track, p) => {
+        // A live local track proves the device was acquired. Re-acquiring the
+        // same device (e.g. enableMic(true) after a 'blocked' init) doesn't
+        // change the selection, so onMicUpdated / onCamUpdated never fire.
+        if (p?.local) {
+          if (track.kind === "audio") this._markDeviceGranted("mic");
+          else if (track.kind === "video") this._markDeviceGranted("cam");
+        }
         options?.callbacks?.onTrackStarted?.(track, p);
         this.emit(RTVIEvent.TrackStarted, track, p);
       },
