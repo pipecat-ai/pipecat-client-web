@@ -7,15 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.12.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.11.0...client-react-v1.12.0) (2026-11-17)
 
-
 ### Features
 
-* **client-react:** show the diarization speaker in the conversation ([fa4d413](https://github.com/pipecat-ai/pipecat-client-web/commit/fa4d413cf28f54416ee167a1a2d24dee4912afd8))
-
+* With speaker diarization on, the conversation now keeps who said each part of the user's speech: `ConversationMessagePart.speaker` is the `TranscriptionSpeaker` from `user-input` (see `@pipecat-ai/client-js`). It's absent when the bot doesn't send one. One user message can hold parts from several speakers. ([fefef61](https://github.com/pipecat-ai/pipecat-client-web/commit/fefef61be7b95f0121260beb6f62c9aa4009b757))
+* User message parts now carry the user's perception signals in expressive conversation (alpha): `ConversationMessagePart.perception` is the `UserPerceptionSignal[]` from `user-input`, such as the tone the bot's STT service heard. It's absent when the bot doesn't send any. ([fefef61](https://github.com/pipecat-ai/pipecat-client-web/commit/fefef61be7b95f0121260beb6f62c9aa4009b757))
+* New [`usePipecatConversation`](https://docs.pipecat.ai/api-reference/client/react/hooks) option `splitBySpeaker` gives each speaker's run of the user's speech a message of its own in `messages`, with the run's `speaker` on `ConversationMessage.speaker`. Every message but a turn's last is final, and an interim part without a speaker yet stays in the message before it. `onMessageCreated` and `onMessageUpdated` still report the user's whole turn as one message. ([fefef61](https://github.com/pipecat-ai/pipecat-client-web/commit/fefef61be7b95f0121260beb6f62c9aa4009b757), [f547cc3](https://github.com/pipecat-ai/pipecat-client-web/commit/f547cc34aec2fd1baa18e394c97454508ca4821f))
 
 ### Bug Fixes
 
-* **client-react:** keep split speaker messages steady and distinct ([2d61ae1](https://github.com/pipecat-ai/pipecat-client-web/commit/2d61ae123712a2f2e9ea123a6a630bba63b00d6d))
 * **client-react:** stop using deprecated atomFamily in usePipecatClientMediaTrack ([76df2b7](https://github.com/pipecat-ai/pipecat-client-web/commit/76df2b7d151090dce1e31c813b462492042d7b70))
 
 ## [1.11.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.10.0...client-react-v1.11.0) (2026-10-29)
