@@ -322,6 +322,9 @@ export class PipecatClient extends RTVIEventEmitter {
   private _devicesTouched = false;
   // From connect() until disconnect().
   private _inSession = false;
+  // Whether the client has made any device call or connected, ever. Until
+  // then isMicEnabled / isCamEnabled report the flags.
+  private _devicesUsed = false;
 
   constructor(options: PipecatClientOptions) {
     super();
@@ -615,6 +618,7 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   public async initDevices() {
     this._noteDeviceCall();
+    this._devicesUsed = true;
     if (this._devicesTouched) {
       await this._reportDevices();
       return;
@@ -831,6 +835,7 @@ export class PipecatClient extends RTVIEventEmitter {
     // the bot), and connect() must not apply them a second time.
     const apply = !this._devicesAsIs && !this._devicesTouched;
     this._devicesTouched = true;
+    this._devicesUsed = true;
     if (!apply) return;
     try {
       await this._initTransportDevices();
@@ -1199,16 +1204,26 @@ export class PipecatClient extends RTVIEventEmitter {
   public enableMic(enable: boolean) {
     this._noteDeviceCall();
     this._devicesTouched = true;
+    this._devicesUsed = true;
     this._transport.enableMic(enable);
   }
 
+  /**
+   * Whether the mic is on. initDevices(), enableMic() and connect() set it
+   * to what they ask for straight away, and it goes back to false if that
+   * fails; otherwise it follows the device, and a disconnect() turns it off.
+   * Until the client's first device call or connect() it reports the
+   * enableMic flag, what those would turn on.
+   */
   public get isMicEnabled(): boolean {
+    if (!this._devicesUsed) return this._options.enableMic ?? true;
     return this._transport.isMicEnabled;
   }
 
   public enableCam(enable: boolean) {
     this._noteDeviceCall();
     this._devicesTouched = true;
+    this._devicesUsed = true;
     try {
       this._transport.enableCam(enable);
     } catch (e) {
@@ -1220,7 +1235,17 @@ export class PipecatClient extends RTVIEventEmitter {
     }
   }
 
+  /**
+   * Whether the cam is on; see isMicEnabled. Until the client's first device
+   * call or connect() it reports the enableCam flag, or false where the
+   * transport can't capture a cam.
+   */
   public get isCamEnabled(): boolean {
+    if (!this._devicesUsed) {
+      return (
+        (this._options.enableCam ?? false) && this.mediaSupport.cam !== false
+      );
+    }
     return this._transport.isCamEnabled;
   }
 
