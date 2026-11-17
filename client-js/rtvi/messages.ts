@@ -460,7 +460,8 @@ export type UICancelJobGroupData = {
 
 export type UICommandData = {
   command: string;
-  payload: unknown;
+  /** The command's payload. An app's own command can come without one. */
+  payload?: unknown;
 };
 
 export type UIJobGroupData = UIJobGroupEnvelope;
