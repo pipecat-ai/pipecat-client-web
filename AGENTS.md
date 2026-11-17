@@ -27,6 +27,10 @@ npm run dev -w client-js           # parcel watch
 # single file / single test
 npm test -w client-react -- tests/conversation/integration/userInput.test.tsx
 npm test -w client-js -- tests/client.spec.ts -t "part of test name"
+
+# RTVI protocol document: copy it from a Pipecat checkout and regenerate, or just regenerate
+npm run rtvi:sync -w client-js -- --pipecat ../pipecat
+npm run rtvi:generate -w client-js
 ```
 
 - Builds use Parcel (`parcel build --no-cache`), outputting CJS + ESM + `.d.ts` to each package's `dist/`.
@@ -48,6 +52,7 @@ npm test -w client-js -- tests/client.spec.ts -t "part of test name"
 - **`Transport`** (`client/transport.ts`) is the abstract base that transports implement: device management, `_connect`/`_disconnect`, `sendMessage`, tracks. The transport invokes lifecycle/media callbacks directly and forwards every inbound RTVI message to `PipecatClient.handleMessage`, a `switch` over `RTVIMessageType` that maps messages to callbacks/events. `client.transport` returns a `TransportWrapper` proxy, not the raw instance.
 - **`MessageDispatcher`** (`client/dispatcher.ts`) implements request/response over RTVI: it queues outbound messages by id, resolves them on `server-response`/`error-response`, and garbage-collects them on timeout.
 - **Decorators** (`client/decorators.ts`): `@transportReady`, `@transportInState([...])`, and similar guards make public methods throw when called in the wrong transport state.
+- **Protocol document**: `rtvi/spec/<version>/rtvi.asyncapi.json` is Pipecat's AsyncAPI document of the RTVI protocol, for the version `RTVI_PROTOCOL_VERSION` names, and `rtvi/generated/protocol.ts` holds the types generated from it by `scripts/rtvi-protocol.mjs`: each message's data, the message types by direction, and each server message's setting, minimum client version and deprecation. Neither is edited by hand, and `tests/rtvi_protocol.spec.ts` fails when the generated file is out of date or the versions differ. The generated types aren't exported from the package.
 - **`rtvi/`** is the protocol definition and most of the public API: `messages.ts` (`RTVIMessageType`, payload types, `RTVI_PROTOCOL_VERSION`, client-ready/about-client), `events.ts` (`RTVIEvent` enum + `RTVIEvents` signatures), `errors.ts`, `common_types.ts` (transport state, `MediaState`), `ui.ts` (UI Worker Protocol types).
 - Adding a new server→client message usually touches all of: the `RTVIMessageType` and data type in `rtvi/messages.ts`, `RTVIEvent` and `RTVIEvents` in `rtvi/events.ts`, `RTVIEventCallbacks` plus the wrapped callback in `client.ts`, and a `case` in `handleMessage`.
 - Behavior depends on the bot's protocol version and capabilities, which are parsed from `bot-ready` (`_botVersion`, `_botCapabilities`), e.g. gating `BotOutput` support and `sendFile`. Deprecated events and callbacks stay in place, marked `@deprecated` and pointing at their replacements, with one-time warnings.
