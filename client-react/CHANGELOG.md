@@ -5,6 +5,19 @@ All notable changes to **Pipecat Client React** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.11.0...client-react-v1.12.0) (2026-11-17)
+
+
+### Features
+
+* **client-react:** show the diarization speaker in the conversation ([fa4d413](https://github.com/pipecat-ai/pipecat-client-web/commit/fa4d413cf28f54416ee167a1a2d24dee4912afd8))
+
+
+### Bug Fixes
+
+* **client-react:** keep split speaker messages steady and distinct ([2d61ae1](https://github.com/pipecat-ai/pipecat-client-web/commit/2d61ae123712a2f2e9ea123a6a630bba63b00d6d))
+* **client-react:** stop using deprecated atomFamily in usePipecatClientMediaTrack ([76df2b7](https://github.com/pipecat-ai/pipecat-client-web/commit/76df2b7d151090dce1e31c813b462492042d7b70))
+
 ## [1.11.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-react-v1.10.0...client-react-v1.11.0) (2026-10-29)
 
 ### Features
