@@ -26,7 +26,9 @@
     "build": "jest --silent --passWithNoTests && parcel build --no-cache",
     "dev": "parcel watch",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
-    "test": "jest"
+    "test": "jest",
+    "rtvi:sync": "node scripts/rtvi-protocol.mjs sync",
+    "rtvi:generate": "node scripts/rtvi-protocol.mjs generate"
   },
   "jest": {
     "preset": "ts-jest",
@@ -44,6 +46,8 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
+    "json-schema-to-typescript": "15.0.4",
+    "prettier": "3.10.1",
     "ts-jest": "^29.4.14",
     "whatwg-fetch": "^3.6.20"
   },
