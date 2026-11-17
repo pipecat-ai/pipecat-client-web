@@ -22,3 +22,6 @@ jobs:
 
       - name: Run tests
         run: npm test --workspaces --if-present
+
+      - name: Type-check
+        run: npm run typecheck --workspaces --if-present

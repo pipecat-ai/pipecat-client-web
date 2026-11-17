@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["client/**/*", "rtvi/**/*", "tests/rtvi_types.ts"]
+}
