@@ -10,6 +10,7 @@ import {
   name as packageName,
   version as packageVersion,
 } from "../package.json";
+import type * as Protocol from "./generated/protocol";
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
@@ -163,13 +164,36 @@ export type ErrorData = {
 };
 
 export type PipecatMetricData = {
+  /** The service that reported the metric. */
   processor: string;
+  /** The service's model, when it reports one. */
+  model?: string;
   value: number;
 };
 
+/** A TTS service's time to first audio, in seconds. */
+export type PipecatTTFAMetricData = Protocol.TTFAMetricsData;
+/** An LLM service's time to first answer token, in seconds. */
+export type PipecatTTFATMetricData = Protocol.TTFATMetricsData;
+/** The tokens an LLM call used. */
+export type PipecatTokenUsageData = Protocol.LLMTokenUsage;
+/** How much audio an STT service received. */
+export type PipecatSTTUsageMetricData = Protocol.STTUsageMetricsData;
+
 export type PipecatMetricsData = {
+  /** How long each service took to process, in seconds. */
   processing?: PipecatMetricData[];
+  /** Each service's time to first byte, in seconds. */
   ttfb?: PipecatMetricData[];
+  /** Each TTS service's time to first audio. */
+  ttfa?: PipecatTTFAMetricData[];
+  /** Each LLM service's time to first answer token. */
+  ttfat?: PipecatTTFATMetricData[];
+  /** The tokens each LLM call used. */
+  tokens?: PipecatTokenUsageData[];
+  /** How much audio each STT service received. */
+  stt_usage?: PipecatSTTUsageMetricData[];
+  /** How many characters each TTS service spoke. */
   characters?: PipecatMetricData[];
 };
 
