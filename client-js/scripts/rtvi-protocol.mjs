@@ -10,15 +10,17 @@
  * kept in `rtvi/spec/<version>/rtvi.asyncapi.json`, for the version
  * `RTVI_PROTOCOL_VERSION` in `rtvi/messages.ts` names.
  *
- *   node scripts/rtvi-protocol.mjs sync --pipecat <path to a Pipecat checkout>
- *       Copies the version's document from Pipecat, then generates.
+ *   node scripts/rtvi-protocol.mjs sync [--ref <git ref> | --pipecat <path>]
+ *       Copies the version's document from Pipecat, then generates: from the
+ *       pipecat-ai/pipecat repository at a ref, `main` unless one is given, or
+ *       from a local Pipecat checkout.
  *   node scripts/rtvi-protocol.mjs generate
  *       Writes the generated file from the kept document.
  *   node scripts/rtvi-protocol.mjs check
  *       Fails when the generated file isn't what the kept document produces.
  */
 
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -231,22 +233,41 @@ ${catalog(document, names)}
   return format(source, { ...PRETTIER, parser: "typescript" });
 }
 
+/** The version's document from Pipecat: a local checkout's, or GitHub's at a ref. */
+async function pipecatDocument(version, args) {
+  const option = (name) => {
+    const index = args.indexOf(name);
+    if (index !== -1 && !args[index + 1]) {
+      throw new Error("Usage: sync [--ref <git ref> | --pipecat <path>]");
+    }
+    return index === -1 ? undefined : args[index + 1];
+  };
+  const checkout = option("--pipecat");
+  if (checkout) {
+    const path = join(checkout, PIPECAT_SPEC, version, "rtvi.asyncapi.json");
+    if (!existsSync(path)) {
+      throw new Error(`No document for protocol ${version} at ${path}`);
+    }
+    return readFileSync(path, "utf8");
+  }
+  const ref = option("--ref") ?? "main";
+  const path = [...PIPECAT_SPEC.split(/[\\/]/), version, "rtvi.asyncapi.json"];
+  const url = `https://raw.githubusercontent.com/pipecat-ai/pipecat/${ref}/${path.join("/")}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `No document for protocol ${version} at ${url}: ${response.status}`
+    );
+  }
+  return response.text();
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   const version = protocolVersion();
   if (command === "sync") {
-    const index = args.indexOf("--pipecat");
-    if (index === -1 || !args[index + 1]) {
-      throw new Error("Usage: sync --pipecat <path to a Pipecat checkout>");
-    }
-    const source = join(
-      args[index + 1],
-      PIPECAT_SPEC,
-      version,
-      "rtvi.asyncapi.json"
-    );
     mkdirSync(dirname(documentPath(version)), { recursive: true });
-    copyFileSync(source, documentPath(version));
+    writeFileSync(documentPath(version), await pipecatDocument(version, args));
   }
   if (command === "sync" || command === "generate") {
     mkdirSync(dirname(OUTPUT), { recursive: true });
@@ -263,4 +284,9 @@ async function main() {
   }
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
