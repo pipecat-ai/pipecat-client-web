@@ -29,8 +29,8 @@ npm run dev -w client-js           # parcel watch
 npm test -w client-react -- tests/conversation/integration/userInput.test.tsx
 npm test -w client-js -- tests/client.spec.ts -t "part of test name"
 
-# RTVI protocol document: copy it from a Pipecat checkout and regenerate, or just regenerate
-npm run rtvi:sync -w client-js -- --pipecat ../pipecat
+# RTVI protocol document: copy it from Pipecat's main (or --ref <tag>, or --pipecat <checkout>) and regenerate
+npm run rtvi:sync -w client-js
 npm run rtvi:generate -w client-js
 ```
 
