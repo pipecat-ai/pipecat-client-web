@@ -10,7 +10,33 @@ import {
   name as packageName,
   version as packageVersion,
 } from "../package.json";
-import type * as Protocol from "./generated/protocol";
+import type {
+  ProtocolAudioLevelMessageData,
+  ProtocolBotCapabilities,
+  ProtocolBotLLMMarkerMessageData,
+  ProtocolBotOutputMessageData,
+  ProtocolErrorData,
+  ProtocolLLMFunctionCallInProgressMessageData,
+  ProtocolLLMFunctionCallResultData,
+  ProtocolLLMFunctionCallStartMessageData,
+  ProtocolLLMFunctionCallStoppedMessageData,
+  ProtocolLLMTokenUsage,
+  ProtocolRawClientMessageData,
+  ProtocolSendTextOptions,
+  ProtocolSpokenProgressData,
+  ProtocolSTTRawTextMessageData,
+  ProtocolSTTUsageMetricsData,
+  ProtocolTextMessageData,
+  ProtocolTranscriptionSpeaker,
+  ProtocolTTFAMetricsData,
+  ProtocolTTFATMetricsData,
+  ProtocolUICancelJobGroupData,
+  ProtocolUIEventData,
+  ProtocolUserInputMessageData,
+  ProtocolUserPerceptionLabel,
+  ProtocolUserPerceptionSignal,
+  ProtocolUserTranscriptionMessageData,
+} from "./generated/protocol";
 import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
@@ -122,24 +148,7 @@ export enum RTVIMessageType {
  * A missing field means the bot can't tell, so keep the default behavior for
  * it. `false` means the bot doesn't do it, so the matching UI can be hidden.
  */
-export type BotCapabilities = {
-  /** Whether the bot receives the user's audio. */
-  audio_in?: boolean;
-  /** Whether the bot sends audio to the user. */
-  audio_out?: boolean;
-  /** Whether the bot receives the user's video. */
-  video_in?: boolean;
-  /**
-   * Whether the bot receives the user's screen share. Left out when the bot
-   * captures its video sources itself, so a screen share control should be
-   * shown unless this or `video_in` is `false`.
-   */
-  screen_in?: boolean;
-  /** Whether the bot sends video to the user. */
-  video_out?: boolean;
-  /** Whether the bot reports metrics. */
-  metrics?: boolean;
-};
+export type BotCapabilities = ProtocolBotCapabilities;
 
 export type BotReadyData = {
   version: string;
@@ -169,9 +178,7 @@ export type ClientReadyData = {
   about: AboutClientData; // Information about the client library
 };
 
-export type ErrorData = {
-  error: string;
-  fatal: boolean;
+export type ErrorData = ProtocolErrorData & {
   /** @deprecated Use `error` instead. */
   message?: string;
 };
@@ -185,13 +192,13 @@ export type PipecatMetricData = {
 };
 
 /** A TTS service's time to first audio, in seconds. */
-export type PipecatTTFAMetricData = Protocol.TTFAMetricsData;
+export type PipecatTTFAMetricData = ProtocolTTFAMetricsData;
 /** An LLM service's time to first answer token, in seconds. */
-export type PipecatTTFATMetricData = Protocol.TTFATMetricsData;
+export type PipecatTTFATMetricData = ProtocolTTFATMetricsData;
 /** The tokens an LLM call used. */
-export type PipecatTokenUsageData = Protocol.LLMTokenUsage;
+export type PipecatTokenUsageData = ProtocolLLMTokenUsage;
 /** How much audio an STT service received. */
-export type PipecatSTTUsageMetricData = Protocol.STTUsageMetricsData;
+export type PipecatSTTUsageMetricData = ProtocolSTTUsageMetricsData;
 
 export type PipecatMetricsData = {
   /** How long each service took to process, in seconds. */
@@ -210,41 +217,16 @@ export type PipecatMetricsData = {
   characters?: PipecatMetricData[];
 };
 
-export type TranscriptData = {
-  text: string;
-  final: boolean;
-  timestamp: string;
-  user_id: string;
-};
+export type TranscriptData = ProtocolUserTranscriptionMessageData;
 
 /**
  * A speaker the bot's STT service told apart with diarization, in a
  * transcription.
  */
-export type TranscriptionSpeaker = {
-  /** The STT provider's label for the speaker, such as "A" or "S1". */
-  label: string;
-  /**
-   * The speaker's place in the order speakers first spoke, starting at 1, so
-   * it reads the same whatever labels the provider uses.
-   */
-  number: number;
-};
+export type TranscriptionSpeaker = ProtocolTranscriptionSpeaker;
 
 /** A transcription as the STT produced it (RTVI 2.2.0+). */
-export type STTRawTextData = {
-  text: string;
-  /** Whether the transcription is final, as opposed to interim. */
-  final: boolean;
-  timestamp: string;
-  user_id: string;
-  /**
-   * Who said it, when the bot's STT service tells speakers apart with
-   * diarization. Unlike `user_id`, the transport participant, this tells
-   * apart people sharing one microphone.
-   */
-  speaker?: TranscriptionSpeaker;
-};
+export type STTRawTextData = ProtocolSTTRawTextMessageData;
 
 /**
  * What kind of input a `user-input` message reports (RTVI 2.2.0+).
@@ -254,62 +236,22 @@ export type STTRawTextData = {
  * - `backchannel`: a short acknowledgment the user said while the bot talked,
  *   such as "mhm". It doesn't interrupt the bot or reach the LLM.
  */
-export type UserInputType = "transcription" | "chat" | "backchannel";
+export type UserInputType = ProtocolUserInputMessageData["input_type"];
 
 /** A label of a perception signal, with how sure the reading is. */
-export type UserPerceptionLabel = {
-  /** The label, such as "frustrated". */
-  label: string;
-  /** How sure the reading is, from 0 to 1. */
-  confidence: number;
-};
+export type UserPerceptionLabel = ProtocolUserPerceptionLabel;
 
 /**
  * One reading of how the user spoke, in expressive conversation (alpha). A
  * signal is read either as labels or as a value.
  */
-export type UserPerceptionSignal = {
-  /** What is read, such as "tone" or "speech_rate". */
-  name: string;
-  /**
-   * The likeliest labels, likeliest first. Empty for a signal read as a
-   * value.
-   */
-  labels: UserPerceptionLabel[];
-  /**
-   * The measure, such as words per second, for a signal read as a value.
-   * Absent for a signal read as labels.
-   */
-  value?: number;
-};
+export type UserPerceptionSignal = ProtocolUserPerceptionSignal;
 
-export type UserInputData = {
-  text: string;
-  input_type: UserInputType;
-  timestamp: string;
-  /** Whether the text is final. Only an interim transcription isn't. */
-  final: boolean;
-  /**
-   * The user who spoke or typed. For `chat`, set only when the transport knows
-   * the sender, such as Daily and LiveKit.
-   */
-  user_id?: string;
-  /** For `chat`, the id of the send-text message, as returned by `sendText()`. */
-  msg_id?: string;
-  /**
-   * For a transcription, how the user said it, in expressive conversation
-   * (alpha), when the bot's STT service reports a reading with it. Interim
-   * transcriptions can carry one too.
-   */
-  perception?: UserPerceptionSignal[];
-  /**
-   * For a transcription, who said it, when the bot's STT service tells
-   * speakers apart with diarization. Unlike `user_id`, the transport
-   * participant, this tells apart people sharing one microphone. Interim
-   * transcriptions can carry one too.
-   */
-  speaker?: TranscriptionSpeaker;
-};
+/**
+ * What the user said or typed (RTVI 2.2.0+). For `chat`, `msg_id` is the id
+ * `sendText()` returned.
+ */
+export type UserInputData = ProtocolUserInputMessageData;
 
 /**
  * What kind of text a `bot-output` message holds, the counterpart of
@@ -346,15 +288,21 @@ export import TextType = BotOutputType;
 /** @deprecated Use {@link BotOutputType} instead. */
 export import AggregationType = BotOutputType;
 
-export type SpokenStatus = "new" | "in-progress" | "completed";
+export type SpokenStatus = NonNullable<
+  ProtocolBotOutputMessageData["spoken_status"]
+>;
 
-export type SpokenProgressData = {
-  accumulated_text: string;
-  remaining_text: string;
-};
+export type SpokenProgressData = ProtocolSpokenProgressData;
 
-export type BotOutputData = {
-  text: string;
+/**
+ * The bot's output, with the fields older bots send: a bot on protocol 1.x
+ * sends `spoken`, and bots before 2.2.0 send only `text_type` or
+ * `aggregated_by`, from which client-js fills in `output_type`.
+ */
+export type BotOutputData = Omit<
+  ProtocolBotOutputMessageData,
+  "output_type" | "text_type" | "aggregated_by" | "spoken"
+> & {
   /**
    * What form the text is in, the counterpart of `UserInputData.input_type`.
    * Bots that only send `text_type` or `aggregated_by` have it filled in from
@@ -365,21 +313,8 @@ export type BotOutputData = {
   text_type?: BotOutputType | string;
   /** @deprecated Use `output_type` instead. */
   aggregated_by?: BotOutputType | string;
-  segment_id?: number;
   /** @deprecated Protocol 1.4.x only. Use `will_be_spoken` instead. */
   spoken?: boolean;
-  // Protocol 2.0.0+ fields
-  will_be_spoken?: boolean;
-  spoken_status?: SpokenStatus;
-  spoken_progress?: SpokenProgressData;
-  /**
-   * In expressive conversation (alpha), the delivery of the text just spoken,
-   * by Pipecat's universal names, the same whichever TTS service performs it,
-   * such as `["warm", "emphasis"]`; empty for the voice's baseline. It
-   * can change within a segment, so a segment's `"new"` message has none
-   * (RTVI 2.3.0+).
-   */
-  delivery?: string[];
 };
 
 /**
@@ -422,63 +357,44 @@ export type BotExpressionData =
       duration_ms: number;
     };
 
-export type BotLLMTextData = {
-  text: string;
-};
+export type BotLLMTextData = ProtocolTextMessageData;
 
-export type UserLLMTextData = {
-  text: string;
-};
+export type UserLLMTextData = ProtocolTextMessageData;
 
-export type BotTTSTextData = {
-  text: string;
-};
+export type BotTTSTextData = ProtocolTextMessageData;
 
 /** A chunk of text as the LLM streamed it (RTVI 2.2.0+). */
-export type LLMRawTextData = {
-  text: string;
-};
+export type LLMRawTextData = ProtocolTextMessageData;
 
 /** Text the TTS speaks, as it is spoken (RTVI 2.2.0+). */
-export type TTSRawTextData = {
-  text: string;
-};
+export type TTSRawTextData = ProtocolTextMessageData;
 
 /** How loud the user's or the bot's audio is, as the bot measures it. */
-export type AudioLevelData = Protocol.AudioLevelMessageData;
+export type AudioLevelData = ProtocolAudioLevelMessageData;
 
 /** A line of the bot's log, for debugging. */
-export type SystemLogData = Protocol.TextMessageData;
+export type SystemLogData = ProtocolTextMessageData;
 
 /**
  * The marker the bot's LLM put in a response, outside the text it speaks,
  * such as one saying whether the user's turn was complete.
  */
-export type BotLLMMarkerData = Protocol.BotLLMMarkerMessageData;
+export type BotLLMMarkerData = ProtocolBotLLMMarkerMessageData;
 
 export type ServerMessageData = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 };
 
-export type ClientMessageData = {
-  t: string;
-  d?: unknown;
-};
+export type ClientMessageData = ProtocolRawClientMessageData;
 
-export type UIEventData = {
-  event: string;
-  payload?: unknown;
-};
+export type UIEventData = ProtocolUIEventData;
 
 export type UISnapshotData = {
   tree: A11ySnapshot;
 };
 
-export type UICancelJobGroupData = {
-  job_id: string;
-  reason?: string;
-};
+export type UICancelJobGroupData = ProtocolUICancelJobGroupData;
 
 export type UICommandData = {
   command: string;
@@ -525,15 +441,11 @@ export type LLMSearchOrigin = {
   results: LLMSearchResult[];
 };
 
-export type LLMFunctionCallStartedData = {
-  function_name?: string;
-};
+export type LLMFunctionCallStartedData =
+  ProtocolLLMFunctionCallStartMessageData;
 
-export type LLMFunctionCallInProgressData = {
-  function_name?: string;
-  tool_call_id: string;
-  arguments?: Record<string, unknown>;
-};
+export type LLMFunctionCallInProgressData =
+  ProtocolLLMFunctionCallInProgressMessageData;
 
 /** @deprecated Use LLMFunctionCallInProgressData instead */
 export type LLMFunctionCallData = {
@@ -544,24 +456,12 @@ export type LLMFunctionCallData = {
 
 export type LLMFunctionCallResult = Record<string, unknown> | string;
 
-export type LLMFunctionCallResultResponse = {
-  function_name: string;
-  tool_call_id: string;
-  arguments: Record<string, unknown>;
-  result: LLMFunctionCallResult;
-};
+export type LLMFunctionCallResultResponse = ProtocolLLMFunctionCallResultData;
 
-export type LLMFunctionCallStoppedData = {
-  function_name?: string;
-  tool_call_id: string;
-  cancelled: boolean;
-  result?: unknown;
-};
+export type LLMFunctionCallStoppedData =
+  ProtocolLLMFunctionCallStoppedMessageData;
 
-export type SendTextOptions = {
-  run_immediately?: boolean;
-  audio_response?: boolean;
-};
+export type SendTextOptions = ProtocolSendTextOptions;
 
 type Serializable =
   | string

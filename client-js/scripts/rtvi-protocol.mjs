@@ -35,6 +35,9 @@ const PIPECAT_SPEC = join(
   "spec"
 );
 const SCHEMAS = "#/components/schemas/";
+// Every generated type's name starts with it, so none can be the same as a
+// public type's: Parcel's declaration bundler doesn't always tell them apart.
+const PREFIX = "Protocol";
 
 function protocolVersion() {
   const source = readFileSync(join(ROOT, "rtvi", "messages.ts"), "utf8");
@@ -89,6 +92,9 @@ function definitions(document) {
   };
   const schemas = JSON.parse(text);
   visit(schemas);
+  for (const [name, schema] of Object.entries(schemas)) {
+    schema.title = PREFIX + (schema.title ?? name);
+  }
   return schemas;
 }
 
@@ -106,7 +112,7 @@ async function schemaTypes(document) {
     const own = JSON.parse(
       JSON.stringify(schema).replaceAll(`"#/definitions/${name}"`, '"#"')
     );
-    const ts = await compile({ ...own, definitions: all }, name, {
+    const ts = await compile({ ...own, definitions: all }, PREFIX + name, {
       bannerComment: "",
       additionalProperties: false,
       declareExternallyReferenced: false,
@@ -161,20 +167,20 @@ function catalog(document, names) {
     })
     .join("\n");
   return `/** The type of every message a client sends. */
-export type ClientMessageType =
+export type ProtocolClientMessageType =
 ${union(client)};
 
 /** The type of every message the server sends. */
-export type ServerMessageType =
+export type ProtocolServerMessageType =
 ${union(server)};
 
 /** The \`data\` of each client message, \`undefined\` for one that carries none. */
-export interface ClientMessageData {
+export interface ProtocolClientMessageData {
 ${dataMap(client)}
 }
 
 /** The \`data\` of each server message, \`undefined\` for one that carries none. */
-export interface ServerMessageData {
+export interface ProtocolServerMessageData {
 ${dataMap(server)}
 }
 
@@ -183,8 +189,8 @@ ${dataMap(server)}
  * client protocol version the server sends it to, and what replaces it when
  * it is deprecated.
  */
-export const SERVER_MESSAGES: Record<
-  ServerMessageType,
+export const PROTOCOL_SERVER_MESSAGES: Record<
+  ProtocolServerMessageType,
   { enabledBy?: string; minClientVersion?: string; deprecated?: string }
 > = {
 ${details}
@@ -206,7 +212,7 @@ async function generate(version) {
   const names = new Map(
     Object.keys(document.components.schemas).map((name) => [
       name,
-      declared.find((d) => d.toLowerCase() === name.toLowerCase()),
+      declared.find((d) => d.toLowerCase() === (PREFIX + name).toLowerCase()),
     ])
   );
   const source = `/**

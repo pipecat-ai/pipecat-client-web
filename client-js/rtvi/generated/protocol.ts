@@ -9,7 +9,7 @@ export const PROTOCOL_VERSION = "2.3.0";
 /**
  * One node in the UI accessibility snapshot tree.
  */
-export interface A11YNode {
+export interface ProtocolA11YNode {
   /**
    * Stable client-assigned element reference.
    */
@@ -45,14 +45,14 @@ export interface A11YNode {
   /**
    * Optional child nodes.
    */
-  children?: A11YNode[] | null;
+  children?: ProtocolA11YNode[] | null;
   [k: string]: unknown;
 }
 
 /**
  * The user's current text selection in the UI snapshot.
  */
-export interface A11YSelection {
+export interface ProtocolA11YSelection {
   /**
    * Ref of the element that carries the selection.
    */
@@ -75,11 +75,11 @@ export interface A11YSelection {
 /**
  * Client accessibility snapshot sent in a `ui-snapshot` message.
  */
-export interface A11YSnapshot {
+export interface ProtocolA11YSnapshot {
   /**
    * Root accessibility node.
    */
-  root: A11YNode;
+  root: ProtocolA11YNode;
   /**
    * Client-side epoch milliseconds when captured.
    */
@@ -87,14 +87,14 @@ export interface A11YSnapshot {
   /**
    * Optional current text selection.
    */
-  selection?: A11YSelection | null;
+  selection?: ProtocolA11YSelection | null;
   [k: string]: unknown;
 }
 
 /**
  * Data about the RTVI client.
  */
-export interface AboutClientData {
+export interface ProtocolAboutClientData {
   /**
    * The RTVI library the client uses, such as `@pipecat-ai/client-js`.
    */
@@ -117,7 +117,7 @@ export interface AboutClientData {
 /**
  * Data format for sending audio levels.
  */
-export interface AudioLevelMessageData {
+export interface ProtocolAudioLevelMessageData {
   /**
    * How loud the audio is, from 0 (quiet) to 1 (loud).
    */
@@ -127,7 +127,7 @@ export interface AudioLevelMessageData {
 /**
  * What a bot does in a session.
  */
-export interface BotCapabilities {
+export interface ProtocolBotCapabilities {
   /**
    * Whether the bot receives the user's audio.
    */
@@ -157,7 +157,7 @@ export interface BotCapabilities {
 /**
  * Data for a bot LLM marker message.
  */
-export interface BotLLMMarkerMessageData {
+export interface ProtocolBotLLMMarkerMessageData {
   /**
    * The marker as the LLM produced it; empty when the response carried none.
    */
@@ -179,7 +179,7 @@ export interface BotLLMMarkerMessageData {
 /**
  * Data for bot output RTVI messages.
  */
-export interface BotOutputMessageData {
+export interface ProtocolBotOutputMessageData {
   /**
    * The text.
    */
@@ -187,17 +187,17 @@ export interface BotOutputMessageData {
   /**
    * What form the text is in (e.g., sentence, code, etc.).
    */
-  output_type: TextType | string;
+  output_type: ProtocolTextType | string;
   /**
    * @deprecated
    * What form the text is in, always the same as `output_type`. Deprecated: Use `output_type` instead.
    */
-  text_type?: TextType | string;
+  text_type?: ProtocolTextType | string;
   /**
    * @deprecated
    * What form the text is in, always the same as `output_type`. Deprecated: Use `output_type` instead.
    */
-  aggregated_by?: TextType | string;
+  aggregated_by?: ProtocolTextType | string;
   /**
    * Identifies the segment the text belongs to; every message about one segment, such as its spoken progress, carries the same id.
    */
@@ -217,7 +217,7 @@ export interface BotOutputMessageData {
   /**
    * **(v2+)** Accumulated / remaining text breakdown. Present when `will_be_spoken` is `true`.
    */
-  spoken_progress?: SpokenProgressData;
+  spoken_progress?: ProtocolSpokenProgressData;
   /**
    * **(2.3.0+)** The delivery of the text just spoken, by its universal names, such as `["warm", "emphasis"]`, empty for the voice's baseline. They change within a segment where its delivery does, so a segment's `"new"` message has none. Present in expressive conversation (alpha).
    */
@@ -227,7 +227,7 @@ export interface BotOutputMessageData {
 /**
  * Data for bot ready notification.
  */
-export interface BotReadyData {
+export interface ProtocolBotReadyData {
   /**
    * The RTVI protocol version the bot speaks with this client.
    */
@@ -241,13 +241,13 @@ export interface BotReadyData {
   /**
    * What the bot does in this session (media sent and received, metrics), so the client can show only the UI that applies. Added in protocol 2.2.0.
    */
-  capabilities?: BotCapabilities;
+  capabilities?: ProtocolBotCapabilities;
 }
 
 /**
  * Click an element on the client.
  */
-export interface Click {
+export interface ProtocolClick {
   /**
    * Snapshot ref from `<ui_state>`.
    */
@@ -261,7 +261,7 @@ export interface Click {
 /**
  * Data format of client ready messages.
  */
-export interface ClientReadyData {
+export interface ProtocolClientReadyData {
   /**
    * The RTVI protocol version the client speaks, such as `2.3.0`.
    */
@@ -269,25 +269,25 @@ export interface ClientReadyData {
   /**
    * Information about the client. A server receiving a `client-ready` without it, or with an invalid one, still starts the session, as a client of an unknown library.
    */
-  about: AboutClientData;
+  about: ProtocolAboutClientData;
 }
 
 /**
  * Data format for DTMF keypresses sent from the client.
  */
-export interface DTMFInputData {
+export interface ProtocolDTMFInputData {
   /**
    * The keys pressed, in order: `0`-`9`, `*` or `#`.
    *
    * @minItems 1
    */
-  buttons: [KeypadEntry, ...KeypadEntry[]];
+  buttons: [ProtocolKeypadEntry, ...ProtocolKeypadEntry[]];
 }
 
 /**
  * Data for an RTVI error event.
  */
-export interface ErrorData {
+export interface ProtocolErrorData {
   /**
    * What went wrong.
    */
@@ -301,7 +301,7 @@ export interface ErrorData {
 /**
  * Data for an RTVI error response.
  */
-export interface ErrorResponseData {
+export interface ProtocolErrorResponseData {
   /**
    * What went wrong.
    */
@@ -311,7 +311,7 @@ export interface ErrorResponseData {
 /**
  * File data structure for RTVI file sending.
  */
-export interface File {
+export interface ProtocolFile {
   /**
    * The file's MIME type, such as `application/pdf` or `image/png`.
    */
@@ -323,13 +323,13 @@ export interface File {
   /**
    * Where the file's content is: its bytes, or a URL.
    */
-  source: FileBytes | FileUrl;
+  source: ProtocolFileBytes | ProtocolFileUrl;
 }
 
 /**
  * File source as base64-encoded bytes.
  */
-export interface FileBytes {
+export interface ProtocolFileBytes {
   /**
    * Always `"bytes"`.
    */
@@ -351,7 +351,7 @@ export interface FileBytes {
 /**
  * File source as a URL.
  */
-export interface FileUrl {
+export interface ProtocolFileUrl {
   /**
    * Always `"url"`.
    */
@@ -365,7 +365,7 @@ export interface FileUrl {
 /**
  * Move input focus to a target element.
  */
-export interface Focus {
+export interface ProtocolFocus {
   /**
    * Snapshot ref from `<ui_state>`.
    */
@@ -379,7 +379,7 @@ export interface Focus {
 /**
  * Briefly emphasize a target element (flash, glow, pulse).
  */
-export interface Highlight {
+export interface ProtocolHighlight {
   /**
    * Snapshot ref from `<ui_state>`.
    */
@@ -397,13 +397,13 @@ export interface Highlight {
 /**
  * DTMF keypad entries for phone system integration.
  */
-export type KeypadEntry =
+export type ProtocolKeypadEntry =
   "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "0" | "#" | "*";
 
 /**
  * Data for LLM function call in-progress notification.
  */
-export interface LLMFunctionCallInProgressMessageData {
+export interface ProtocolLLMFunctionCallInProgressMessageData {
   /**
    * Unique identifier of the call.
    */
@@ -424,7 +424,7 @@ export interface LLMFunctionCallInProgressMessageData {
  * @deprecated
  * Data for LLM function call notification.
  */
-export interface LLMFunctionCallMessageData {
+export interface ProtocolLLMFunctionCallMessageData {
   /**
    * Name of the function called.
    */
@@ -444,7 +444,7 @@ export interface LLMFunctionCallMessageData {
 /**
  * Data for LLM function call result.
  */
-export interface LLMFunctionCallResultData {
+export interface ProtocolLLMFunctionCallResultData {
   /**
    * Name of the function called.
    */
@@ -472,7 +472,7 @@ export interface LLMFunctionCallResultData {
 /**
  * Data for LLM function call start notification.
  */
-export interface LLMFunctionCallStartMessageData {
+export interface ProtocolLLMFunctionCallStartMessageData {
   /**
    * Name of the function called.
    */
@@ -482,7 +482,7 @@ export interface LLMFunctionCallStartMessageData {
 /**
  * Data for LLM function call stopped notification.
  */
-export interface LLMFunctionCallStoppedMessageData {
+export interface ProtocolLLMFunctionCallStoppedMessageData {
   /**
    * Unique identifier of the call.
    */
@@ -504,7 +504,7 @@ export interface LLMFunctionCallStoppedMessageData {
 /**
  * Token usage statistics for LLM operations.
  */
-export interface LLMTokenUsage {
+export interface ProtocolLLMTokenUsage {
   /**
    * Number of tokens in the input prompt, net or gross of the cache counts depending on the service. Includes tool results the provider feeds back to the model, which are billed as input.
    */
@@ -546,41 +546,41 @@ export interface LLMTokenUsage {
 /**
  * Data for a metrics message: the metrics the bot's services reported.
  */
-export interface MetricsMessageData {
+export interface ProtocolMetricsMessageData {
   /**
    * How long each service took to process, in seconds.
    */
-  processing?: ProcessingMetricsData[];
+  processing?: ProtocolProcessingMetricsData[];
   /**
    * Each service's time to first byte, in seconds.
    */
-  ttfb?: TTFBMetricsData[];
+  ttfb?: ProtocolTTFBMetricsData[];
   /**
    * Each TTS service's time to first audio: its time to first byte plus any silence before the first audible sample.
    */
-  ttfa?: TTFAMetricsData[];
+  ttfa?: ProtocolTTFAMetricsData[];
   /**
    * Each LLM service's time to first answer token: its time to first byte plus any reasoning it streamed first.
    */
-  ttfat?: TTFATMetricsData[];
+  ttfat?: ProtocolTTFATMetricsData[];
   /**
    * The tokens each LLM call used.
    */
-  tokens?: LLMTokenUsage[];
+  tokens?: ProtocolLLMTokenUsage[];
   /**
    * How much audio each STT service received.
    */
-  stt_usage?: STTUsageMetricsData[];
+  stt_usage?: ProtocolSTTUsageMetricsData[];
   /**
    * How many characters each TTS service spoke.
    */
-  characters?: TTSUsageMetricsData[];
+  characters?: ProtocolTTSUsageMetricsData[];
 }
 
 /**
  * Client-side navigation to a named view.
  */
-export interface Navigate {
+export interface ProtocolNavigate {
   /**
    * App-defined view name (route, screen id, tab key, etc.).
    */
@@ -596,7 +596,7 @@ export interface Navigate {
 /**
  * General processing time metrics data.
  */
-export interface ProcessingMetricsData {
+export interface ProtocolProcessingMetricsData {
   /**
    * Name of the processor generating the metrics.
    */
@@ -614,7 +614,7 @@ export interface ProcessingMetricsData {
 /**
  * Data format for a `raw-audio-batch` message: several chunks of the user's audio.
  */
-export interface RawAudioBatchData {
+export interface ProtocolRawAudioBatchData {
   /**
    * Chunks of 16-bit PCM audio, each base64-encoded, in order.
    */
@@ -632,7 +632,7 @@ export interface RawAudioBatchData {
 /**
  * Data format for a `raw-audio` message: one chunk of the user's audio.
  */
-export interface RawAudioData {
+export interface ProtocolRawAudioData {
   /**
    * 16-bit PCM audio, base64-encoded.
    */
@@ -650,7 +650,7 @@ export interface RawAudioData {
 /**
  * Data structure expected from client messages sent to the RTVI server.
  */
-export interface RawClientMessageData {
+export interface ProtocolRawClientMessageData {
   /**
    * The message's type, one of the application's own.
    */
@@ -661,7 +661,7 @@ export interface RawClientMessageData {
 /**
  * Data structure for server responses to client messages.
  */
-export interface RawServerResponseData {
+export interface ProtocolRawServerResponseData {
   /**
    * The `t` of the client message this answers.
    */
@@ -675,7 +675,7 @@ export interface RawServerResponseData {
 /**
  * Data for STT raw text messages.
  */
-export interface STTRawTextMessageData {
+export interface ProtocolSTTRawTextMessageData {
   /**
    * The transcribed text.
    */
@@ -695,13 +695,13 @@ export interface STTRawTextMessageData {
   /**
    * Who said it, when the STT service's diarization tells speakers apart.
    */
-  speaker?: TranscriptionSpeaker;
+  speaker?: ProtocolTranscriptionSpeaker;
 }
 
 /**
  * Usage statistics for STT operations.
  */
-export interface STTUsage {
+export interface ProtocolSTTUsage {
   /**
    * Client-measured seconds of audio submitted to the service since the last usage report.
    */
@@ -711,7 +711,7 @@ export interface STTUsage {
 /**
  * Speech-to-Text usage metrics data.
  */
-export interface STTUsageMetricsData {
+export interface ProtocolSTTUsageMetricsData {
   /**
    * Name of the processor generating the metrics.
    */
@@ -723,13 +723,13 @@ export interface STTUsageMetricsData {
   /**
    * Usage statistics for the STT operation.
    */
-  value: STTUsage;
+  value: ProtocolSTTUsage;
 }
 
 /**
  * Scroll a target element into view.
  */
-export interface ScrollTo {
+export interface ProtocolScrollTo {
   /**
    * Snapshot ref from `<ui_state>`.
    */
@@ -747,7 +747,7 @@ export interface ScrollTo {
 /**
  * Select text on the page so the user can see what the worker means.
  */
-export interface SelectText {
+export interface ProtocolSelectText {
   /**
    * Snapshot ref from `<ui_state>`. Typically the ref of a paragraph or input element.
    */
@@ -769,7 +769,7 @@ export interface SelectText {
 /**
  * Data format for sending a file to the LLM.
  */
-export interface SendFileData {
+export interface ProtocolSendFileData {
   /**
    * Text that goes with the file, such as a question about it.
    */
@@ -777,17 +777,17 @@ export interface SendFileData {
   /**
    * The file.
    */
-  file: File;
+  file: ProtocolFile;
   /**
    * How the bot handles the file.
    */
-  options?: SendFileOptions | null;
+  options?: ProtocolSendFileOptions | null;
 }
 
 /**
  * Options for sending a file to the LLM.
  */
-export interface SendFileOptions {
+export interface ProtocolSendFileOptions {
   /**
    * Whether the bot responds to the file right away, interrupting itself if it is speaking. When false, the file waits in the conversation for the bot's next response.
    */
@@ -807,7 +807,7 @@ export interface SendFileOptions {
 /**
  * Data format for sending text input to the LLM.
  */
-export interface SendTextData {
+export interface ProtocolSendTextData {
   /**
    * The text.
    */
@@ -815,13 +815,13 @@ export interface SendTextData {
   /**
    * How the bot handles the text.
    */
-  options?: SendTextOptions | null;
+  options?: ProtocolSendTextOptions | null;
 }
 
 /**
  * Options for sending text input to the LLM.
  */
-export interface SendTextOptions {
+export interface ProtocolSendTextOptions {
   /**
    * Whether the bot responds to the text right away, interrupting itself if it is speaking. When false, the text waits in the conversation for the bot's next response.
    */
@@ -835,7 +835,7 @@ export interface SendTextOptions {
 /**
  * Write a value into a text input or textarea on the client.
  */
-export interface SetInputValue {
+export interface ProtocolSetInputValue {
   /**
    * The text to write.
    */
@@ -857,7 +857,7 @@ export interface SetInputValue {
 /**
  * Word-level TTS progress within a spoken segment.
  */
-export interface SpokenProgressData {
+export interface ProtocolSpokenProgressData {
   /**
    * Text already spoken in this segment, including the current word.
    */
@@ -871,7 +871,7 @@ export interface SpokenProgressData {
 /**
  * Time To First Audio (TTFA) metrics data.
  */
-export interface TTFAMetricsData {
+export interface ProtocolTTFAMetricsData {
   /**
    * Name of the processor generating the metrics.
    */
@@ -897,7 +897,7 @@ export interface TTFAMetricsData {
 /**
  * Time To First Answer Token (TTFAT) metrics data.
  */
-export interface TTFATMetricsData {
+export interface ProtocolTTFATMetricsData {
   /**
    * Name of the processor generating the metrics.
    */
@@ -923,7 +923,7 @@ export interface TTFATMetricsData {
 /**
  * Time To First Byte (TTFB) metrics data.
  */
-export interface TTFBMetricsData {
+export interface ProtocolTTFBMetricsData {
   /**
    * Name of the processor generating the metrics.
    */
@@ -941,7 +941,7 @@ export interface TTFBMetricsData {
 /**
  * Text-to-Speech usage metrics data.
  */
-export interface TTSUsageMetricsData {
+export interface ProtocolTTSUsageMetricsData {
   /**
    * Name of the processor generating the metrics.
    */
@@ -959,7 +959,7 @@ export interface TTSUsageMetricsData {
 /**
  * Data for text-based RTVI messages.
  */
-export interface TextMessageData {
+export interface ProtocolTextMessageData {
   /**
    * The text.
    */
@@ -969,7 +969,7 @@ export interface TextMessageData {
 /**
  * Built-in text types.
  */
-export type TextType =
+export type ProtocolTextType =
   | "backchannel"
   | "expression_sound"
   | "expression_pause"
@@ -980,7 +980,7 @@ export type TextType =
 /**
  * A transient notification surface shown on the client.
  */
-export interface Toast {
+export interface ProtocolToast {
   /**
    * Required headline.
    */
@@ -1006,7 +1006,7 @@ export interface Toast {
 /**
  * A speaker an STT service's diarization told apart in a transcription stream.
  */
-export interface TranscriptionSpeaker {
+export interface ProtocolTranscriptionSpeaker {
   /**
    * The provider's label for the speaker (e.g. `"A"`, `"S1"`, `"2"`).
    */
@@ -1020,7 +1020,7 @@ export interface TranscriptionSpeaker {
 /**
  * A command of the application's own, with a name and payload it defines.
  */
-export interface UIAppCommand {
+export interface ProtocolUIAppCommand {
   /**
    * The command's name, other than a standard command's.
    */
@@ -1034,7 +1034,7 @@ export interface UIAppCommand {
 /**
  * Inner `data` for a `ui-cancel-job-group` message.
  */
-export interface UICancelJobGroupData {
+export interface ProtocolUICancelJobGroupData {
   /**
    * The job group id the client wants cancelled.
    */
@@ -1048,7 +1048,7 @@ export interface UICancelJobGroupData {
 /**
  * The standard `click` command: click an element on the client.
  */
-export interface UIClickCommand {
+export interface ProtocolUIClickCommand {
   /**
    * The command's name.
    */
@@ -1056,13 +1056,13 @@ export interface UIClickCommand {
   /**
    * The command's payload.
    */
-  payload: Click;
+  payload: ProtocolClick;
 }
 
 /**
  * Inner `data` for a `ui-event` message.
  */
-export interface UIEventData {
+export interface ProtocolUIEventData {
   /**
    * App-defined event.
    */
@@ -1073,7 +1073,7 @@ export interface UIEventData {
 /**
  * The standard `focus` command: move input focus to a target element.
  */
-export interface UIFocusCommand {
+export interface ProtocolUIFocusCommand {
   /**
    * The command's name.
    */
@@ -1081,13 +1081,13 @@ export interface UIFocusCommand {
   /**
    * The command's payload.
    */
-  payload: Focus;
+  payload: ProtocolFocus;
 }
 
 /**
  * The standard `highlight` command: briefly emphasize a target element (flash, glow, pulse).
  */
-export interface UIHighlightCommand {
+export interface ProtocolUIHighlightCommand {
   /**
    * The command's name.
    */
@@ -1095,13 +1095,13 @@ export interface UIHighlightCommand {
   /**
    * The command's payload.
    */
-  payload: Highlight;
+  payload: ProtocolHighlight;
 }
 
 /**
  * `data` for a `ui-job-group` envelope with kind `job_completed`.
  */
-export interface UIJobCompletedData {
+export interface ProtocolUIJobCompletedData {
   /**
    * Always `"job_completed"`.
    */
@@ -1131,7 +1131,7 @@ export interface UIJobCompletedData {
 /**
  * `data` for a `ui-job-group` envelope with kind `group_completed`.
  */
-export interface UIJobGroupCompletedData {
+export interface ProtocolUIJobGroupCompletedData {
   /**
    * Always `"group_completed"`.
    */
@@ -1149,7 +1149,7 @@ export interface UIJobGroupCompletedData {
 /**
  * `data` for a `ui-job-group` envelope with kind `group_started`.
  */
-export interface UIJobGroupStartedData {
+export interface ProtocolUIJobGroupStartedData {
   /**
    * Always `"group_started"`.
    */
@@ -1179,7 +1179,7 @@ export interface UIJobGroupStartedData {
 /**
  * `data` for a `ui-job-group` envelope with kind `job_update`.
  */
-export interface UIJobUpdateData {
+export interface ProtocolUIJobUpdateData {
   /**
    * Always `"job_update"`.
    */
@@ -1205,7 +1205,7 @@ export interface UIJobUpdateData {
 /**
  * The standard `navigate` command: client-side navigation to a named view.
  */
-export interface UINavigateCommand {
+export interface ProtocolUINavigateCommand {
   /**
    * The command's name.
    */
@@ -1213,13 +1213,13 @@ export interface UINavigateCommand {
   /**
    * The command's payload.
    */
-  payload: Navigate;
+  payload: ProtocolNavigate;
 }
 
 /**
  * The standard `scroll_to` command: scroll a target element into view.
  */
-export interface UIScrollToCommand {
+export interface ProtocolUIScrollToCommand {
   /**
    * The command's name.
    */
@@ -1227,13 +1227,13 @@ export interface UIScrollToCommand {
   /**
    * The command's payload.
    */
-  payload: ScrollTo;
+  payload: ProtocolScrollTo;
 }
 
 /**
  * The standard `select_text` command: select text on the page so the user can see what the worker means.
  */
-export interface UISelectTextCommand {
+export interface ProtocolUISelectTextCommand {
   /**
    * The command's name.
    */
@@ -1241,13 +1241,13 @@ export interface UISelectTextCommand {
   /**
    * The command's payload.
    */
-  payload: SelectText;
+  payload: ProtocolSelectText;
 }
 
 /**
  * The standard `set_input_value` command: write a value into a text input or textarea on the client.
  */
-export interface UISetInputValueCommand {
+export interface ProtocolUISetInputValueCommand {
   /**
    * The command's name.
    */
@@ -1255,23 +1255,23 @@ export interface UISetInputValueCommand {
   /**
    * The command's payload.
    */
-  payload: SetInputValue;
+  payload: ProtocolSetInputValue;
 }
 
 /**
  * Inner `data` for a `ui-snapshot` message.
  */
-export interface UISnapshotData {
+export interface ProtocolUISnapshotData {
   /**
    * The serialized accessibility tree.
    */
-  tree: A11YSnapshot;
+  tree: ProtocolA11YSnapshot;
 }
 
 /**
  * The standard `toast` command: a transient notification surface shown on the client.
  */
-export interface UIToastCommand {
+export interface ProtocolUIToastCommand {
   /**
    * The command's name.
    */
@@ -1279,13 +1279,13 @@ export interface UIToastCommand {
   /**
    * The command's payload.
    */
-  payload: Toast;
+  payload: ProtocolToast;
 }
 
 /**
  * Data for user input messages.
  */
-export interface UserInputMessageData {
+export interface ProtocolUserInputMessageData {
   /**
    * What the user said or typed.
    */
@@ -1313,17 +1313,17 @@ export interface UserInputMessageData {
   /**
    * For a transcription, how the user said it, when the STT service reports a reading with it. Part of expressive conversation (alpha).
    */
-  perception?: UserPerceptionSignal[];
+  perception?: ProtocolUserPerceptionSignal[];
   /**
    * For a transcription, who said it, when the STT service's diarization tells speakers apart.
    */
-  speaker?: TranscriptionSpeaker;
+  speaker?: ProtocolTranscriptionSpeaker;
 }
 
 /**
  * A label of a perception signal, with how sure the reading is.
  */
-export interface UserPerceptionLabel {
+export interface ProtocolUserPerceptionLabel {
   /**
    * The label, such as `"frustrated"`.
    */
@@ -1337,7 +1337,7 @@ export interface UserPerceptionLabel {
 /**
  * One signal of a reading of how the user spoke.
  */
-export interface UserPerceptionSignal {
+export interface ProtocolUserPerceptionSignal {
   /**
    * What is read, such as `"tone"`.
    */
@@ -1345,7 +1345,7 @@ export interface UserPerceptionSignal {
   /**
    * The likeliest labels, likeliest first, for a signal read as labels.
    */
-  labels: UserPerceptionLabel[];
+  labels: ProtocolUserPerceptionLabel[];
   /**
    * The measure, for a signal read as a value.
    */
@@ -1355,7 +1355,7 @@ export interface UserPerceptionSignal {
 /**
  * Data for user transcription messages.
  */
-export interface UserTranscriptionMessageData {
+export interface ProtocolUserTranscriptionMessageData {
   /**
    * The transcribed text.
    */
@@ -1375,7 +1375,7 @@ export interface UserTranscriptionMessageData {
 }
 
 /** The type of every message a client sends. */
-export type ClientMessageType =
+export type ProtocolClientMessageType =
   | "client-ready"
   | "disconnect-bot"
   | "client-message"
@@ -1390,7 +1390,7 @@ export type ClientMessageType =
   | "ui-cancel-job-group";
 
 /** The type of every message the server sends. */
-export type ServerMessageType =
+export type ProtocolServerMessageType =
   | "bot-ready"
   | "error"
   | "error-response"
@@ -1432,30 +1432,30 @@ export type ServerMessageType =
   | "ui-job-group";
 
 /** The `data` of each client message, `undefined` for one that carries none. */
-export interface ClientMessageData {
-  "client-ready": ClientReadyData;
+export interface ProtocolClientMessageData {
+  "client-ready": ProtocolClientReadyData;
   "disconnect-bot": undefined;
-  "client-message": RawClientMessageData;
-  "send-text": SendTextData;
-  "send-file": SendFileData;
-  dtmf: DTMFInputData;
-  "llm-function-call-result": LLMFunctionCallResultData;
-  "raw-audio": RawAudioData;
-  "raw-audio-batch": RawAudioBatchData;
-  "ui-event": UIEventData;
-  "ui-snapshot": UISnapshotData;
-  "ui-cancel-job-group": UICancelJobGroupData;
+  "client-message": ProtocolRawClientMessageData;
+  "send-text": ProtocolSendTextData;
+  "send-file": ProtocolSendFileData;
+  dtmf: ProtocolDTMFInputData;
+  "llm-function-call-result": ProtocolLLMFunctionCallResultData;
+  "raw-audio": ProtocolRawAudioData;
+  "raw-audio-batch": ProtocolRawAudioBatchData;
+  "ui-event": ProtocolUIEventData;
+  "ui-snapshot": ProtocolUISnapshotData;
+  "ui-cancel-job-group": ProtocolUICancelJobGroupData;
 }
 
 /** The `data` of each server message, `undefined` for one that carries none. */
-export interface ServerMessageData {
-  "bot-ready": BotReadyData;
-  error: ErrorData;
-  "error-response": ErrorResponseData;
-  "server-response": RawServerResponseData;
+export interface ProtocolServerMessageData {
+  "bot-ready": ProtocolBotReadyData;
+  error: ProtocolErrorData;
+  "error-response": ProtocolErrorResponseData;
+  "server-response": ProtocolRawServerResponseData;
   "server-message": unknown;
-  metrics: MetricsMessageData;
-  "system-log": TextMessageData;
+  metrics: ProtocolMetricsMessageData;
+  "system-log": ProtocolTextMessageData;
   "user-started-speaking": undefined;
   "user-stopped-speaking": undefined;
   "vad-user-started-speaking": undefined;
@@ -1465,42 +1465,42 @@ export interface ServerMessageData {
   "bot-started-speaking": undefined;
   "bot-stopped-speaking": undefined;
   "bot-interrupted": undefined;
-  "user-audio-level": AudioLevelMessageData;
-  "bot-audio-level": AudioLevelMessageData;
-  "user-input": UserInputMessageData;
-  "user-llm-text": TextMessageData;
-  "stt-raw-text": STTRawTextMessageData;
-  "user-transcription": UserTranscriptionMessageData;
-  "bot-output": BotOutputMessageData;
+  "user-audio-level": ProtocolAudioLevelMessageData;
+  "bot-audio-level": ProtocolAudioLevelMessageData;
+  "user-input": ProtocolUserInputMessageData;
+  "user-llm-text": ProtocolTextMessageData;
+  "stt-raw-text": ProtocolSTTRawTextMessageData;
+  "user-transcription": ProtocolUserTranscriptionMessageData;
+  "bot-output": ProtocolBotOutputMessageData;
   "bot-llm-started": undefined;
   "bot-llm-stopped": undefined;
   "bot-tts-started": undefined;
   "bot-tts-stopped": undefined;
-  "llm-raw-text": TextMessageData;
-  "tts-raw-text": TextMessageData;
-  "bot-llm-marker": BotLLMMarkerMessageData;
-  "bot-transcription": TextMessageData;
-  "bot-llm-text": TextMessageData;
-  "bot-tts-text": TextMessageData;
-  "llm-function-call-started": LLMFunctionCallStartMessageData;
-  "llm-function-call-in-progress": LLMFunctionCallInProgressMessageData;
-  "llm-function-call-stopped": LLMFunctionCallStoppedMessageData;
-  "llm-function-call": LLMFunctionCallMessageData;
+  "llm-raw-text": ProtocolTextMessageData;
+  "tts-raw-text": ProtocolTextMessageData;
+  "bot-llm-marker": ProtocolBotLLMMarkerMessageData;
+  "bot-transcription": ProtocolTextMessageData;
+  "bot-llm-text": ProtocolTextMessageData;
+  "bot-tts-text": ProtocolTextMessageData;
+  "llm-function-call-started": ProtocolLLMFunctionCallStartMessageData;
+  "llm-function-call-in-progress": ProtocolLLMFunctionCallInProgressMessageData;
+  "llm-function-call-stopped": ProtocolLLMFunctionCallStoppedMessageData;
+  "llm-function-call": ProtocolLLMFunctionCallMessageData;
   "ui-command":
-    | UIToastCommand
-    | UINavigateCommand
-    | UIScrollToCommand
-    | UIHighlightCommand
-    | UIFocusCommand
-    | UIClickCommand
-    | UISetInputValueCommand
-    | UISelectTextCommand
-    | UIAppCommand;
+    | ProtocolUIToastCommand
+    | ProtocolUINavigateCommand
+    | ProtocolUIScrollToCommand
+    | ProtocolUIHighlightCommand
+    | ProtocolUIFocusCommand
+    | ProtocolUIClickCommand
+    | ProtocolUISetInputValueCommand
+    | ProtocolUISelectTextCommand
+    | ProtocolUIAppCommand;
   "ui-job-group":
-    | UIJobGroupStartedData
-    | UIJobUpdateData
-    | UIJobCompletedData
-    | UIJobGroupCompletedData;
+    | ProtocolUIJobGroupStartedData
+    | ProtocolUIJobUpdateData
+    | ProtocolUIJobCompletedData
+    | ProtocolUIJobGroupCompletedData;
 }
 
 /**
@@ -1508,8 +1508,8 @@ export interface ServerMessageData {
  * client protocol version the server sends it to, and what replaces it when
  * it is deprecated.
  */
-export const SERVER_MESSAGES: Record<
-  ServerMessageType,
+export const PROTOCOL_SERVER_MESSAGES: Record<
+  ProtocolServerMessageType,
   { enabledBy?: string; minClientVersion?: string; deprecated?: string }
 > = {
   "bot-ready": {},
