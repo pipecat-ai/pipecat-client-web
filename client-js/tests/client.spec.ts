@@ -1292,6 +1292,42 @@ describe("User input and bot output", () => {
     }
   );
 
+  const audioLevelMessages = [
+    {
+      type: RTVIMessageType.USER_AUDIO_LEVEL,
+      event: RTVIEvent.UserAudioLevel,
+      callback: "onUserAudioLevel",
+      data: { value: 0.3 },
+    },
+    {
+      type: RTVIMessageType.BOT_AUDIO_LEVEL,
+      event: RTVIEvent.BotAudioLevel,
+      callback: "onBotAudioLevel",
+      data: { value: 0.5 },
+    },
+  ] as const;
+
+  test.each(audioLevelMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onMessage = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onMessage },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onMessage).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
+
   test.each(rawTextMessages)(
     "a $type message is reported to $callback and as $event",
     async ({ type, event, callback, data }) => {

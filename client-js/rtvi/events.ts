@@ -12,6 +12,7 @@ import {
 } from "./common_types";
 import { DeviceError, UnsupportedFeatureError } from "./errors";
 import {
+  AudioLevelData,
   BotDeliveryUpdatedData,
   BotExpressionData,
   BotLLMSearchResponseData,
@@ -74,6 +75,10 @@ export enum RTVIEvent {
   // voice activity events
   VadUserStartedSpeaking = "vadUserStartedSpeaking",
   VadUserStoppedSpeaking = "vadUserStoppedSpeaking",
+
+  // audio level events, as the bot measures them
+  UserAudioLevel = "userAudioLevel",
+  BotAudioLevel = "botAudioLevel",
 
   // stt events
   /**
@@ -210,6 +215,22 @@ export type RTVIEvents = Partial<{
    * enabled, with Pipecat's `vad_user_speaking_enabled` RTVIObserverParams.
    */
   vadUserStoppedSpeaking: () => void;
+
+  // audio level events, as the bot measures them
+  /**
+   * How loud the user's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * received it, sent regularly while it comes in. Unlike `localAudioLevel`,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's `user_audio_level_enabled` RTVIObserverParams.
+   */
+  userAudioLevel: (data: AudioLevelData) => void;
+  /**
+   * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * produced it, sent regularly while it speaks. Unlike `remoteAudioLevel`,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's `bot_audio_level_enabled` RTVIObserverParams.
+   */
+  botAudioLevel: (data: AudioLevelData) => void;
 
   // stt events
   /**

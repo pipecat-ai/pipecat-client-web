@@ -12,6 +12,7 @@
 
 import type * as Wire from "../rtvi/generated/protocol";
 import type {
+  AudioLevelData,
   BotLLMTextData,
   BotOutputData,
   BotReadyData,
@@ -57,6 +58,8 @@ type ServerData = {
   "stt-raw-text": STTRawTextData;
   "llm-raw-text": LLMRawTextData;
   "tts-raw-text": TTSRawTextData;
+  "user-audio-level": AudioLevelData;
+  "bot-audio-level": AudioLevelData;
   "ui-command": UICommandData;
   "ui-job-group": UIJobGroupData;
   "llm-function-call-started": LLMFunctionCallStartedData;
