@@ -10,10 +10,12 @@ import TypedEmitter from "typed-emitter";
 import packageJson from "../package.json";
 import {
   A11ySnapshot,
+  AudioLevelData,
   BotCapabilities,
   BotDeliveryUpdatedData,
   BotExpressionData,
   BotExpressionKind,
+  BotLLMMarkerData,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -50,6 +52,7 @@ import {
   SendTextOptions,
   setAboutClient,
   STTRawTextData,
+  SystemLogData,
   TranscriptData,
   TransportState,
   TTSRawTextData,
@@ -133,6 +136,11 @@ export type RTVIEventCallbacks = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onServerMessage: (data: any) => void;
   onMessageError: (message: RTVIMessage) => void;
+  /**
+   * A line of the bot's log, for debugging. The bot sends it only when
+   * enabled, with Pipecat's system_logs_enabled RTVIObserverParams.
+   */
+  onSystemLog: (data: SystemLogData) => void;
   onUICommand: (data: UICommandData) => void;
   onUIJobGroup: (data: UIJobGroupData) => void;
 
@@ -176,6 +184,34 @@ export type RTVIEventCallbacks = Partial<{
   onUserMuteStarted: () => void;
   onUserMuteStopped: () => void;
   /**
+   * The bot's voice activity detection heard the user start speaking. It
+   * reacts to any voice, sooner than onUserStartedSpeaking, which comes when
+   * the bot decides the user's turn started. The bot sends it only when
+   * enabled, with Pipecat's vad_user_speaking_enabled RTVIObserverParams.
+   */
+  onVadUserStartedSpeaking: () => void;
+  /**
+   * The bot's voice activity detection heard the user stop speaking. It
+   * reacts to any pause, sooner than onUserStoppedSpeaking, which comes when
+   * the bot decides the user's turn ended. The bot sends it only when
+   * enabled, with Pipecat's vad_user_speaking_enabled RTVIObserverParams.
+   */
+  onVadUserStoppedSpeaking: () => void;
+  /**
+   * How loud the user's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * received it, sent regularly while it comes in. Unlike onLocalAudioLevel,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's user_audio_level_enabled RTVIObserverParams.
+   */
+  onUserAudioLevel: (data: AudioLevelData) => void;
+  /**
+   * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * produced it, sent regularly while it speaks. Unlike onRemoteAudioLevel,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's bot_audio_level_enabled RTVIObserverParams.
+   */
+  onBotAudioLevel: (data: AudioLevelData) => void;
+  /**
    * @deprecated Use onUserInput to show what the user said, or onSttRawText to
    * inspect what the STT produced
    */
@@ -204,6 +240,15 @@ export type RTVIEventCallbacks = Partial<{
   onBotLlmText: (data: BotLLMTextData) => void;
   onBotLlmStarted: () => void;
   onBotLlmStopped: () => void;
+  /**
+   * The marker the bot's LLM put in a response, outside the text it speaks,
+   * such as one saying whether the user's turn was complete; sent once per
+   * response, when it ends. It carries the response's raw text, so it's for
+   * evaluating and debugging the bot, not for showing to the user. The bot
+   * sends it only when enabled, with Pipecat's bot_llm_marker_enabled
+   * RTVIObserverParams.
+   */
+  onBotLlmMarker: (data: BotLLMMarkerData) => void;
   /**
    * @deprecated Use onBotOutput to show the bot's text, or onTtsRawText to
    * inspect what the TTS produced
@@ -545,6 +590,30 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotTtsText: (text) => {
         options?.callbacks?.onBotTtsText?.(text);
         this.emit(RTVIEvent.BotTtsText, text);
+      },
+      onVadUserStartedSpeaking: () => {
+        options?.callbacks?.onVadUserStartedSpeaking?.();
+        this.emit(RTVIEvent.VadUserStartedSpeaking);
+      },
+      onVadUserStoppedSpeaking: () => {
+        options?.callbacks?.onVadUserStoppedSpeaking?.();
+        this.emit(RTVIEvent.VadUserStoppedSpeaking);
+      },
+      onUserAudioLevel: (data) => {
+        options?.callbacks?.onUserAudioLevel?.(data);
+        this.emit(RTVIEvent.UserAudioLevel, data);
+      },
+      onBotAudioLevel: (data) => {
+        options?.callbacks?.onBotAudioLevel?.(data);
+        this.emit(RTVIEvent.BotAudioLevel, data);
+      },
+      onSystemLog: (data) => {
+        options?.callbacks?.onSystemLog?.(data);
+        this.emit(RTVIEvent.SystemLog, data);
+      },
+      onBotLlmMarker: (data) => {
+        options?.callbacks?.onBotLlmMarker?.(data);
+        this.emit(RTVIEvent.BotLlmMarker, data);
       },
       onSttRawText: (data) => {
         options?.callbacks?.onSttRawText?.(data);
@@ -1646,6 +1715,24 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.BOT_TTS_STOPPED:
         this._options.callbacks?.onBotTtsStopped?.();
+        break;
+      case RTVIMessageType.VAD_USER_STARTED_SPEAKING:
+        this._options.callbacks?.onVadUserStartedSpeaking?.();
+        break;
+      case RTVIMessageType.VAD_USER_STOPPED_SPEAKING:
+        this._options.callbacks?.onVadUserStoppedSpeaking?.();
+        break;
+      case RTVIMessageType.USER_AUDIO_LEVEL:
+        this._options.callbacks?.onUserAudioLevel?.(ev.data as AudioLevelData);
+        break;
+      case RTVIMessageType.BOT_AUDIO_LEVEL:
+        this._options.callbacks?.onBotAudioLevel?.(ev.data as AudioLevelData);
+        break;
+      case RTVIMessageType.SYSTEM_LOG:
+        this._options.callbacks?.onSystemLog?.(ev.data as SystemLogData);
+        break;
+      case RTVIMessageType.BOT_LLM_MARKER:
+        this._options.callbacks?.onBotLlmMarker?.(ev.data as BotLLMMarkerData);
         break;
       case RTVIMessageType.STT_RAW_TEXT:
         this._options.callbacks?.onSttRawText?.(ev.data as STTRawTextData);

@@ -12,8 +12,10 @@ import {
 } from "./common_types";
 import { DeviceError, UnsupportedFeatureError } from "./errors";
 import {
+  AudioLevelData,
   BotDeliveryUpdatedData,
   BotExpressionData,
+  BotLLMMarkerData,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -27,6 +29,7 @@ import {
   PipecatMetricsData,
   RTVIMessage,
   STTRawTextData,
+  SystemLogData,
   TranscriptData,
   TTSRawTextData,
   UICommandData,
@@ -52,6 +55,7 @@ export enum RTVIEvent {
   ServerMessage = "serverMessage",
   ServerResponse = "serverResponse",
   MessageError = "messageError",
+  SystemLog = "systemLog",
 
   /** UI Worker Protocol */
   UICommand = "uiCommand",
@@ -70,6 +74,14 @@ export enum RTVIEvent {
   // user mute strategy events
   UserMuteStarted = "userMuteStarted",
   UserMuteStopped = "userMuteStopped",
+
+  // voice activity events
+  VadUserStartedSpeaking = "vadUserStartedSpeaking",
+  VadUserStoppedSpeaking = "vadUserStoppedSpeaking",
+
+  // audio level events, as the bot measures them
+  UserAudioLevel = "userAudioLevel",
+  BotAudioLevel = "botAudioLevel",
 
   // stt events
   /**
@@ -95,6 +107,7 @@ export enum RTVIEvent {
   BotLlmText = "botLlmText",
   BotLlmStarted = "botLlmStarted",
   BotLlmStopped = "botLlmStopped",
+  BotLlmMarker = "botLlmMarker",
 
   // DEPRECATED
   LLMFunctionCall = "llmFunctionCall",
@@ -167,6 +180,11 @@ export type RTVIEvents = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serverResponse: (data: any) => void;
   messageError: (message: RTVIMessage) => void;
+  /**
+   * A line of the bot's log, for debugging. The bot sends it only when
+   * enabled, with Pipecat's `system_logs_enabled` RTVIObserverParams.
+   */
+  systemLog: (data: SystemLogData) => void;
 
   /** UI Worker Protocol */
   uiCommand: (data: UICommandData) => void;
@@ -191,6 +209,38 @@ export type RTVIEvents = Partial<{
   userMuteStarted: () => void;
   userMuteStopped: () => void;
 
+  // voice activity events
+  /**
+   * The bot's voice activity detection heard the user start speaking. It
+   * reacts to any voice, sooner than `userStartedSpeaking`, which comes when
+   * the bot decides the user's turn started. The bot sends it only when
+   * enabled, with Pipecat's `vad_user_speaking_enabled` RTVIObserverParams.
+   */
+  vadUserStartedSpeaking: () => void;
+  /**
+   * The bot's voice activity detection heard the user stop speaking. It
+   * reacts to any pause, sooner than `userStoppedSpeaking`, which comes when
+   * the bot decides the user's turn ended. The bot sends it only when
+   * enabled, with Pipecat's `vad_user_speaking_enabled` RTVIObserverParams.
+   */
+  vadUserStoppedSpeaking: () => void;
+
+  // audio level events, as the bot measures them
+  /**
+   * How loud the user's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * received it, sent regularly while it comes in. Unlike `localAudioLevel`,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's `user_audio_level_enabled` RTVIObserverParams.
+   */
+  userAudioLevel: (data: AudioLevelData) => void;
+  /**
+   * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * produced it, sent regularly while it speaks. Unlike `remoteAudioLevel`,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's `bot_audio_level_enabled` RTVIObserverParams.
+   */
+  botAudioLevel: (data: AudioLevelData) => void;
+
   // stt events
   /**
    * @deprecated Use `userInput` to show what the user said, or `sttRawText` to
@@ -212,6 +262,15 @@ export type RTVIEvents = Partial<{
   botLlmText: (data: BotLLMTextData) => void;
   botLlmStarted: () => void;
   botLlmStopped: () => void;
+  /**
+   * The marker the bot's LLM put in a response, outside the text it speaks,
+   * such as one saying whether the user's turn was complete; sent once per
+   * response, when it ends. It carries the response's raw text, so it's for
+   * evaluating and debugging the bot, not for showing to the user. The bot
+   * sends it only when enabled, with Pipecat's `bot_llm_marker_enabled`
+   * RTVIObserverParams.
+   */
+  botLlmMarker: (data: BotLLMMarkerData) => void;
 
   /** @deprecated Use LLMFunctionCallInProgress instead */
   llmFunctionCall: (func: LLMFunctionCallData) => void;

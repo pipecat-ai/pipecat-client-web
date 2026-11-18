@@ -32,11 +32,19 @@ export default [
     },
   },
   {
-    files: ["tests/**/*.{js,ts}"],
+    files: ["**/tests/**/*.{js,ts}"],
     languageOptions: {
       globals: {
         ...globals.node,
         ...globals.jest,
+      },
+    },
+  },
+  {
+    files: ["**/scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
       },
     },
   },

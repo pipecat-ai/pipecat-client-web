@@ -26,7 +26,10 @@
     "build": "jest --silent --passWithNoTests && parcel build --no-cache",
     "dev": "parcel watch",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
-    "test": "jest"
+    "test": "jest",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "rtvi:sync": "node scripts/rtvi-protocol.mjs sync",
+    "rtvi:generate": "node scripts/rtvi-protocol.mjs generate"
   },
   "jest": {
     "preset": "ts-jest",
@@ -39,11 +42,14 @@
     "@jest/globals": "^30.5.2",
     "@types/clone-deep": "^4.0.4",
     "@types/jest": "^30.0.0",
+    "ajv": "8.17.1",
     "eslint": "^9.11.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2",
+    "json-schema-to-typescript": "15.0.4",
+    "prettier": "3.10.1",
     "ts-jest": "^29.4.14",
     "whatwg-fetch": "^3.6.20"
   },

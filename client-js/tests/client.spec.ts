@@ -1262,6 +1262,137 @@ describe("User input and bot output", () => {
     },
   ] as const;
 
+  test.each([
+    {
+      type: RTVIMessageType.VAD_USER_STARTED_SPEAKING,
+      event: RTVIEvent.VadUserStartedSpeaking,
+      callback: "onVadUserStartedSpeaking",
+    },
+    {
+      type: RTVIMessageType.VAD_USER_STOPPED_SPEAKING,
+      event: RTVIEvent.VadUserStoppedSpeaking,
+      callback: "onVadUserStoppedSpeaking",
+    },
+  ] as const)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback }) => {
+      const onVoiceActivity = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onVoiceActivity },
+      });
+      await callbackClient.connect();
+      const onEvent = jest.fn();
+      callbackClient.on(event, onEvent);
+
+      transport.handleMessage(serverMessage(type, undefined));
+
+      expect(onVoiceActivity).toHaveBeenCalledTimes(1);
+      expect(onEvent).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  const audioLevelMessages = [
+    {
+      type: RTVIMessageType.USER_AUDIO_LEVEL,
+      event: RTVIEvent.UserAudioLevel,
+      callback: "onUserAudioLevel",
+      data: { value: 0.3 },
+    },
+    {
+      type: RTVIMessageType.BOT_AUDIO_LEVEL,
+      event: RTVIEvent.BotAudioLevel,
+      callback: "onBotAudioLevel",
+      data: { value: 0.5 },
+    },
+  ] as const;
+
+  test.each(audioLevelMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onMessage = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onMessage },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onMessage).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
+
+  const systemLogMessages = [
+    {
+      type: RTVIMessageType.SYSTEM_LOG,
+      event: RTVIEvent.SystemLog,
+      callback: "onSystemLog",
+      data: { text: "Pipeline started" },
+    },
+  ] as const;
+
+  test.each(systemLogMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onMessage = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onMessage },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onMessage).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
+
+  const markerMessages = [
+    {
+      type: RTVIMessageType.BOT_LLM_MARKER,
+      event: RTVIEvent.BotLlmMarker,
+      callback: "onBotLlmMarker",
+      data: {
+        text: "✓",
+        kind: "complete",
+        raw: "✓ It's sunny in Lisbon.",
+        markers: ["✓"],
+      },
+    },
+  ] as const;
+
+  test.each(markerMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onMessage = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onMessage },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onMessage).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
+
   test.each(rawTextMessages)(
     "a $type message is reported to $callback and as $event",
     async ({ type, event, callback, data }) => {
