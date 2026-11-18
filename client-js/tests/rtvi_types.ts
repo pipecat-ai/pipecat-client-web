@@ -13,6 +13,7 @@
 import type * as Wire from "../rtvi/generated/protocol";
 import type {
   AudioLevelData,
+  BotLLMMarkerData,
   BotLLMTextData,
   BotOutputData,
   BotReadyData,
@@ -59,6 +60,7 @@ type ServerData = {
   "stt-raw-text": STTRawTextData;
   "llm-raw-text": LLMRawTextData;
   "tts-raw-text": TTSRawTextData;
+  "bot-llm-marker": BotLLMMarkerData;
   "system-log": SystemLogData;
   "user-audio-level": AudioLevelData;
   "bot-audio-level": AudioLevelData;

@@ -1358,6 +1358,41 @@ describe("User input and bot output", () => {
     }
   );
 
+  const markerMessages = [
+    {
+      type: RTVIMessageType.BOT_LLM_MARKER,
+      event: RTVIEvent.BotLlmMarker,
+      callback: "onBotLlmMarker",
+      data: {
+        text: "✓",
+        kind: "complete",
+        raw: "✓ It's sunny in Lisbon.",
+        markers: ["✓"],
+      },
+    },
+  ] as const;
+
+  test.each(markerMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onMessage = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onMessage },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onMessage).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
+
   test.each(rawTextMessages)(
     "a $type message is reported to $callback and as $event",
     async ({ type, event, callback, data }) => {

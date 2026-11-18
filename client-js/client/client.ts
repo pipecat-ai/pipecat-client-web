@@ -15,6 +15,7 @@ import {
   BotDeliveryUpdatedData,
   BotExpressionData,
   BotExpressionKind,
+  BotLLMMarkerData,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -241,6 +242,15 @@ export type RTVIEventCallbacks = Partial<{
   onBotLlmText: (data: BotLLMTextData) => void;
   onBotLlmStarted: () => void;
   onBotLlmStopped: () => void;
+  /**
+   * The marker the bot's LLM put in a response, outside the text it speaks,
+   * such as one saying whether the user's turn was complete; sent once per
+   * response, when it ends. It carries the response's raw text, so it's for
+   * evaluating and debugging the bot, not for showing to the user. The bot
+   * sends it only when enabled, with Pipecat's bot_llm_marker_enabled
+   * RTVIObserverParams.
+   */
+  onBotLlmMarker: (data: BotLLMMarkerData) => void;
   /**
    * @deprecated Use onBotOutput to show the bot's text, or onTtsRawText to
    * inspect what the TTS produced
@@ -605,6 +615,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onSystemLog: (data) => {
         options?.callbacks?.onSystemLog?.(data);
         this.emit(RTVIEvent.SystemLog, data);
+      },
+      onBotLlmMarker: (data) => {
+        options?.callbacks?.onBotLlmMarker?.(data);
+        this.emit(RTVIEvent.BotLlmMarker, data);
       },
       onSttRawText: (data) => {
         options?.callbacks?.onSttRawText?.(data);
@@ -1735,6 +1749,9 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.SYSTEM_LOG:
         this._options.callbacks?.onSystemLog?.(ev.data as SystemLogData);
+        break;
+      case RTVIMessageType.BOT_LLM_MARKER:
+        this._options.callbacks?.onBotLlmMarker?.(ev.data as BotLLMMarkerData);
         break;
       case RTVIMessageType.STT_RAW_TEXT:
         this._options.callbacks?.onSttRawText?.(ev.data as STTRawTextData);

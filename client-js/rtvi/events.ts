@@ -15,6 +15,7 @@ import {
   AudioLevelData,
   BotDeliveryUpdatedData,
   BotExpressionData,
+  BotLLMMarkerData,
   BotLLMSearchResponseData,
   BotLLMTextData,
   BotOutputData,
@@ -110,6 +111,7 @@ export enum RTVIEvent {
   BotLlmText = "botLlmText",
   BotLlmStarted = "botLlmStarted",
   BotLlmStopped = "botLlmStopped",
+  BotLlmMarker = "botLlmMarker",
 
   // DEPRECATED
   LLMFunctionCall = "llmFunctionCall",
@@ -267,6 +269,15 @@ export type RTVIEvents = Partial<{
   botLlmText: (data: BotLLMTextData) => void;
   botLlmStarted: () => void;
   botLlmStopped: () => void;
+  /**
+   * The marker the bot's LLM put in a response, outside the text it speaks,
+   * such as one saying whether the user's turn was complete; sent once per
+   * response, when it ends. It carries the response's raw text, so it's for
+   * evaluating and debugging the bot, not for showing to the user. The bot
+   * sends it only when enabled, with Pipecat's `bot_llm_marker_enabled`
+   * RTVIObserverParams.
+   */
+  botLlmMarker: (data: BotLLMMarkerData) => void;
 
   /** @deprecated Use LLMFunctionCallInProgress instead */
   llmFunctionCall: (func: LLMFunctionCallData) => void;
