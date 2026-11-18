@@ -1328,6 +1328,36 @@ describe("User input and bot output", () => {
     }
   );
 
+  const systemLogMessages = [
+    {
+      type: RTVIMessageType.SYSTEM_LOG,
+      event: RTVIEvent.SystemLog,
+      callback: "onSystemLog",
+      data: { text: "Pipeline started" },
+    },
+  ] as const;
+
+  test.each(systemLogMessages)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback, data }) => {
+      const onMessage = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onMessage },
+      });
+      await callbackClient.connect();
+      let eventData: unknown;
+      callbackClient.on(event, (d: unknown) => {
+        eventData = d;
+      });
+
+      transport.handleMessage(serverMessage(type, data));
+
+      expect(onMessage).toHaveBeenCalledWith(data);
+      expect(eventData).toEqual(data);
+    }
+  );
+
   test.each(rawTextMessages)(
     "a $type message is reported to $callback and as $event",
     async ({ type, event, callback, data }) => {

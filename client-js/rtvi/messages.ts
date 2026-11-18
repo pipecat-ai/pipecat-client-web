@@ -50,6 +50,7 @@ export enum RTVIMessageType {
   SERVER_MESSAGE = "server-message", // Custom server-to-client message
   SERVER_RESPONSE = "server-response", // Server response to client message
   ERROR_RESPONSE = "error-response", // Error message in response to an outbound message
+  SYSTEM_LOG = "system-log", // A line of the bot's log, sent only when enabled
   APPEND_TO_CONTEXT_RESULT = "append-to-context-result", // Result of appending to context
   // UI Worker Protocol (server-to-client)
   UI_COMMAND = "ui-command",
@@ -444,6 +445,9 @@ export type TTSRawTextData = {
 
 /** How loud the user's or the bot's audio is, as the bot measures it. */
 export type AudioLevelData = Protocol.AudioLevelMessageData;
+
+/** A line of the bot's log, for debugging. */
+export type SystemLogData = Protocol.TextMessageData;
 
 export type ServerMessageData = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

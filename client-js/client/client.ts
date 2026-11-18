@@ -52,6 +52,7 @@ import {
   SendTextOptions,
   setAboutClient,
   STTRawTextData,
+  SystemLogData,
   TranscriptData,
   TransportState,
   TTSRawTextData,
@@ -135,6 +136,11 @@ export type RTVIEventCallbacks = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onServerMessage: (data: any) => void;
   onMessageError: (message: RTVIMessage) => void;
+  /**
+   * A line of the bot's log, for debugging. The bot sends it only when
+   * enabled, with Pipecat's system_logs_enabled RTVIObserverParams.
+   */
+  onSystemLog: (data: SystemLogData) => void;
   onUICommand: (data: UICommandData) => void;
   onUIJobGroup: (data: UIJobGroupData) => void;
   onFlowNodeEntered: (data: FlowNodeEnteredData) => void;
@@ -595,6 +601,10 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotAudioLevel: (data) => {
         options?.callbacks?.onBotAudioLevel?.(data);
         this.emit(RTVIEvent.BotAudioLevel, data);
+      },
+      onSystemLog: (data) => {
+        options?.callbacks?.onSystemLog?.(data);
+        this.emit(RTVIEvent.SystemLog, data);
       },
       onSttRawText: (data) => {
         options?.callbacks?.onSttRawText?.(data);
@@ -1722,6 +1732,9 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.BOT_AUDIO_LEVEL:
         this._options.callbacks?.onBotAudioLevel?.(ev.data as AudioLevelData);
+        break;
+      case RTVIMessageType.SYSTEM_LOG:
+        this._options.callbacks?.onSystemLog?.(ev.data as SystemLogData);
         break;
       case RTVIMessageType.STT_RAW_TEXT:
         this._options.callbacks?.onSttRawText?.(ev.data as STTRawTextData);

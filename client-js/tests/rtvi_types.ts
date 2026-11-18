@@ -32,6 +32,7 @@ import type {
   SendFileOptions,
   SendTextOptions,
   STTRawTextData,
+  SystemLogData,
   TranscriptData,
   TTSRawTextData,
   UICancelJobGroupData,
@@ -58,6 +59,7 @@ type ServerData = {
   "stt-raw-text": STTRawTextData;
   "llm-raw-text": LLMRawTextData;
   "tts-raw-text": TTSRawTextData;
+  "system-log": SystemLogData;
   "user-audio-level": AudioLevelData;
   "bot-audio-level": AudioLevelData;
   "ui-command": UICommandData;

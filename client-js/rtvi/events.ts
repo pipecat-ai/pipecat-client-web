@@ -29,6 +29,7 @@ import {
   PipecatMetricsData,
   RTVIMessage,
   STTRawTextData,
+  SystemLogData,
   TranscriptData,
   TTSRawTextData,
   UICommandData,
@@ -54,6 +55,7 @@ export enum RTVIEvent {
   ServerMessage = "serverMessage",
   ServerResponse = "serverResponse",
   MessageError = "messageError",
+  SystemLog = "systemLog",
 
   /** UI Worker Protocol */
   UICommand = "uiCommand",
@@ -180,6 +182,11 @@ export type RTVIEvents = Partial<{
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serverResponse: (data: any) => void;
   messageError: (message: RTVIMessage) => void;
+  /**
+   * A line of the bot's log, for debugging. The bot sends it only when
+   * enabled, with Pipecat's `system_logs_enabled` RTVIObserverParams.
+   */
+  systemLog: (data: SystemLogData) => void;
 
   /** UI Worker Protocol */
   uiCommand: (data: UICommandData) => void;
