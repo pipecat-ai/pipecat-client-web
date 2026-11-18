@@ -104,13 +104,19 @@ type Known =
   | "ui-job-group";
 
 // Every key names a message of the document.
-type NotServerMessages = Exclude<keyof ServerData, Wire.ServerMessageType>;
-type NotClientMessages = Exclude<keyof ClientData, Wire.ClientMessageType>;
+type NotServerMessages = Exclude<
+  keyof ServerData,
+  Wire.ProtocolServerMessageType
+>;
+type NotClientMessages = Exclude<
+  keyof ClientData,
+  Wire.ProtocolClientMessageType
+>;
 
 // What the server can send, the public type accepts.
 type ServerMismatches = {
-  [K in Exclude<keyof ServerData, Known>]: Wire.ServerMessageData[K &
-    Wire.ServerMessageType] extends ServerData[K]
+  [K in Exclude<keyof ServerData, Known>]: Wire.ProtocolServerMessageData[K &
+    Wire.ProtocolServerMessageType] extends ServerData[K]
     ? never
     : K;
 }[Exclude<keyof ServerData, Known>];
@@ -119,7 +125,7 @@ type ServerMismatches = {
 type ClientMismatches = {
   [K in Exclude<keyof ClientData, Known>]: Json<
     ClientData[K]
-  > extends Wire.ClientMessageData[K & Wire.ClientMessageType]
+  > extends Wire.ProtocolClientMessageData[K & Wire.ProtocolClientMessageType]
     ? never
     : K;
 }[Exclude<keyof ClientData, Known>];
