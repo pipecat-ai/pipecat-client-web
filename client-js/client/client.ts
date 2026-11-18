@@ -10,6 +10,7 @@ import TypedEmitter from "typed-emitter";
 import packageJson from "../package.json";
 import {
   A11ySnapshot,
+  AudioLevelData,
   BotCapabilities,
   BotDeliveryUpdatedData,
   BotExpressionData,
@@ -191,6 +192,20 @@ export type RTVIEventCallbacks = Partial<{
    * enabled, with Pipecat's vad_user_speaking_enabled RTVIObserverParams.
    */
   onVadUserStoppedSpeaking: () => void;
+  /**
+   * How loud the user's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * received it, sent regularly while it comes in. Unlike onLocalAudioLevel,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's user_audio_level_enabled RTVIObserverParams.
+   */
+  onUserAudioLevel: (data: AudioLevelData) => void;
+  /**
+   * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the bot
+   * produced it, sent regularly while it speaks. Unlike onRemoteAudioLevel,
+   * which the transport measures, the bot measures it. The bot sends it only
+   * when enabled, with Pipecat's bot_audio_level_enabled RTVIObserverParams.
+   */
+  onBotAudioLevel: (data: AudioLevelData) => void;
   /**
    * @deprecated Use onUserInput to show what the user said, or onSttRawText to
    * inspect what the STT produced
@@ -572,6 +587,14 @@ export class PipecatClient extends RTVIEventEmitter {
       onVadUserStoppedSpeaking: () => {
         options?.callbacks?.onVadUserStoppedSpeaking?.();
         this.emit(RTVIEvent.VadUserStoppedSpeaking);
+      },
+      onUserAudioLevel: (data) => {
+        options?.callbacks?.onUserAudioLevel?.(data);
+        this.emit(RTVIEvent.UserAudioLevel, data);
+      },
+      onBotAudioLevel: (data) => {
+        options?.callbacks?.onBotAudioLevel?.(data);
+        this.emit(RTVIEvent.BotAudioLevel, data);
       },
       onSttRawText: (data) => {
         options?.callbacks?.onSttRawText?.(data);
@@ -1693,6 +1716,12 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.VAD_USER_STOPPED_SPEAKING:
         this._options.callbacks?.onVadUserStoppedSpeaking?.();
+        break;
+      case RTVIMessageType.USER_AUDIO_LEVEL:
+        this._options.callbacks?.onUserAudioLevel?.(ev.data as AudioLevelData);
+        break;
+      case RTVIMessageType.BOT_AUDIO_LEVEL:
+        this._options.callbacks?.onBotAudioLevel?.(ev.data as AudioLevelData);
         break;
       case RTVIMessageType.STT_RAW_TEXT:
         this._options.callbacks?.onSttRawText?.(ev.data as STTRawTextData);

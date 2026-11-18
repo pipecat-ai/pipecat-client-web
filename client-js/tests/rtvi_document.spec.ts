@@ -60,8 +60,6 @@ const CLIENT_TYPES = byOperation("receiveClientMessages");
 
 /** Server messages client-js doesn't hand to the app, and why. */
 const IGNORED: Record<string, string> = {
-  "user-audio-level": "the transport reports audio levels itself",
-  "bot-audio-level": "the transport reports audio levels itself",
   "system-log": "the bot's logs are for its developers, not the app",
   "bot-llm-marker": "the turn-completion marker is for debugging the bot",
 };

@@ -71,6 +71,10 @@ export enum RTVIMessageType {
   // sooner than the user's turns. The bot sends them only when enabled.
   VAD_USER_STARTED_SPEAKING = "vad-user-started-speaking",
   VAD_USER_STOPPED_SPEAKING = "vad-user-stopped-speaking",
+  // How loud the user's and the bot's audio is, as the bot measures it. The
+  // bot sends them only when enabled.
+  USER_AUDIO_LEVEL = "user-audio-level",
+  BOT_AUDIO_LEVEL = "bot-audio-level",
 
   /** @deprecated Use `USER_INPUT` or `STT_RAW_TEXT` instead. */
   USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
@@ -437,6 +441,9 @@ export type LLMRawTextData = {
 export type TTSRawTextData = {
   text: string;
 };
+
+/** How loud the user's or the bot's audio is, as the bot measures it. */
+export type AudioLevelData = Protocol.AudioLevelMessageData;
 
 export type ServerMessageData = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
