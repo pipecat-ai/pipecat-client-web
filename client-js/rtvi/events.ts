@@ -71,6 +71,10 @@ export enum RTVIEvent {
   UserMuteStarted = "userMuteStarted",
   UserMuteStopped = "userMuteStopped",
 
+  // voice activity events
+  VadUserStartedSpeaking = "vadUserStartedSpeaking",
+  VadUserStoppedSpeaking = "vadUserStoppedSpeaking",
+
   // stt events
   /**
    * @deprecated Use `UserInput` to show what the user said, or `SttRawText` to
@@ -190,6 +194,22 @@ export type RTVIEvents = Partial<{
   // user mute strategy events
   userMuteStarted: () => void;
   userMuteStopped: () => void;
+
+  // voice activity events
+  /**
+   * The bot's voice activity detection heard the user start speaking. It
+   * reacts to any voice, sooner than `userStartedSpeaking`, which comes when
+   * the bot decides the user's turn started. The bot sends it only when
+   * enabled, with Pipecat's `vad_user_speaking_enabled` RTVIObserverParams.
+   */
+  vadUserStartedSpeaking: () => void;
+  /**
+   * The bot's voice activity detection heard the user stop speaking. It
+   * reacts to any pause, sooner than `userStoppedSpeaking`, which comes when
+   * the bot decides the user's turn ended. The bot sends it only when
+   * enabled, with Pipecat's `vad_user_speaking_enabled` RTVIObserverParams.
+   */
+  vadUserStoppedSpeaking: () => void;
 
   // stt events
   /**

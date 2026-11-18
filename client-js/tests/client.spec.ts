@@ -1262,6 +1262,36 @@ describe("User input and bot output", () => {
     },
   ] as const;
 
+  test.each([
+    {
+      type: RTVIMessageType.VAD_USER_STARTED_SPEAKING,
+      event: RTVIEvent.VadUserStartedSpeaking,
+      callback: "onVadUserStartedSpeaking",
+    },
+    {
+      type: RTVIMessageType.VAD_USER_STOPPED_SPEAKING,
+      event: RTVIEvent.VadUserStoppedSpeaking,
+      callback: "onVadUserStoppedSpeaking",
+    },
+  ] as const)(
+    "a $type message is reported to $callback and as $event",
+    async ({ type, event, callback }) => {
+      const onVoiceActivity = jest.fn();
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: onVoiceActivity },
+      });
+      await callbackClient.connect();
+      const onEvent = jest.fn();
+      callbackClient.on(event, onEvent);
+
+      transport.handleMessage(serverMessage(type, undefined));
+
+      expect(onVoiceActivity).toHaveBeenCalledTimes(1);
+      expect(onEvent).toHaveBeenCalledTimes(1);
+    }
+  );
+
   test.each(rawTextMessages)(
     "a $type message is reported to $callback and as $event",
     async ({ type, event, callback, data }) => {
