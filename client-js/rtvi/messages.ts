@@ -87,6 +87,7 @@ export enum RTVIMessageType {
   BOT_LLM_TEXT = "bot-llm-text", // Streamed token returned by the LLM
   BOT_LLM_STARTED = "bot-llm-started", // Bot LLM inference starts
   BOT_LLM_STOPPED = "bot-llm-stopped", // Bot LLM inference stops
+  BOT_LLM_MARKER = "bot-llm-marker", // The marker in an LLM response, sent only when enabled
 
   // Function calling
   // DECPRECATED
@@ -445,6 +446,12 @@ export type AudioLevelData = Protocol.AudioLevelMessageData;
 
 /** A line of the bot's log, for debugging. */
 export type SystemLogData = Protocol.TextMessageData;
+
+/**
+ * The marker the bot's LLM put in a response, outside the text it speaks,
+ * such as one saying whether the user's turn was complete.
+ */
+export type BotLLMMarkerData = Protocol.BotLLMMarkerMessageData;
 
 export type ServerMessageData = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

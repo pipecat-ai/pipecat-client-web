@@ -59,9 +59,7 @@ const SERVER_TYPES = byOperation("sendServerMessages");
 const CLIENT_TYPES = byOperation("receiveClientMessages");
 
 /** Server messages client-js doesn't hand to the app, and why. */
-const IGNORED: Record<string, string> = {
-  "bot-llm-marker": "the turn-completion marker is for debugging the bot",
-};
+const IGNORED: Record<string, string> = {};
 
 /** Server messages answering a request: they settle it instead of reaching a callback. */
 const ANSWERS = new Set(["server-response", "error-response"]);
