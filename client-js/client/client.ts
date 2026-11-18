@@ -178,6 +178,20 @@ export type RTVIEventCallbacks = Partial<{
   onUserMuteStarted: () => void;
   onUserMuteStopped: () => void;
   /**
+   * The bot's voice activity detection heard the user start speaking. It
+   * reacts to any voice, sooner than onUserStartedSpeaking, which comes when
+   * the bot decides the user's turn started. The bot sends it only when
+   * enabled, with Pipecat's vad_user_speaking_enabled RTVIObserverParams.
+   */
+  onVadUserStartedSpeaking: () => void;
+  /**
+   * The bot's voice activity detection heard the user stop speaking. It
+   * reacts to any pause, sooner than onUserStoppedSpeaking, which comes when
+   * the bot decides the user's turn ended. The bot sends it only when
+   * enabled, with Pipecat's vad_user_speaking_enabled RTVIObserverParams.
+   */
+  onVadUserStoppedSpeaking: () => void;
+  /**
    * @deprecated Use onUserInput to show what the user said, or onSttRawText to
    * inspect what the STT produced
    */
@@ -550,6 +564,14 @@ export class PipecatClient extends RTVIEventEmitter {
       onBotTtsText: (text) => {
         options?.callbacks?.onBotTtsText?.(text);
         this.emit(RTVIEvent.BotTtsText, text);
+      },
+      onVadUserStartedSpeaking: () => {
+        options?.callbacks?.onVadUserStartedSpeaking?.();
+        this.emit(RTVIEvent.VadUserStartedSpeaking);
+      },
+      onVadUserStoppedSpeaking: () => {
+        options?.callbacks?.onVadUserStoppedSpeaking?.();
+        this.emit(RTVIEvent.VadUserStoppedSpeaking);
       },
       onSttRawText: (data) => {
         options?.callbacks?.onSttRawText?.(data);
@@ -1665,6 +1687,12 @@ export class PipecatClient extends RTVIEventEmitter {
         break;
       case RTVIMessageType.BOT_TTS_STOPPED:
         this._options.callbacks?.onBotTtsStopped?.();
+        break;
+      case RTVIMessageType.VAD_USER_STARTED_SPEAKING:
+        this._options.callbacks?.onVadUserStartedSpeaking?.();
+        break;
+      case RTVIMessageType.VAD_USER_STOPPED_SPEAKING:
+        this._options.callbacks?.onVadUserStoppedSpeaking?.();
         break;
       case RTVIMessageType.STT_RAW_TEXT:
         this._options.callbacks?.onSttRawText?.(ev.data as STTRawTextData);

@@ -67,6 +67,10 @@ export enum RTVIMessageType {
   // The client should continue sending audio normally but may want to show some indication to the user.
   USER_MUTE_STARTED = "user-mute-started", // User muted server-side.
   USER_MUTE_STOPPED = "user-mute-stopped", // User unmuted server-side.
+  // Voice activity: the bot's VAD heard the user start or stop speaking,
+  // sooner than the user's turns. The bot sends them only when enabled.
+  VAD_USER_STARTED_SPEAKING = "vad-user-started-speaking",
+  VAD_USER_STOPPED_SPEAKING = "vad-user-stopped-speaking",
 
   /** @deprecated Use `USER_INPUT` or `STT_RAW_TEXT` instead. */
   USER_TRANSCRIPTION = "user-transcription", // Local user speech to text transcription (partials and finals)
