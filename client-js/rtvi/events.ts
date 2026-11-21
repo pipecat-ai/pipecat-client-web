@@ -19,6 +19,7 @@ import {
   BotOutputData,
   BotReadyData,
   BotTTSTextData,
+  FlowNodeEnteredData,
   LLMFunctionCallData,
   LLMFunctionCallInProgressData,
   LLMFunctionCallStartedData,
@@ -56,6 +57,9 @@ export enum RTVIEvent {
   /** UI Worker Protocol */
   UICommand = "uiCommand",
   UIJobGroup = "uiJobGroup",
+
+  /** conversation flows */
+  FlowNodeEntered = "flowNodeEntered",
 
   /** service events */
   Metrics = "metrics",
@@ -171,6 +175,9 @@ export type RTVIEvents = Partial<{
   /** UI Worker Protocol */
   uiCommand: (data: UICommandData) => void;
   uiJobGroup: (data: UIJobGroupData) => void;
+
+  /** conversation flows */
+  flowNodeEntered: (data: FlowNodeEnteredData) => void;
 
   /** service events */
   metrics: (data: PipecatMetricsData) => void;
