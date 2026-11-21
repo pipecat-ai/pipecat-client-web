@@ -79,6 +79,7 @@ Two many-to-one rules cover most of `client-react/`:
 | `client-react/src/conversation/**` | `api-reference/client/react/hooks.mdx`, the `usePipecatConversation` section |
 | `client-react/src/defaultUICommandHandlers.ts` | `api-reference/client/react/hooks.mdx` — exports hooks (`useDefaultScrollToHandler`, `useDefaultFocusHandler`) documented there alongside the rest |
 | `client-react/src/uiJobGroupsTypes.ts` | `api-reference/client/react/hooks.mdx` — `JobGroup` and `UIJobGroupsAPI` are the return shape of `useUIJobGroups` |
+| `client-react/src/PipecatClientFlowNode.tsx` | `api-reference/client/react/hooks.mdx`, the `usePipecatFlowNode` section — its provider isn't exported; `PipecatClientProvider` mounts it |
 
 A new hook or component means a **new section on an existing page**, not a new
 page. Find the alphabetical or grouped position the page already uses and insert
