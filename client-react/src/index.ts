@@ -27,6 +27,7 @@ import {
 import { PipecatClientAudio } from "./PipecatClientAudio";
 import { useBotCapabilities } from "./PipecatClientBotCapabilities";
 import { PipecatClientCamToggle } from "./PipecatClientCamToggle";
+import { usePipecatFlowNode } from "./PipecatClientFlowNode";
 import { useMediaState } from "./PipecatClientMediaState";
 import { useMediaSupport } from "./PipecatClientMediaSupport";
 import { PipecatClientMicToggle } from "./PipecatClientMicToggle";
@@ -92,6 +93,7 @@ export {
   usePipecatClientScreenShareControl,
   usePipecatClientTransportState,
   usePipecatConversation,
+  usePipecatFlowNode,
   useRTVIClientEvent,
   useToastHandler,
   useUICommandHandler,
