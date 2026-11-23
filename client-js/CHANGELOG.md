@@ -7,11 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.17.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.16.0...client-js-v1.17.0) (2026-11-23)
 
-
 ### Features
 
-* **client-js:** report flow-node-entered (RTVI 2.4.0) ([d06b565](https://github.com/pipecat-ai/pipecat-client-web/commit/d06b565a20c974e7f0411677071b8d5edba4d24e))
-* **client-js:** type the diarization speaker on user-input and stt-raw-text ([71f0366](https://github.com/pipecat-ai/pipecat-client-web/commit/71f03662226b0ce0a4b62b86e313b17c377d22e0))
+* Added `RTVIEvent.FlowNodeEntered` and the `onFlowNodeEntered` callback, which report each `flow-node-entered` message a bot built with Pipecat Flows sends when its conversation flow enters a node. Their `FlowNodeEnteredData` carries the `node` and, when the bot sends them, the `previous_node`, the `function` that moved the flow, the node's `metadata`, the function's `function_metadata`, and for a node of a subflow its `parent`. The `flowNode` property holds the latest one, or `null` before the flow's first node and after disconnecting. `RTVI_PROTOCOL_VERSION` is now 2.4.0; once a client has sent `client-ready`, bots send the message only to clients of 2.4.0 or later. ([937f681](https://github.com/pipecat-ai/pipecat-client-web/commit/937f681a8be439a22c6663877c306d6d05871263))
+* With speaker diarization on, transcriptions now say who spoke: `UserInputData.speaker` (on `onUserInput` / `RTVIEvent.UserInput`) and `STTRawTextData.speaker` (on `onSttRawText` / `RTVIEvent.SttRawText`) are a new `TranscriptionSpeaker`, with the STT provider's `label` and the speaker's `number` in the order speakers first spoke, starting at 1. The field is absent when the bot's STT service doesn't tell speakers apart. ([#288](https://github.com/pipecat-ai/pipecat-client-web/pull/288))
 
 ## [1.16.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.15.0...client-js-v1.16.0) (2026-10-29)
 
