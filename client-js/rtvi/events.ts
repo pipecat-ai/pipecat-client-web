@@ -80,8 +80,8 @@ export enum RTVIEvent {
   VadUserStoppedSpeaking = "vadUserStoppedSpeaking",
 
   // audio level events, as the bot measures them
-  UserAudioLevel = "userAudioLevel",
-  BotAudioLevel = "botAudioLevel",
+  ServerUserAudioLevel = "serverUserAudioLevel",
+  ServerBotAudioLevel = "serverBotAudioLevel",
 
   // stt events
   /**
@@ -145,7 +145,12 @@ export enum RTVIEvent {
   ScreenTrackStopped = "screenTrackStopped",
   ScreenShareError = "screenShareError",
 
+  // audio level events, as the transport measures them on the device
+  ClientUserAudioLevel = "clientUserAudioLevel",
+  ClientBotAudioLevel = "clientBotAudioLevel",
+  /** @deprecated Use `ClientUserAudioLevel` instead. */
   LocalAudioLevel = "localAudioLevel",
+  /** @deprecated Use `ClientBotAudioLevel` instead. */
   RemoteAudioLevel = "remoteAudioLevel",
 
   /** media device events */
@@ -228,18 +233,20 @@ export type RTVIEvents = Partial<{
   // audio level events, as the bot measures them
   /**
    * How loud the user's audio is, from 0 (quiet) to 1 (loud), as the bot
-   * received it, sent regularly while it comes in. Unlike `localAudioLevel`,
-   * which the transport measures, the bot measures it. The bot sends it only
-   * when enabled, with Pipecat's `user_audio_level_enabled` RTVIObserverParams.
+   * received it, sent regularly while it comes in. Unlike
+   * `clientUserAudioLevel`, which the transport measures on the device, the
+   * bot measures it. The bot sends it only when enabled, with Pipecat's
+   * `user_audio_level_enabled` RTVIObserverParams.
    */
-  userAudioLevel: (data: AudioLevelData) => void;
+  serverUserAudioLevel: (data: AudioLevelData) => void;
   /**
    * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the bot
-   * produced it, sent regularly while it speaks. Unlike `remoteAudioLevel`,
-   * which the transport measures, the bot measures it. The bot sends it only
-   * when enabled, with Pipecat's `bot_audio_level_enabled` RTVIObserverParams.
+   * produced it, sent regularly while it speaks. Unlike `clientBotAudioLevel`,
+   * which the transport measures on the device, the bot measures it. The bot
+   * sends it only when enabled, with Pipecat's `bot_audio_level_enabled`
+   * RTVIObserverParams.
    */
-  botAudioLevel: (data: AudioLevelData) => void;
+  serverBotAudioLevel: (data: AudioLevelData) => void;
 
   // stt events
   /**
@@ -308,7 +315,19 @@ export type RTVIEvents = Partial<{
   screenTrackStopped: (track: MediaStreamTrack, p?: Participant) => void;
   screenShareError: (errorMessage: string) => void;
 
+  /**
+   * How loud the user's microphone audio is, from 0 (quiet) to 1 (loud), as
+   * the transport measures it on the device, reported regularly.
+   */
+  clientUserAudioLevel: (level: number) => void;
+  /**
+   * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the transport
+   * measures it on the device while playing it, reported regularly.
+   */
+  clientBotAudioLevel: (level: number) => void;
+  /** @deprecated Use `clientUserAudioLevel` instead. */
   localAudioLevel: (level: number) => void;
+  /** @deprecated Use `clientBotAudioLevel` instead. */
   remoteAudioLevel: (level: number, p: Participant) => void;
 
   /** media device events */
