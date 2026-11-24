@@ -170,7 +170,19 @@ export type RTVIEventCallbacks = Partial<{
   ) => void;
   onScreenShareError: (errorMessage: string) => void;
   onUnsupportedFeature: (error: RTVIErrors.UnsupportedFeatureError) => void;
+  /**
+   * How loud the user's microphone audio is, from 0 (quiet) to 1 (loud), as
+   * the transport measures it on the device, reported regularly.
+   */
+  onClientUserAudioLevel: (level: number) => void;
+  /**
+   * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the transport
+   * measures it on the device while playing it, reported regularly.
+   */
+  onClientBotAudioLevel: (level: number) => void;
+  /** @deprecated Use onClientUserAudioLevel instead. */
   onLocalAudioLevel: (level: number) => void;
+  /** @deprecated Use onClientBotAudioLevel instead. */
   onRemoteAudioLevel: (level: number, participant: Participant) => void;
 
   onUserStartedSpeaking: () => void;
@@ -201,18 +213,20 @@ export type RTVIEventCallbacks = Partial<{
   onVadUserStoppedSpeaking: () => void;
   /**
    * How loud the user's audio is, from 0 (quiet) to 1 (loud), as the bot
-   * received it, sent regularly while it comes in. Unlike onLocalAudioLevel,
-   * which the transport measures, the bot measures it. The bot sends it only
-   * when enabled, with Pipecat's user_audio_level_enabled RTVIObserverParams.
+   * received it, sent regularly while it comes in. Unlike
+   * onClientUserAudioLevel, which the transport measures on the device, the
+   * bot measures it. The bot sends it only when enabled, with Pipecat's
+   * user_audio_level_enabled RTVIObserverParams.
    */
-  onUserAudioLevel: (data: AudioLevelData) => void;
+  onServerUserAudioLevel: (data: AudioLevelData) => void;
   /**
    * How loud the bot's audio is, from 0 (quiet) to 1 (loud), as the bot
-   * produced it, sent regularly while it speaks. Unlike onRemoteAudioLevel,
-   * which the transport measures, the bot measures it. The bot sends it only
-   * when enabled, with Pipecat's bot_audio_level_enabled RTVIObserverParams.
+   * produced it, sent regularly while it speaks. Unlike
+   * onClientBotAudioLevel, which the transport measures on the device, the
+   * bot measures it. The bot sends it only when enabled, with Pipecat's
+   * bot_audio_level_enabled RTVIObserverParams.
    */
-  onBotAudioLevel: (data: AudioLevelData) => void;
+  onServerBotAudioLevel: (data: AudioLevelData) => void;
   /**
    * @deprecated Use onUserInput to show what the user said, or onSttRawText to
    * inspect what the STT produced
@@ -531,11 +545,17 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onBotInterrupted?.();
         this.emit(RTVIEvent.BotInterrupted);
       },
+      // Transports report the levels they measure as local and remote ones.
+      // The bot is the remote participant they play.
       onRemoteAudioLevel: (level, p) => {
+        options?.callbacks?.onClientBotAudioLevel?.(level);
+        this.emit(RTVIEvent.ClientBotAudioLevel, level);
         options?.callbacks?.onRemoteAudioLevel?.(level, p);
         this.emit(RTVIEvent.RemoteAudioLevel, level, p);
       },
       onLocalAudioLevel: (level) => {
+        options?.callbacks?.onClientUserAudioLevel?.(level);
+        this.emit(RTVIEvent.ClientUserAudioLevel, level);
         options?.callbacks?.onLocalAudioLevel?.(level);
         this.emit(RTVIEvent.LocalAudioLevel, level);
       },
@@ -604,13 +624,13 @@ export class PipecatClient extends RTVIEventEmitter {
         options?.callbacks?.onVadUserStoppedSpeaking?.();
         this.emit(RTVIEvent.VadUserStoppedSpeaking);
       },
-      onUserAudioLevel: (data) => {
-        options?.callbacks?.onUserAudioLevel?.(data);
-        this.emit(RTVIEvent.UserAudioLevel, data);
+      onServerUserAudioLevel: (data) => {
+        options?.callbacks?.onServerUserAudioLevel?.(data);
+        this.emit(RTVIEvent.ServerUserAudioLevel, data);
       },
-      onBotAudioLevel: (data) => {
-        options?.callbacks?.onBotAudioLevel?.(data);
-        this.emit(RTVIEvent.BotAudioLevel, data);
+      onServerBotAudioLevel: (data) => {
+        options?.callbacks?.onServerBotAudioLevel?.(data);
+        this.emit(RTVIEvent.ServerBotAudioLevel, data);
       },
       onSystemLog: (data) => {
         options?.callbacks?.onSystemLog?.(data);
@@ -1742,10 +1762,14 @@ export class PipecatClient extends RTVIEventEmitter {
         this._options.callbacks?.onVadUserStoppedSpeaking?.();
         break;
       case RTVIMessageType.USER_AUDIO_LEVEL:
-        this._options.callbacks?.onUserAudioLevel?.(ev.data as AudioLevelData);
+        this._options.callbacks?.onServerUserAudioLevel?.(
+          ev.data as AudioLevelData
+        );
         break;
       case RTVIMessageType.BOT_AUDIO_LEVEL:
-        this._options.callbacks?.onBotAudioLevel?.(ev.data as AudioLevelData);
+        this._options.callbacks?.onServerBotAudioLevel?.(
+          ev.data as AudioLevelData
+        );
         break;
       case RTVIMessageType.SYSTEM_LOG:
         this._options.callbacks?.onSystemLog?.(ev.data as SystemLogData);

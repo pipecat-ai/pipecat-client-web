@@ -1295,14 +1295,14 @@ describe("User input and bot output", () => {
   const audioLevelMessages = [
     {
       type: RTVIMessageType.USER_AUDIO_LEVEL,
-      event: RTVIEvent.UserAudioLevel,
-      callback: "onUserAudioLevel",
+      event: RTVIEvent.ServerUserAudioLevel,
+      callback: "onServerUserAudioLevel",
       data: { value: 0.3 },
     },
     {
       type: RTVIMessageType.BOT_AUDIO_LEVEL,
-      event: RTVIEvent.BotAudioLevel,
-      callback: "onBotAudioLevel",
+      event: RTVIEvent.ServerBotAudioLevel,
+      callback: "onServerBotAudioLevel",
       data: { value: 0.5 },
     },
   ] as const;
@@ -1327,6 +1327,49 @@ describe("User input and bot output", () => {
       expect(eventData).toEqual(data);
     }
   );
+
+  test("the transport's local level is reported as the client's user audio level", async () => {
+    const onClientUserAudioLevel = jest.fn();
+    const onLocalAudioLevel = jest.fn();
+    const callbackClient = new PipecatClient({
+      transport,
+      callbacks: { onClientUserAudioLevel, onLocalAudioLevel },
+    });
+    await callbackClient.connect();
+    const onEvent = jest.fn();
+    const onDeprecatedEvent = jest.fn();
+    callbackClient.on(RTVIEvent.ClientUserAudioLevel, onEvent);
+    callbackClient.on(RTVIEvent.LocalAudioLevel, onDeprecatedEvent);
+
+    transport["_callbacks"].onLocalAudioLevel?.(0.4);
+
+    expect(onClientUserAudioLevel).toHaveBeenCalledWith(0.4);
+    expect(onEvent).toHaveBeenCalledWith(0.4);
+    expect(onLocalAudioLevel).toHaveBeenCalledWith(0.4);
+    expect(onDeprecatedEvent).toHaveBeenCalledWith(0.4);
+  });
+
+  test("the transport's remote level is reported as the client's bot audio level", async () => {
+    const onClientBotAudioLevel = jest.fn();
+    const onRemoteAudioLevel = jest.fn();
+    const callbackClient = new PipecatClient({
+      transport,
+      callbacks: { onClientBotAudioLevel, onRemoteAudioLevel },
+    });
+    await callbackClient.connect();
+    const onEvent = jest.fn();
+    const onDeprecatedEvent = jest.fn();
+    callbackClient.on(RTVIEvent.ClientBotAudioLevel, onEvent);
+    callbackClient.on(RTVIEvent.RemoteAudioLevel, onDeprecatedEvent);
+    const bot = { id: "bot", name: "Bot", local: false };
+
+    transport["_callbacks"].onRemoteAudioLevel?.(0.6, bot);
+
+    expect(onClientBotAudioLevel).toHaveBeenCalledWith(0.6);
+    expect(onEvent).toHaveBeenCalledWith(0.6);
+    expect(onRemoteAudioLevel).toHaveBeenCalledWith(0.6, bot);
+    expect(onDeprecatedEvent).toHaveBeenCalledWith(0.6, bot);
+  });
 
   const systemLogMessages = [
     {
@@ -1856,7 +1899,9 @@ describe("uploadFile endpoint selection", () => {
     await startBotReturning({ sessionId: "sess-123" });
 
     await expect(
-      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+      client["_uploadFile"](
+        new File(["data"], "photo.jpg", { type: "image/jpeg" })
+      )
     ).rejects.toThrow("did not advertise a fileUploadUrl");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -1866,7 +1911,9 @@ describe("uploadFile endpoint selection", () => {
     fetchMock.mockResolvedValueOnce(new Response("boom", { status: 500 }));
 
     await expect(
-      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+      client["_uploadFile"](
+        new File(["data"], "photo.jpg", { type: "image/jpeg" })
+      )
     ).rejects.toMatchObject({ status: 500 });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -1876,7 +1923,9 @@ describe("uploadFile endpoint selection", () => {
     await client.disconnect();
 
     await expect(
-      client["_uploadFile"](new File(["data"], "photo.jpg", { type: "image/jpeg" }))
+      client["_uploadFile"](
+        new File(["data"], "photo.jpg", { type: "image/jpeg" })
+      )
     ).rejects.toThrow("did not advertise a fileUploadUrl");
   });
 
