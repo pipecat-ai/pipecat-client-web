@@ -13,7 +13,12 @@ import {
   test,
 } from "@jest/globals";
 
-import { FunctionCallCallback, PipecatClient } from "./../client";
+import {
+  FunctionCallCallback,
+  PipecatClient,
+  RTVIEventCallbacks,
+} from "./../client";
+import { logger } from "./../client/logger";
 import { messageSizeWithinLimit } from "./../client/utils";
 import {
   AggregationType,
@@ -1370,6 +1375,116 @@ describe("User input and bot output", () => {
     expect(onRemoteAudioLevel).toHaveBeenCalledWith(0.6, bot);
     expect(onDeprecatedEvent).toHaveBeenCalledWith(0.6, bot);
   });
+
+  const bot = { id: "bot", name: "Bot", local: false };
+  const deprecatedCallbacks = [
+    {
+      callback: "onLocalAudioLevel",
+      event: RTVIEvent.LocalAudioLevel,
+      report: (callbacks: RTVIEventCallbacks) =>
+        callbacks.onLocalAudioLevel?.(0.4),
+    },
+    {
+      callback: "onRemoteAudioLevel",
+      event: RTVIEvent.RemoteAudioLevel,
+      report: (callbacks: RTVIEventCallbacks) =>
+        callbacks.onRemoteAudioLevel?.(0.6, bot),
+    },
+    {
+      callback: "onUserTranscript",
+      event: RTVIEvent.UserTranscript,
+      report: (callbacks: RTVIEventCallbacks) =>
+        callbacks.onUserTranscript?.({
+          text: "Hello",
+          final: true,
+          timestamp: "",
+          user_id: "user",
+        }),
+    },
+    {
+      callback: "onBotTranscript",
+      event: RTVIEvent.BotTranscript,
+      report: (callbacks: RTVIEventCallbacks) =>
+        callbacks.onBotTranscript?.({ text: "Hi" }),
+    },
+    {
+      callback: "onBotLlmText",
+      event: RTVIEvent.BotLlmText,
+      report: (callbacks: RTVIEventCallbacks) =>
+        callbacks.onBotLlmText?.({ text: "Hi" }),
+    },
+    {
+      callback: "onBotTtsText",
+      event: RTVIEvent.BotTtsText,
+      report: (callbacks: RTVIEventCallbacks) =>
+        callbacks.onBotTtsText?.({ text: "Hi" }),
+    },
+  ] as const;
+
+  const deprecationWarnings = (warn: jest.SpiedFunction<typeof logger.warn>) =>
+    warn.mock.calls.filter(([message]) =>
+      String(message).includes("is deprecated")
+    );
+
+  test.each(deprecatedCallbacks)(
+    "$callback warns once when it's set",
+    async ({ callback, report }) => {
+      const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: { [callback]: jest.fn() },
+      });
+      await callbackClient.connect();
+
+      report(transport["_callbacks"]);
+      report(transport["_callbacks"]);
+
+      const warnings = deprecationWarnings(warn);
+      expect(warnings).toHaveLength(1);
+      expect(String(warnings[0][0])).toContain(`${callback} is deprecated`);
+      warn.mockRestore();
+    }
+  );
+
+  test.each(deprecatedCallbacks)(
+    "$callback warns once when $event has a listener",
+    async ({ callback, event, report }) => {
+      const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+      const callbackClient = new PipecatClient({ transport });
+      await callbackClient.connect();
+      callbackClient.on(event, jest.fn());
+
+      report(transport["_callbacks"]);
+      report(transport["_callbacks"]);
+
+      const warnings = deprecationWarnings(warn);
+      expect(warnings).toHaveLength(1);
+      expect(String(warnings[0][0])).toContain(`${callback} is deprecated`);
+      warn.mockRestore();
+    }
+  );
+
+  test.each(deprecatedCallbacks)(
+    "$callback doesn't warn when nothing uses it",
+    async ({ report }) => {
+      const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+      const callbackClient = new PipecatClient({
+        transport,
+        callbacks: {
+          onClientUserAudioLevel: jest.fn(),
+          onClientBotAudioLevel: jest.fn(),
+          onUserInput: jest.fn(),
+          onBotOutput: jest.fn(),
+        },
+      });
+      await callbackClient.connect();
+
+      report(transport["_callbacks"]);
+
+      expect(deprecationWarnings(warn)).toHaveLength(0);
+      warn.mockRestore();
+    }
+  );
 
   const systemLogMessages = [
     {
