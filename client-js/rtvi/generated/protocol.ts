@@ -1,10 +1,10 @@
 /**
- * Generated from rtvi/spec/2.3.0/rtvi.asyncapi.json by
+ * Generated from rtvi/spec/2.4.0/rtvi.asyncapi.json by
  * scripts/rtvi-protocol.mjs. Do not edit; run `npm run rtvi:generate`.
  */
 
 /** The protocol version this file describes. */
-export const PROTOCOL_VERSION = "2.3.0";
+export const PROTOCOL_VERSION = "2.4.0";
 
 /**
  * One node in the UI accessibility snapshot tree.
@@ -163,7 +163,7 @@ export interface ProtocolBotLLMMarkerMessageData {
    */
   text: string;
   /**
-   * What the marker means, such as `complete`, `short` or `long` for the markers that say whether the user's turn was complete, or `null` when it means nothing the server knows.
+   * What the marker means, such as `complete`, `short` or `long` for the markers that say whether the user's turn was complete, `silent` for a reply dropped as the wait-reassurance silent mark, or `null` when it means nothing the server knows.
    */
   kind?: string;
   /**
@@ -360,6 +360,40 @@ export interface ProtocolFileUrl {
    * The file's URL: whatever the `POST /files` upload endpoint returned (`pipecat:<id>` with the default local storage, or a URL minted by a custom storage backend), a cloud-storage URI (`s3://`, `gs://`), or a plain `http(s)` URL. The URL is resolved at completion time: the LLM provider fetches it itself when it can (public URLs, its own cloud IAM), and otherwise the LLM service's `FileResolver` downloads the bytes and inlines them.
    */
   url: string;
+}
+
+/**
+ * Data format for a conversation flow entering a node.
+ */
+export interface ProtocolFlowNodeEnteredMessageData {
+  /**
+   * The name of the node the flow entered. A node of a subflow is named `<parent>.<node>`.
+   */
+  node: string;
+  /**
+   * The name of the node the flow left. Absent for the flow's first node.
+   */
+  previous_node?: string;
+  /**
+   * The name of the function whose call moved the flow to this node. Absent when the bot set the node itself.
+   */
+  function?: string;
+  /**
+   * The entered node's metadata, a JSON object of the application's own. Absent when the node has none.
+   */
+  metadata?: {
+    [k: string]: unknown;
+  };
+  /**
+   * The metadata of `function`, a JSON object of the application's own. Absent when the function has none.
+   */
+  function_metadata?: {
+    [k: string]: unknown;
+  };
+  /**
+   * When the node belongs to a subflow, the name of the node that runs the subflow. Absent otherwise.
+   */
+  parent?: string;
 }
 
 /**
@@ -1428,6 +1462,7 @@ export type ProtocolServerMessageType =
   | "llm-function-call-in-progress"
   | "llm-function-call-stopped"
   | "llm-function-call"
+  | "flow-node-entered"
   | "ui-command"
   | "ui-job-group";
 
@@ -1486,6 +1521,7 @@ export interface ProtocolServerMessageData {
   "llm-function-call-in-progress": ProtocolLLMFunctionCallInProgressMessageData;
   "llm-function-call-stopped": ProtocolLLMFunctionCallStoppedMessageData;
   "llm-function-call": ProtocolLLMFunctionCallMessageData;
+  "flow-node-entered": ProtocolFlowNodeEnteredMessageData;
   "ui-command":
     | ProtocolUIToastCommand
     | ProtocolUINavigateCommand
@@ -1572,6 +1608,7 @@ export const PROTOCOL_SERVER_MESSAGES: Record<
   "llm-function-call": {
     deprecated: "Use llm-function-call-in-progress instead.",
   },
+  "flow-node-entered": { minClientVersion: "2.4.0" },
   "ui-command": {},
   "ui-job-group": {},
 };

@@ -16,6 +16,7 @@ import type {
   ProtocolBotLLMMarkerMessageData,
   ProtocolBotOutputMessageData,
   ProtocolErrorData,
+  ProtocolFlowNodeEnteredMessageData,
   ProtocolLLMFunctionCallInProgressMessageData,
   ProtocolLLMFunctionCallResultData,
   ProtocolLLMFunctionCallStartMessageData,
@@ -409,20 +410,7 @@ export type UIJobGroupData = UIJobGroupEnvelope;
  * (RTVI 2.4.0+). Sent each time the flow enters a node, including its first
  * node and a node it enters again, before the bot responds in that node.
  */
-export type FlowNodeEnteredData = {
-  /** The node entered. A node of a subflow is named `<parent>.<node>`. */
-  node: string;
-  /** The node the flow left. Absent for the flow's first node. */
-  previous_node?: string;
-  /** The function whose call moved the flow here. Absent when the bot set the node itself. */
-  function?: string;
-  /** The entered node's metadata, a JSON object of the bot application's own. */
-  metadata?: Record<string, unknown>;
-  /** The metadata of `function`, a JSON object of the bot application's own. */
-  function_metadata?: Record<string, unknown>;
-  /** For a node of a subflow, the node that runs the subflow. */
-  parent?: string;
-};
+export type FlowNodeEnteredData = ProtocolFlowNodeEnteredMessageData;
 
 export type LLMSearchResult = {
   text: string;

@@ -22,6 +22,7 @@ import type {
   ClientReadyData,
   DTMFData,
   ErrorData,
+  FlowNodeEnteredData,
   LLMFunctionCallData,
   LLMFunctionCallInProgressData,
   LLMFunctionCallResultResponse,
@@ -70,6 +71,7 @@ type ServerData = {
   "llm-function-call-in-progress": LLMFunctionCallInProgressData;
   "llm-function-call-stopped": LLMFunctionCallStoppedData;
   "llm-function-call": LLMFunctionCallData;
+  "flow-node-entered": FlowNodeEnteredData;
 };
 
 /** The public type each client message's `data` is built from. */
