@@ -262,13 +262,17 @@ export function createStoreHarness() {
     lastChunk = { spoken: "", unspoken: "" };
   }
 
-  function handleFunctionCallStarted(data: { function_name?: string }) {
+  function handleFunctionCallStarted(data: {
+    function_name?: string;
+    parent_tool_call_id?: string;
+  }) {
     actions.handleFunctionCallStarted(store.get, store.set, data);
   }
 
   function handleFunctionCallInProgress(data: {
     function_name?: string;
     tool_call_id: string;
+    parent_tool_call_id?: string;
     args?: Record<string, unknown>;
   }) {
     actions.handleFunctionCallInProgress(store.get, store.set, data);
@@ -277,6 +281,7 @@ export function createStoreHarness() {
   function handleFunctionCallStopped(data: {
     function_name?: string;
     tool_call_id: string;
+    parent_tool_call_id?: string;
     result?: unknown;
     cancelled?: boolean;
   }) {
