@@ -1,5 +1,8 @@
+import type { TranscriptionSpeaker } from "@pipecat-ai/client-js";
+
 import { normalizeForMatching } from "@/conversation/botOutput";
 import type { ConversationMessage } from "@/conversation/types";
+
 import type { StoreHarness } from "./storeHarness";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +15,12 @@ export type ScenarioStep =
   | { type: "botStoppedSpeaking" }
   | { type: "userStartedSpeaking" }
   | { type: "userStoppedSpeaking" }
-  | { type: "userTranscript"; text: string; final: boolean }
+  | {
+      type: "userTranscript";
+      text: string;
+      final: boolean;
+      speaker?: TranscriptionSpeaker;
+    }
   | { type: "wait"; ms: number }
   | { type: "functionCallStarted"; function_name?: string }
   | {
@@ -72,6 +80,12 @@ interface FunctionCallOptions {
   lifecycle?: "full" | "startedOnly" | "skipStarted" | "skipInProgress";
 }
 
+/** One speaker's utterance in a diarized user turn. */
+export interface Utterance {
+  text: string;
+  speaker?: TranscriptionSpeaker;
+}
+
 // ---------------------------------------------------------------------------
 // Internal turn representation
 // ---------------------------------------------------------------------------
@@ -79,7 +93,7 @@ interface FunctionCallOptions {
 type Turn =
   | { kind: "bot"; text: string; options: BotTurnOptions }
   | { kind: "botPart"; text: string; options: BotPartOptions }
-  | { kind: "user"; text: string }
+  | { kind: "user"; utterances: Utterance[] }
   | { kind: "interruptAfter"; spokenUpTo: string }
   | { kind: "functionCall"; name: string; options: FunctionCallOptions };
 
@@ -133,9 +147,14 @@ class ConversationBuilder {
 
   /**
    * Add a user turn. Text will be split into incremental transcripts.
+   *
+   * A diarized turn is a list of utterances, each transcribed in turn. As
+   * with pipecat's diarizing STT services, only an utterance's final
+   * transcript carries its speaker; its interims have none.
    */
-  user(text: string): this {
-    this.turns.push({ kind: "user", text });
+  user(text: string | Utterance[]): this {
+    const utterances = typeof text === "string" ? [{ text }] : text;
+    this.turns.push({ kind: "user", utterances });
     return this;
   }
 
@@ -289,15 +308,18 @@ class ConversationBuilder {
         steps.push({ type: "userStartedSpeaking" });
 
         // Incremental transcripts: build up word by word
-        const words = splitWords(turn.text);
-        for (let wi = 0; wi < words.length; wi++) {
-          const partial = words.slice(0, wi + 1).join(" ");
-          const isFinal = wi === words.length - 1;
-          steps.push({
-            type: "userTranscript",
-            text: partial,
-            final: isFinal,
-          });
+        for (const { text, speaker } of turn.utterances) {
+          const words = splitWords(text);
+          for (let wi = 0; wi < words.length; wi++) {
+            const partial = words.slice(0, wi + 1).join(" ");
+            const isFinal = wi === words.length - 1;
+            steps.push({
+              type: "userTranscript",
+              text: partial,
+              final: isFinal,
+              ...(isFinal && speaker && { speaker }),
+            });
+          }
         }
 
         steps.push({ type: "userStoppedSpeaking" });
@@ -360,10 +382,13 @@ export function conversation(): ConversationBuilder {
  * - botStoppedSpeaking: starts 2500ms finalize timer
  * - userStartedSpeaking: immediately finalizes pending assistant message
  * - userStoppedSpeaking: starts 3000ms cleanup timer
+ *
+ * `onStep`, if given, is called after each step, to check state as it builds.
  */
 export function playScenario(
   harness: StoreHarness,
-  scenario: ConversationScenario
+  scenario: ConversationScenario,
+  onStep?: (step: ScenarioStep) => void
 ) {
   // Timer IDs tracked locally (mirrors ConversationProvider refs)
   let botStoppedTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -436,7 +461,9 @@ export function playScenario(
       }
 
       case "userTranscript":
-        harness.emitUserTranscript(step.text, step.final);
+        harness.emitUserTranscript(step.text, step.final, {
+          speaker: step.speaker,
+        });
         if (userStoppedTimeout !== undefined) {
           clearTimeout(userStoppedTimeout);
           userStoppedTimeout = undefined;
@@ -490,6 +517,7 @@ export function playScenario(
         jest.advanceTimersByTime(step.ms);
         break;
     }
+    onStep?.(step);
   }
 }
 

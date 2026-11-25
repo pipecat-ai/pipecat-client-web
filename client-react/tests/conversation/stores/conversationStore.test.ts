@@ -165,6 +165,44 @@ describe("conversationStore", () => {
       expect(messages[0].parts[1].text).toBe("Second sentence");
       expect(messages[0].parts[1].final).toBe(false);
     });
+
+    it("keeps each speaker on their part of one user message", () => {
+      harness.emitUserTranscript("My favorite fruit is the apple.", true, {
+        speaker: { label: "A", number: 1 },
+      });
+      harness.emitUserTranscript("Mine is the banana.", true, {
+        speaker: { label: "B", number: 2 },
+      });
+      const messages = harness.getMessages();
+      expect(messages).toHaveLength(1);
+      expect(messages[0].parts.map((p) => p.speaker)).toEqual([
+        { label: "A", number: 1 },
+        { label: "B", number: 2 },
+      ]);
+    });
+
+    it("replaces an interim's speaker and perception with the final's", () => {
+      harness.emitUserTranscript("Mine is", false, {
+        speaker: { label: "A", number: 1 },
+        perception: [
+          { name: "tone", labels: [{ label: "calm", confidence: 0.6 }] },
+        ],
+      });
+      harness.emitUserTranscript("Mine is the banana.", true, {
+        speaker: { label: "B", number: 2 },
+      });
+      const [part] = harness.getMessages()[0].parts;
+      expect(part.speaker).toEqual({ label: "B", number: 2 });
+      expect(part).not.toHaveProperty("perception");
+    });
+
+    it("leaves speaker and perception out of a part without them", () => {
+      harness.emitUserTranscript("Hello", false);
+      harness.emitUserTranscript("Hello world", true);
+      const [part] = harness.getMessages()[0].parts;
+      expect(part).not.toHaveProperty("speaker");
+      expect(part).not.toHaveProperty("perception");
+    });
   });
 
   // -----------------------------------------------------------------------

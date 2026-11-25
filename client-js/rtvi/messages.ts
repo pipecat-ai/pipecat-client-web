@@ -41,7 +41,8 @@ import type { A11ySnapshot, UIJobGroupEnvelope } from "./ui";
 
 // Protocol 2.0.0 adds server-driven bot-output progress (spoken_progress, segment_id).
 // Protocol 2.3.0 adds expressive conversation's sounds, pauses and delivery to bot-output.
-export const RTVI_PROTOCOL_VERSION = "2.3.0";
+// Protocol 2.4.0 adds flow-node-entered.
+export const RTVI_PROTOCOL_VERSION = "2.4.0";
 export const RTVI_MESSAGE_LABEL = "rtvi-ai";
 
 /**
@@ -80,6 +81,8 @@ export enum RTVIMessageType {
   // UI Worker Protocol (server-to-client)
   UI_COMMAND = "ui-command",
   UI_JOB_GROUP = "ui-job-group",
+  // Conversation flows
+  FLOW_NODE_ENTERED = "flow-node-entered", // The bot's conversation flow entered a node (RTVI 2.4.0+)
 
   /** Speaking and Transcription Messages */
   USER_STARTED_SPEAKING = "user-started-speaking", // User started speaking
@@ -400,6 +403,26 @@ export type UICommandData = {
 };
 
 export type UIJobGroupData = UIJobGroupEnvelope;
+
+/**
+ * The bot's conversation flow, built with Pipecat Flows, entered a node
+ * (RTVI 2.4.0+). Sent each time the flow enters a node, including its first
+ * node and a node it enters again, before the bot responds in that node.
+ */
+export type FlowNodeEnteredData = {
+  /** The node entered. A node of a subflow is named `<parent>.<node>`. */
+  node: string;
+  /** The node the flow left. Absent for the flow's first node. */
+  previous_node?: string;
+  /** The function whose call moved the flow here. Absent when the bot set the node itself. */
+  function?: string;
+  /** The entered node's metadata, a JSON object of the bot application's own. */
+  metadata?: Record<string, unknown>;
+  /** The metadata of `function`, a JSON object of the bot application's own. */
+  function_metadata?: Record<string, unknown>;
+  /** For a node of a subflow, the node that runs the subflow. */
+  parent?: string;
+};
 
 export type LLMSearchResult = {
   text: string;

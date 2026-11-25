@@ -28,6 +28,7 @@ import {
   DTMFButton,
   DTMFData,
   ErrorData,
+  FlowNodeEnteredData,
   LLMContextMessage,
   LLMFunctionCallData,
   LLMFunctionCallInProgressData,
@@ -143,6 +144,7 @@ export type RTVIEventCallbacks = Partial<{
   onSystemLog: (data: SystemLogData) => void;
   onUICommand: (data: UICommandData) => void;
   onUIJobGroup: (data: UIJobGroupData) => void;
+  onFlowNodeEntered: (data: FlowNodeEnteredData) => void;
 
   onParticipantJoined: (participant: Participant) => void;
   onParticipantLeft: (participant: Participant) => void;
@@ -361,6 +363,9 @@ export class PipecatClient extends RTVIEventEmitter {
   // The bot's delivery, in expressive conversation; null while it isn't
   // speaking or the client isn't connected.
   private _botDelivery: string[] | null = null;
+  // The node the bot's conversation flow is in, from its latest
+  // flow-node-entered message; null before the first and once disconnected.
+  private _flowNode: FlowNodeEnteredData | null = null;
 
   // Per-device device state. Independent of TransportState — driven by
   // initDevices() and DeviceError events, never by transport connect/disconnect.
@@ -929,13 +934,14 @@ export class PipecatClient extends RTVIEventEmitter {
   }
 
   /**
-   * Clear what the bot reported, its protocol version, capabilities and
-   * delivery, once the client is disconnected from it.
+   * Clear what the bot reported, its protocol version, capabilities, delivery
+   * and flow node, once the client is disconnected from it.
    */
   private _clearBotState(): void {
     this._botVersion = [0, 0, 0];
     this._setBotCapabilities(undefined);
     this._setBotDelivery(null);
+    this._flowNode = null;
   }
 
   /**
@@ -1150,6 +1156,19 @@ export class PipecatClient extends RTVIEventEmitter {
    */
   public get botCapabilities(): BotCapabilities | undefined {
     return this._botCapabilities;
+  }
+
+  /**
+   * The node the bot's conversation flow, built with Pipecat Flows, is in:
+   * the data of its latest `flow-node-entered` message (RTVI 2.4.0+).
+   *
+   * Null before the flow enters its first node, after disconnecting, and for
+   * bots that don't run a flow. To track changes, subscribe to
+   * RTVIEvent.FlowNodeEntered or pass an onFlowNodeEntered callback in the
+   * client constructor.
+   */
+  public get flowNode(): FlowNodeEnteredData | null {
+    return this._flowNode;
   }
 
   /**
@@ -1786,6 +1805,13 @@ export class PipecatClient extends RTVIEventEmitter {
         const data = ev.data as UIJobGroupData;
         this._options.callbacks?.onUIJobGroup?.(data);
         this.emit(RTVIEvent.UIJobGroup, data);
+        break;
+      }
+      case RTVIMessageType.FLOW_NODE_ENTERED: {
+        const data = ev.data as FlowNodeEnteredData;
+        this._flowNode = data;
+        this._options.callbacks?.onFlowNodeEntered?.(data);
+        this.emit(RTVIEvent.FlowNodeEntered, data);
         break;
       }
       case RTVIMessageType.LLM_FUNCTION_CALL_STARTED: {

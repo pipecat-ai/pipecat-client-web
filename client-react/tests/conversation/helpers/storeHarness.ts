@@ -154,8 +154,12 @@ export function createStoreHarness() {
   /**
    * Emit a UserTranscript event.
    */
-  function emitUserTranscript(text: string, final: boolean) {
-    actions.upsertUserTranscript(store.get, store.set, text, final);
+  function emitUserTranscript(
+    text: string,
+    final: boolean,
+    details?: actions.UserTranscriptDetails
+  ) {
+    actions.upsertUserTranscript(store.get, store.set, text, final, details);
   }
 
   /**
