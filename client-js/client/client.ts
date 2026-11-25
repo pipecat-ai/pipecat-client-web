@@ -352,8 +352,10 @@ export class PipecatClient extends RTVIEventEmitter {
   private _uiSnapshotStreamer: A11ySnapshotStreamer | undefined;
   private _pendingUISnapshot: A11ySnapshot | undefined;
 
-  private _botTranscriptionWarned = false;
   private _llmFunctionCallWarned = false;
+  private _deprecationsWarned = new Set<keyof RTVIEventCallbacks>();
+  // The callbacks as given; `_options.callbacks` holds their wrappers.
+  private _userCallbacks: RTVIEventCallbacks | undefined;
 
   // Bot's RTVI protocol version, parsed from bot-ready. [0, 0, 0] until known.
   private _botVersion: number[] = [0, 0, 0];
@@ -384,6 +386,7 @@ export class PipecatClient extends RTVIEventEmitter {
     this._transportWrapper = new TransportWrapper(this._transport);
 
     this._disconnectOnBotDisconnect = options.disconnectOnBotDisconnect ?? true;
+    this._userCallbacks = options.callbacks;
 
     // Wrap transport callbacks with event triggers
     // This allows for either functional callbacks or .on / .off event listeners
@@ -550,12 +553,22 @@ export class PipecatClient extends RTVIEventEmitter {
       onRemoteAudioLevel: (level, p) => {
         options?.callbacks?.onClientBotAudioLevel?.(level);
         this.emit(RTVIEvent.ClientBotAudioLevel, level);
+        this._warnIfDeprecatedInUse(
+          "onRemoteAudioLevel",
+          RTVIEvent.RemoteAudioLevel,
+          "Please use onClientBotAudioLevel instead."
+        );
         options?.callbacks?.onRemoteAudioLevel?.(level, p);
         this.emit(RTVIEvent.RemoteAudioLevel, level, p);
       },
       onLocalAudioLevel: (level) => {
         options?.callbacks?.onClientUserAudioLevel?.(level);
         this.emit(RTVIEvent.ClientUserAudioLevel, level);
+        this._warnIfDeprecatedInUse(
+          "onLocalAudioLevel",
+          RTVIEvent.LocalAudioLevel,
+          "Please use onClientUserAudioLevel instead."
+        );
         options?.callbacks?.onLocalAudioLevel?.(level);
         this.emit(RTVIEvent.LocalAudioLevel, level);
       },
@@ -568,6 +581,11 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.UserMuteStopped);
       },
       onUserTranscript: (data) => {
+        this._warnIfDeprecatedInUse(
+          "onUserTranscript",
+          RTVIEvent.UserTranscript,
+          "Please use onUserInput to show what the user said, or onSttRawText to inspect what the STT produced."
+        );
         options?.callbacks?.onUserTranscript?.(data);
         this.emit(RTVIEvent.UserTranscript, data);
       },
@@ -588,19 +606,20 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.BotExpression, data);
       },
       onBotTranscript: (text) => {
-        const hasSubscriber =
-          !!options?.callbacks?.onBotTranscript ||
-          this.listenerCount(RTVIEvent.BotTranscript) > 0;
-        if (hasSubscriber && !this._botTranscriptionWarned) {
-          logger.warn(
-            "[Pipecat Client] Bot transcription is deprecated. Please use the onBotOutput instead."
-          );
-          this._botTranscriptionWarned = true;
-        }
+        this._warnIfDeprecatedInUse(
+          "onBotTranscript",
+          RTVIEvent.BotTranscript,
+          "Please use onBotOutput instead."
+        );
         options?.callbacks?.onBotTranscript?.(text);
         this.emit(RTVIEvent.BotTranscript, text);
       },
       onBotLlmText: (text) => {
+        this._warnIfDeprecatedInUse(
+          "onBotLlmText",
+          RTVIEvent.BotLlmText,
+          "Please use onBotOutput to show the bot's text, or onLlmRawText to inspect what the LLM produced."
+        );
         options?.callbacks?.onBotLlmText?.(text);
         this.emit(RTVIEvent.BotLlmText, text);
       },
@@ -613,6 +632,11 @@ export class PipecatClient extends RTVIEventEmitter {
         this.emit(RTVIEvent.BotLlmStopped);
       },
       onBotTtsText: (text) => {
+        this._warnIfDeprecatedInUse(
+          "onBotTtsText",
+          RTVIEvent.BotTtsText,
+          "Please use onBotOutput to show the bot's text, or onTtsRawText to inspect what the TTS produced."
+        );
         options?.callbacks?.onBotTtsText?.(text);
         this.emit(RTVIEvent.BotTtsText, text);
       },
@@ -872,6 +896,22 @@ export class PipecatClient extends RTVIEventEmitter {
   ): Promise<BotReadyData> {
     const connectionParams = await this.startBot(startBotParams);
     return this.connect(connectionParams);
+  }
+
+  /**
+   * Warn once when a deprecated callback is set, or its event has a listener.
+   */
+  private _warnIfDeprecatedInUse(
+    callback: keyof RTVIEventCallbacks,
+    event: RTVIEvent,
+    replacement: string
+  ): void {
+    if (this._deprecationsWarned.has(callback)) return;
+    if (!this._userCallbacks?.[callback] && this.listenerCount(event) === 0) {
+      return;
+    }
+    logger.warn(`[Pipecat Client] ${callback} is deprecated. ${replacement}`);
+    this._deprecationsWarned.add(callback);
   }
 
   /** Report a sound or pause the bot performed, from its output. */
