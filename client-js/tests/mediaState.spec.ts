@@ -283,9 +283,10 @@ describe("MediaState — DeviceError classification", () => {
       cam: errored("not-found"),
     });
 
-    // Second init: cam now acquired.
+    // Init again after a disconnect(): cam now acquired.
     transport.acquiredOnInit = { ...DEFAULT_ACQUIRED };
     transport.emitDeviceErrorDuringInit = undefined;
+    await client.disconnect();
     await client.initDevices();
 
     expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
@@ -303,7 +304,7 @@ describe("MediaState — needsInit() gate in connect()/startBot()", () => {
     expect(client.mediaState).toEqual({ mic: GRANTED, cam: GRANTED });
   });
 
-  test("reconnect after disconnect does NOT re-init (mediaState stays 'granted')", async () => {
+  test("reconnect after disconnect re-inits by the flags (mediaState stays 'granted' between)", async () => {
     const transport = MediaStateTransport.create();
     const client = buildClient(transport);
 
@@ -313,15 +314,12 @@ describe("MediaState — needsInit() gate in connect()/startBot()", () => {
 
     await client.connect();
 
-    // The new gate short-circuits — no second init triggered by reconnect.
-    expect(transport.initDevicesCallCount).toBe(1);
+    expect(transport.initDevicesCallCount).toBe(2);
   });
 
   test("connect() after a failed initDevices() does NOT retry init (mediaState is in an error state)", async () => {
-    // After a rejection, mediaState lands in 'error'. needsInit only
-    // returns true when a requested device is 'uninitialized', so connect()
-    // does NOT trigger another implicit init. Recovery is the user's job:
-    // call initDevices() again explicitly.
+    // The explicit initDevices() makes connect() keep the devices as they
+    // are, failed or not. Recovery is enableMic() / enableCam().
     const transport = MediaStateTransport.create();
     transport.acquiredOnInit = {};
     const client = buildClient(transport);
@@ -529,10 +527,9 @@ describe("MediaState — devices the transport didn't acquire stay 'uninitialize
     });
   });
 
-  test("needsInit gate: both opted out + no acquisition → no implicit init loop", async () => {
-    // If the user opts out of both devices and the transport respects that,
-    // mediaState stays at 'uninitialized'. needsInit must NOT keep firing
-    // on every connect() — that would loop forever.
+  test("both opted out + no acquisition: each connect() inits once, by the flags", async () => {
+    // With both devices opted out, mediaState stays at 'uninitialized', and
+    // each connect() still hands the flags to the transport exactly once.
     const transport = MediaStateTransport.create();
     transport.acquiredOnInit = {};
     const client = buildClient(transport, {
@@ -544,8 +541,6 @@ describe("MediaState — devices the transport didn't acquire stay 'uninitialize
     await client.disconnect();
     await client.connect();
 
-    // needsInit considers only requested devices, so with both opted out it
-    // returns false and no implicit init is triggered.
-    expect(transport.initDevicesCallCount).toBe(0);
+    expect(transport.initDevicesCallCount).toBe(2);
   });
 });
