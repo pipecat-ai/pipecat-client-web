@@ -2,7 +2,7 @@
   "asyncapi": "3.0.0",
   "info": {
     "title": "RTVI",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "description": "RTVI (Real-Time Voice Interface) is the protocol a client app and a Pipecat bot use to talk to each other during a session. This document describes it from the server's point of view: receiveClientMessages lists the messages a client sends, and sendServerMessages the messages the server sends.\n\nEvery message is a JSON object with the label \"rtvi-ai\", a type, its data, and an id on every message a client sends and on the server's answers to them. The session's transport carries messages as data messages, next to the audio and video.\n\nA receiver ignores a field it doesn't know in a message's data, so a later protocol version can add fields without breaking an earlier client or server. A client also ignores a message of a type it doesn't know; the server answers one with an error-response.\n\nA message can also have x-rtvi-enabled-by, the server setting that turns it on (a field of Pipecat's RTVIObserverParams); x-rtvi-min-client-version, the lowest client protocol version the server sends it to; and x-rtvi-deprecated, what replaces a deprecated message. x-rtvi-behaviors lists the rules the server follows across messages.",
     "tags": [
       {
@@ -28,6 +28,10 @@
       {
         "name": "Metrics and Monitoring",
         "description": "How the bot's services perform."
+      },
+      {
+        "name": "Conversation Flows",
+        "description": "Where the bot is in a conversation flow."
       },
       {
         "name": "User Interface",
@@ -186,6 +190,9 @@
         },
         "llm_function_call": {
           "$ref": "#/components/messages/llm_function_call"
+        },
+        "flow_node_entered": {
+          "$ref": "#/components/messages/flow_node_entered"
         },
         "ui_command": {
           "$ref": "#/components/messages/ui_command"
@@ -361,6 +368,9 @@
           "$ref": "#/channels/rtvi/messages/llm_function_call"
         },
         {
+          "$ref": "#/channels/rtvi/messages/flow_node_entered"
+        },
+        {
           "$ref": "#/channels/rtvi/messages/ui_command"
         },
         {
@@ -410,7 +420,7 @@
               "type": "client-ready",
               "id": "msg_1",
               "data": {
-                "version": "2.3.0",
+                "version": "2.4.0",
                 "about": {
                   "library": "@pipecat-ai/client-js",
                   "library_version": "1.16.0"
@@ -998,7 +1008,7 @@
               "type": "bot-ready",
               "id": "msg_1",
               "data": {
-                "version": "2.3.0",
+                "version": "2.4.0",
                 "about": {
                   "library": "pipecat-ai",
                   "library_version": "1.3.0"
@@ -1759,7 +1769,7 @@
       "stt_raw_text": {
         "name": "stt-raw-text",
         "title": "stt-raw-text",
-        "summary": "A transcription of the user's speech as the speech-to-text service produces it, including interim transcriptions that may still change. Off by default; turned on by the server's `stt_raw_text_enabled` setting. Sent only to clients of protocol 2.2.0 or later.",
+        "summary": "A transcription of the user's speech as the speech-to-text service produces it, including interim transcriptions that may still change. Off by default; turned on by the server's `stt_raw_text_enabled` setting. Sent to clients of protocol 2.2.0 or later, and to any client before its client-ready.",
         "tags": [
           {
             "name": "Service-Specific Insights"
@@ -2034,7 +2044,7 @@
       "llm_raw_text": {
         "name": "llm-raw-text",
         "title": "llm-raw-text",
-        "summary": "Text exactly as the bot's LLM streams it, a chunk at a time. Off by default; turned on by the server's `llm_raw_text_enabled` setting. Sent only to clients of protocol 2.2.0 or later.",
+        "summary": "Text exactly as the bot's LLM streams it, a chunk at a time. Off by default; turned on by the server's `llm_raw_text_enabled` setting. Sent to clients of protocol 2.2.0 or later, and to any client before its client-ready.",
         "tags": [
           {
             "name": "Service-Specific Insights"
@@ -2076,7 +2086,7 @@
       "tts_raw_text": {
         "name": "tts-raw-text",
         "title": "tts-raw-text",
-        "summary": "Text the bot's text-to-speech service speaks, as it speaks it. Off by default; turned on by the server's `tts_raw_text_enabled` setting. Sent only to clients of protocol 2.2.0 or later.",
+        "summary": "Text the bot's text-to-speech service speaks, as it speaks it. Off by default; turned on by the server's `tts_raw_text_enabled` setting. Sent to clients of protocol 2.2.0 or later, and to any client before its client-ready.",
         "tags": [
           {
             "name": "Service-Specific Insights"
@@ -2462,6 +2472,54 @@
           }
         ],
         "x-rtvi-deprecated": "Use llm-function-call-in-progress instead."
+      },
+      "flow_node_entered": {
+        "name": "flow-node-entered",
+        "title": "flow-node-entered",
+        "summary": "The bot's conversation flow entered a node, so a client can follow the conversation through the flow. Sent to clients of protocol 2.4.0 or later, and to any client before its client-ready.",
+        "tags": [
+          {
+            "name": "Conversation Flows"
+          }
+        ],
+        "payload": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "const": "rtvi-ai"
+            },
+            "type": {
+              "const": "flow-node-entered"
+            },
+            "data": {
+              "$ref": "#/components/schemas/FlowNodeEnteredMessageData"
+            }
+          },
+          "required": [
+            "label",
+            "type",
+            "data"
+          ]
+        },
+        "examples": [
+          {
+            "payload": {
+              "label": "rtvi-ai",
+              "type": "flow-node-entered",
+              "data": {
+                "node": "verify.check_birthday",
+                "previous_node": "greet",
+                "function": "wants_to_book",
+                "metadata": {
+                  "step": 2
+                },
+                "parent": "verify"
+              }
+            }
+          }
+        ],
+        "description": "Sent each time a Pipecat Flows conversation enters a node, including its first node and a node it enters again, before the bot responds in that node.",
+        "x-rtvi-min-client-version": "2.4.0"
       },
       "ui_command": {
         "name": "ui-command",
@@ -2900,7 +2958,7 @@
             "type": "string"
           },
           "kind": {
-            "description": "What the marker means, such as `complete`, `short` or `long` for the markers that say whether the user's turn was complete, or `null` when it means nothing the server knows.",
+            "description": "What the marker means, such as `complete`, `short` or `long` for the markers that say whether the user's turn was complete, `silent` for a reply dropped as the wait-reassurance silent mark, or `null` when it means nothing the server knows.",
             "type": "string"
           },
           "raw": {
@@ -3232,6 +3290,42 @@
           "url"
         ],
         "title": "FileUrl",
+        "type": "object"
+      },
+      "FlowNodeEnteredMessageData": {
+        "description": "Data format for a conversation flow entering a node.",
+        "properties": {
+          "node": {
+            "description": "The name of the node the flow entered. A node of a subflow is named `<parent>.<node>`.",
+            "type": "string"
+          },
+          "previous_node": {
+            "description": "The name of the node the flow left. Absent for the flow's first node.",
+            "type": "string"
+          },
+          "function": {
+            "description": "The name of the function whose call moved the flow to this node. Absent when the bot set the node itself.",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "description": "The entered node's metadata, a JSON object of the application's own. Absent when the node has none.",
+            "type": "object"
+          },
+          "function_metadata": {
+            "additionalProperties": true,
+            "description": "The metadata of `function`, a JSON object of the application's own. Absent when the function has none.",
+            "type": "object"
+          },
+          "parent": {
+            "description": "When the node belongs to a subflow, the name of the node that runs the subflow. Absent otherwise.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node"
+        ],
+        "title": "FlowNodeEnteredMessageData",
         "type": "object"
       },
       "Focus": {
@@ -4697,6 +4791,13 @@
       "messages": [
         "client-ready",
         "bot-ready"
+      ]
+    },
+    {
+      "id": "current-version-before-client-ready",
+      "description": "Until client-ready, the server sends messages as it does to a client of its own protocol version, so what the bot does before the client says its version, such as a greeting, reaches the client. From client-ready on, the client's version decides which messages it gets.",
+      "messages": [
+        "client-ready"
       ]
     },
     {
