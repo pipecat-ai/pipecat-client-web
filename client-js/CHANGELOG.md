@@ -5,6 +5,27 @@ All notable changes to **Pipecat Client JS** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.17.0...client-js-v1.18.0) (2026-11-25)
+
+
+### Features
+
+* **client-js:** generate the RTVI protocol types from Pipecat's AsyncAPI document ([bec4531](https://github.com/pipecat-ai/pipecat-client-web/commit/bec45313b6368923b83d9593b636af5fa48fef90))
+* **client-js:** name the audio level callbacks after where the level is measured ([4c513bc](https://github.com/pipecat-ai/pipecat-client-web/commit/4c513bc21cc793839fc011455b2f5a25698e49c4))
+* **client-js:** report the audio levels the bot measures ([705006d](https://github.com/pipecat-ai/pipecat-client-web/commit/705006de35cf31375427a3b635985dba536f8ed7))
+* **client-js:** report the bot's system logs ([c724610](https://github.com/pipecat-ai/pipecat-client-web/commit/c724610ba9fa1d5228bf011204002bbb9287f958))
+* **client-js:** report the bot's voice activity ([942158b](https://github.com/pipecat-ai/pipecat-client-web/commit/942158b058db4c94308d08a431eeba55a0669d8c))
+* **client-js:** report the marker in the bot's LLM responses ([8453d1a](https://github.com/pipecat-ai/pipecat-client-web/commit/8453d1ae616297801a1d4ea1f5c4b9314ce67b32))
+* **client-js:** speak RTVI 2.4.0 from its protocol document ([6b6d23b](https://github.com/pipecat-ai/pipecat-client-web/commit/6b6d23b3f4236a4daaefc357d1c0babc66681967))
+* **client-js:** sync the RTVI document from Pipecat on GitHub ([2def7b9](https://github.com/pipecat-ai/pipecat-client-web/commit/2def7b9bf003df8ad3f0e530c2913e89012d49f3))
+* **client-js:** type every metric the RTVI server reports ([80c1980](https://github.com/pipecat-ai/pipecat-client-web/commit/80c19808528d01bbaaf2620484c662f648b09314))
+* **client-js:** warn when deprecated callbacks are used ([4478064](https://github.com/pipecat-ai/pipecat-client-web/commit/44780649396da8a4fe21f0c7b8227aa082bc748f))
+
+
+### Bug Fixes
+
+* **client-js:** make UICommandData's payload optional ([94dd608](https://github.com/pipecat-ai/pipecat-client-web/commit/94dd60823089b5c85178497f25d16b02c56d92c7))
+
 ## [1.17.0](https://github.com/pipecat-ai/pipecat-client-web/compare/client-js-v1.16.0...client-js-v1.17.0) (2026-11-23)
 
 ### Features
